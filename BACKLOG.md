@@ -118,6 +118,11 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   the Friends prototype review (`prototype/friends-page`).
 
 ## Watch list
+- [ ] **[feature, Low, Standard]** Trigger: a `recorder/unknown_field` line in tracker.log for a
+  playlist or mode name (e.g. under `UpdateState`'s `Game`). The Stats API sends only
+  `Game.PlaylistId`, no name (checked 2026-11-02 across all raw events), so an unmapped id shows
+  as "Unknown playlist (N)". The user wants the game's name used for an unmapped id once it sends
+  one: store it with the match and let `playlistInfo` fall back to it.
 - [ ] **[design, Low, Standard]** Trigger: a second Dropshot match (playlist 23 or 29) flagged
   `statfeed_matches_scoreboard`. The first one (2026-11-02, `9DF929B6…`) had no Shot statfeeds
   for any player while the scoreboard showed 27–33 shots each, so Dropshot may count shots
