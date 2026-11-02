@@ -87,12 +87,13 @@ export interface Aggregate {
 type Played = MyMatch & { me: MyRow };
 
 const ratio = (num: number, den: number) => (den === 0 ? null : num / den);
-const sum = (xs: readonly number[]) => xs.reduce((a, b) => a + b, 0);
+export const sum = (xs: readonly number[]) => xs.reduce((a, b) => a + b, 0);
 // A loop, not Math.max(...xs): a long history passes more values than a call takes as arguments.
-const maxOrNull = (xs: readonly number[]) => (xs.length ? xs.reduce((a, b) => Math.max(a, b)) : null);
+export const maxOrNull = (xs: readonly number[]) => (xs.length ? xs.reduce((a, b) => Math.max(a, b)) : null);
 const nullCounts = () => Object.fromEntries(COUNTED.map((k) => [k, null])) as Record<Counted, null>;
 
-function streaks(played: readonly Played[]) {
+/** The run at the latest decided match, and the longest runs of wins and of losses. */
+export function streaks(played: readonly { startedAt: number; result: Result | null }[]) {
   let bestWin = 0;
   let bestLoss = 0;
   let run: Aggregate["endedOn"] = null;

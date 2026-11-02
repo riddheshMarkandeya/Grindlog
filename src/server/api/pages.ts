@@ -6,11 +6,15 @@ import { BASELINE_DAYS } from "../../shared/constants";
 import { daysBefore, dayOf, monthOf, periodRange, type PeriodRange, type PeriodSpec, type Season } from "../../shared/periods";
 import { inFilter, playlistsPresent, type PlaylistFilter } from "../../shared/playlist-filter";
 import { withTeammate, type TeammateFilter } from "../../shared/teammate-filter";
-import type { FriendSuggestions, LatestSession, MatchDetail, MonthFolds, PeriodView, PlayedDays, SessionDetail, SessionList, SessionSummary } from "../../shared/schemas/responses";
+import type { FriendCard, FriendDetail, FriendSuggestions, LatestSession, NeverSuggested, MatchDetail, MonthFolds, PeriodView, PlayedDays, SessionDetail, SessionList, SessionSummary } from "../../shared/schemas/responses";
 import { aggregate, baseline, byPlaylist, type MyMatch } from "../../shared/aggregate";
+import { friendCard, friendView } from "../../shared/friend-stats";
+import type { Logger } from "../log";
 import { bucketKind, buckets, previousRange, rollingWindows, trendStats } from "../../shared/trends";
 import type { MatchResult, QueryReader } from "../query/read";
 import { currentSession, cutSessions, type Session } from "../query/sessions";
+
+const C = "query";
 
 const yours =
   (filter: PlaylistFilter, teammate: TeammateFilter = "anyone") =>
@@ -22,7 +26,7 @@ const SUGGEST_MATCHES = 3;
 const SUGGEST_SESSIONS = 2;
 const played = (m: MyMatch) => m.me !== null;
 
-export function createPages({ reader, now }: { reader: QueryReader; now: () => number }) {
+export function createPages({ reader, logger, now }: { reader: QueryReader; logger: Logger; now: () => number }) {
   function index() {
     const breaks = reader.readBreaks();
     const results = reader.readResults();
@@ -225,10 +229,38 @@ export function createPages({ reader, now }: { reader: QueryReader; now: () => n
     };
   }
 
+  const sessionsByGuid = ({ all }: Index) => new Map(all.flatMap((s) => s.guids.map((g) => [g, s.key] as const)));
+
+  /** Every friend with both records; a friend's side and records come from friendCard. */
+  function friends(): { friends: FriendCard[] } {
+    const list = reader.readFriends();
+    if (!list.length) return { friends: [] };
+    const ids = list.map((f) => f.id);
+    const lobbies = reader.readLobbies(ids);
+    const seen = reader.readLastNames(ids);
+    return { friends: list.map((f) => ({ ...f, lastSeenName: seen.get(f.id) ?? null, ...friendCard(lobbies, f.id) })) };
+  }
+
+  /** Null when the id isn't a friend. */
+  function friendDetail(id: string): FriendDetail | null {
+    const friend = reader.readFriends().find((f) => f.id === id);
+    if (!friend) return null;
+    const sessionOf = sessionsByGuid(index());
+    const view = friendView(reader.readLobbies([id]), id, (g) => sessionOf.get(g) ?? null);
+    logger.info(C, "friend_detail", { id, with: view.with.record.n, against: view.against.record.n, modes: view.with.modes.map((m) => m.mode) });
+    return { friend: { ...friend, lastSeenName: reader.readLastNames([id]).get(id) ?? null }, view };
+  }
+
+  /** By the name they last used, else their id. */
+  function neverSuggested(): NeverSuggested {
+    const ids = reader.readNeverSuggest();
+    const seen = reader.readLastNames(ids);
+    return { players: ids.map((id) => ({ id, name: seen.get(id) ?? id })).sort((a, b) => a.name.localeCompare(b.name)) };
+  }
+
   /** Humans often on your team who aren't friends or never-suggest; named by their latest match. */
   function friendSuggestions(): FriendSuggestions {
-    const { all } = index();
-    const sessionOf = new Map(all.flatMap((s) => s.guids.map((g) => [g, s.key] as const)));
+    const sessionOf = sessionsByGuid(index());
     const skip = new Set([...reader.readFriends().map((f) => f.id), ...reader.readNeverSuggest()]);
     // In start order, so each id's last row has the name they used most recently.
     const byId = Map.groupBy(
@@ -247,7 +279,9 @@ export function createPages({ reader, now }: { reader: QueryReader; now: () => n
   return {
     sessionList,
     friendSuggestions,
-    friends: () => ({ friends: reader.readFriends() }),
+    friends,
+    friendDetail,
+    neverSuggested,
     monthFolds,
     currentSummary,
     latest,

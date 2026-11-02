@@ -1,8 +1,9 @@
 // The pieces every Settings section shares: the section frame with its anchor and optional reset,
-// and the "✓ Saved" / "Couldn't save · Retry" status.
+// and a table's load state.
 import { useRef, type ReactNode } from "react";
 import type { SectionId, Settings, SettingsPatch } from "../../../shared/schemas/settings";
 import { ApiError } from "../../api";
+import { SaveStatus } from "../../components/SaveStatus";
 import { atDefaults, sectionDefaults } from "../../logic/settings";
 import { useSaveSettings } from "../../queries";
 import styles from "./Settings.module.css";
@@ -22,27 +23,6 @@ export function useSave(onSaved?: () => void) {
     });
   };
   return { m, save };
-}
-
-/** What a status shows: a mutation, or a table row's own state. `submittedAt` restarts the tick's fade. */
-export interface SaveState {
-  isSuccess: boolean;
-  isError: boolean;
-  submittedAt: number;
-}
-
-/** "✓ Saved" (fading), or "Couldn't save · Retry"; the live region is there from the start so each is announced. */
-export function SaveStatus({ m, retry }: { m: SaveState; retry?: () => void }) {
-  return (
-    <span className={styles.status} role="status">
-      {m.isSuccess && <span key={m.submittedAt} className={styles.tick}>✓ Saved</span>}
-      {m.isError && retry && (
-        <span className={styles.failed}>
-          Couldn't save · <button type="button" className={styles.link} onClick={retry}>Retry</button>
-        </span>
-      )}
-    </span>
-  );
 }
 
 function ResetLink({ id, s, onSaved }: { id: SectionId; s: Settings; onSaved: () => void }) {

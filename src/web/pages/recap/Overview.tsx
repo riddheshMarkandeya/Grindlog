@@ -15,6 +15,7 @@ import saveIcon from "../../assets/icons/Save.png";
 import shotIcon from "../../assets/icons/Shot.png";
 import { cx } from "../../components/cx";
 import { GoalMap } from "../../components/GoalMap";
+import { Scorebug } from "../../components/Scorebug";
 import { Tile, Tiles } from "../../components/Tile";
 import { clock, dayLabel, decimal, durationText, plural } from "../../logic/format";
 import {
@@ -43,7 +44,7 @@ export function Overview({ detail, summary, filter, teammate }: { detail: Sessio
   const matchPath = (guid: string) => recapPath(detail.key, filter, { match: guid }, teammate);
   return (
     <>
-      <Scorebug detail={detail} summary={summary} />
+      <RecapScorebug detail={detail} summary={summary} />
       <Headline detail={detail} filter={filter} teammate={teammate} />
       <MatchCards matches={detail.matches} matchPath={matchPath} />
       <PerGame detail={detail} />
@@ -61,18 +62,21 @@ export function Overview({ detail, summary, filter, teammate }: { detail: Sessio
   );
 }
 
-function Scorebug({ detail, summary }: { detail: SessionDetail; summary: SessionSummary }) {
+function RecapScorebug({ detail, summary }: { detail: SessionDetail; summary: SessionSummary }) {
   const winPct = detail.aggregate.winPct;
   return (
-    <div className={styles.bug} role="img" aria-label={`${plural(summary.wins, "win")}, ${plural(summary.losses, "loss", "losses")}`}>
-      <div className={styles.side}><span>WINS</span><b className="num">{summary.wins}</b></div>
-      <div className={styles.mid}>
-        <span>{dayLabel(detail.day).toUpperCase()}</span>
-        <b>{durationText(detail.endedAt - detail.startedAt)}</b>
-        <span className="num">{winPct !== null && `${String(pct(winPct))}% · `}{plural(summary.matches, "MATCH", "MATCHES")}</span>
-      </div>
-      <div className={cx(styles.side, styles.right)}><b className="num">{summary.losses}</b><span>LOSSES</span></div>
-    </div>
+    <Scorebug
+      label={`${plural(summary.wins, "win")}, ${plural(summary.losses, "loss", "losses")}`}
+      left={{ label: "WINS", value: String(summary.wins) }}
+      right={{ label: "LOSSES", value: String(summary.losses) }}
+      mid={
+        <>
+          <span>{dayLabel(detail.day).toUpperCase()}</span>
+          <b>{durationText(detail.endedAt - detail.startedAt)}</b>
+          <span className="num">{winPct !== null && `${String(pct(winPct))}% · `}{plural(summary.matches, "MATCH", "MATCHES")}</span>
+        </>
+      }
+    />
   );
 }
 

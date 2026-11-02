@@ -1,5 +1,6 @@
 // The big condensed stat tile: a value, an optional icon and an optional ▲/▼ against something,
-// over an uppercase label; the caller writes the comparison's text. The recap's headline tiles.
+// over an uppercase label, with an optional small note under it; the caller writes the comparison's
+// and the note's text. The recap's headline tiles and the Friends page's.
 import type { ReactNode } from "react";
 import styles from "./Tile.module.css";
 
@@ -9,7 +10,7 @@ export function Tiles({ children }: { children: ReactNode }) {
   return <ul className={styles.tiles}>{children}</ul>;
 }
 
-export function Tile({ label, value, icon, vs }: { label: string; value: string; icon?: string; vs?: TileVs }) {
+export function Tile({ label, value, icon, vs, note }: { label: string; value: string; icon?: string; vs?: TileVs; note?: string }) {
   return (
     <li>
       <b className="num">
@@ -22,6 +23,7 @@ export function Tile({ label, value, icon, vs }: { label: string; value: string;
         )}
       </b>
       <span>{label}</span>
+      {note && <small className={styles.note} title={note}>{note}</small>}
     </li>
   );
 }

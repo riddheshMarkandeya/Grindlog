@@ -52,7 +52,7 @@ function setup() {
   const logger = memoryLogger();
   const remarks = (now: number, rng = cycling()) => {
     const reader = createQueryReader({ tracker: storage.tracker, logger: memoryLogger() });
-    return createRemarks({ tracker: storage.tracker, pages: createPages({ reader, now: () => now }), logger, now: () => now, rng });
+    return createRemarks({ tracker: storage.tracker, pages: createPages({ reader, logger, now: () => now }), logger, now: () => now, rng });
   };
   const logged = (event: string) => logger.lines.filter((l) => l.event === event).map((l) => l.fields);
   const picked = () => logged("remark_picked");

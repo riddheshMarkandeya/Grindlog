@@ -9,7 +9,7 @@ import { teammateValue } from "../../../shared/teammate-filter";
 import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { useNow } from "../../components/useNow";
-import { teammateMissing } from "../../logic/filter-options";
+import { offeredFriends, teammateMissing } from "../../logic/filter-options";
 import { chartMode } from "../../logic/trend-chart";
 import { ENOUGH_MATCHES, parseTrends, patchTrends, stripYear, trendsPath, type TrendsState } from "../../logic/trends";
 import { useFriends, usePeriod, usePlayedDays, useSeasons, useSettings } from "../../queries";
@@ -50,15 +50,17 @@ export function TrendsPage() {
   const { rollingWindow } = useSettings();
   const period = usePeriod(state.spec, state.filter, today, rollingWindow, state.teammate);
   const friends = useFriends();
+  // A friend only ever met as an opponent has nothing to filter by here.
+  const offered = useMemo(() => (friends.data === undefined ? undefined : offeredFriends(friends.data)), [friends.data]);
   const firstDay = played.data?.firstDay ?? null;
   const fromDay = range && range.from !== null ? dayOf(range.from) : (period.data?.firstDay ?? null);
   const days = fromDay !== null && range && range.to > (range.from ?? -Infinity) ? { from: fromDay, last: lastDay < fromDay ? fromDay : lastDay } : null;
 
   const go = (patch: Partial<TrendsState>) => { void navigate(trendsPath(patchTrends(state, patch))); };
 
-  // Once the friends load, an id that isn't one goes back to Anyone; replaced, so Back doesn't
+  // Once the friends load, an id that isn't one offered goes back to Anyone; replaced, so Back doesn't
   // return to it. Not a patch: the x axis the URL set stays, as the user changed nothing.
-  const missing = friends.data !== undefined && teammateMissing(state.teammate, friends.data);
+  const missing = offered !== undefined && teammateMissing(state.teammate, offered);
   const resetTo = missing ? trendsPath({ ...state, teammate: "anyone" }) : null;
   const missingWith = teammateValue(state.teammate);
   useEffect(() => {
@@ -137,7 +139,7 @@ export function TrendsPage() {
         playedDays={played.data.days}
         selected={days && { from: days.from, to: shiftDay(days.last, 1) }}
         present={present}
-        friends={friends.data ?? []}
+        friends={offered ?? []}
         onPeriod={(spec, keepYear) => { go({ spec, year: keepYear ? state.year : null }); }}
         onFilter={(filter) => { go({ filter }); }}
         onTeammate={(teammate) => { go({ teammate }); }}

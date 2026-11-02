@@ -346,6 +346,48 @@ describe("friends on your team", () => {
     expect(reader.readTeammates()).toEqual([{ guid: "G1", primaryId: SAM, name: "Sam" }]);
   });
 
+  test("readLobbies: every match you played, team sizes and totals, and the listed friends by side", () => {
+    const { writer, reader, addId } = setup();
+    addId(ME, "confirmed");
+    const ALEX = "Epic|alex|0";
+    writer.save(
+      record(
+        "G1",
+        1000,
+        { players: [player(ME, 0, { score: 300, goals: 2 }), player(SAM, 0, { score: 200, goals: 1, name: "Sam" }), player(BOT, 0, { isBot: true, score: 50, goals: 0 }), player(ALEX, 1), player(THEM, 1)] },
+        { scoreTeam0: 3, scoreTeam1: 1, mvpKey: SAM, overtime: true },
+      ),
+    );
+    writer.save(record("G2", 2000, { players: [player(ME, 1, { teamsSeen: 3 }), player(SAM, 0, { teamsSeen: 3 }), player(ALEX, 0)] }, { scoreTeam0: 0, scoreTeam1: 2, winnerTeamNum: 1, mvpKey: ALEX }));
+    writer.save(record("G3", 3000, { players: [player(SAM, 0), player(THEM, 1)] }));
+    writer.save(record("G4", 4000, { players: [player(ME, 0), player(THEM, 1)] }, { scoreTeam0: null, scoreTeam1: null, mvpKey: null }));
+    const [g1, g2, g4, ...rest] = reader.readLobbies([SAM, ALEX]);
+    expect(rest).toEqual([]);
+    expect(g1).toMatchObject({
+      guid: "G1",
+      startedAt: 1000,
+      endedAt: 1300,
+      playlistId: 13,
+      overtime: true,
+      result: "win",
+      goalDiff: 2,
+      sizes: { mine: 3, other: 2 },
+      me: { playerKey: ME, score: 300, goals: 2, assists: 0, saves: 0, shots: 2 },
+      myTeamTotals: { score: 550, goals: 3 },
+      mvpKey: SAM,
+      mvpOnMyTeam: true,
+      youSwitched: false,
+    });
+    expect(g1?.friends).toEqual([
+      { id: ALEX, playerKey: ALEX, side: "against", switched: false, score: 100, goals: 1, assists: 0, saves: 0, shots: 2 },
+      { id: SAM, playerKey: SAM, side: "with", switched: false, score: 200, goals: 1, assists: 0, saves: 0, shots: 2 },
+    ]);
+    // You switched and ended on team 1: Sam, seen on both, is with you; Alex, only on team 0, is against.
+    expect(g2).toMatchObject({ result: "win", goalDiff: 2, youSwitched: true, mvpOnMyTeam: false, sizes: { mine: 1, other: 2 } });
+    expect(g2?.friends.map((f) => [f.id, f.side, f.switched])).toEqual([[ALEX, "against", false], [SAM, "with", true]]);
+    expect(g4).toMatchObject({ goalDiff: null, mvpKey: null, mvpOnMyTeam: null, friends: [] });
+  });
+
   test("readFriends: named by the nickname, else the name from their latest match, else the id; listed by name", () => {
     const { writer, reader } = setup();
     addFriend(SAM, "Sammy");

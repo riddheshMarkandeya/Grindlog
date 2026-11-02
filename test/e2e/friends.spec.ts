@@ -1,6 +1,6 @@
 // The "with teammate" filter against the friends seed: last month, a 22-match session (e2e-fr-00)
 // with Sammy on your team in its first four and on the other team in the fifth, and a 2-match
-// session (e2e-nofr-a) with no friend.
+// session (e2e-nofr-a) with no friend. Opal, a friend only ever on the other team, is never offered.
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
@@ -72,7 +72,7 @@ test("the share card's label names the friend by nickname", async ({ page }) => 
   await expect(shareDialog(page).locator("[data-part=pill]")).toHaveText("with Sammy");
 });
 
-test("Trends lists every friend; picking one goes in the URL, and an id that isn't a friend goes back to Anyone", async ({ page }) => {
+test("Trends lists only friends ever on your team (not Opal); picking one goes in the URL, and an id that isn't one goes back to Anyone", async ({ page }) => {
   await page.goto("/trends?kind=all");
   const select = withSelect(page);
   await expect(select.locator("option")).toHaveText(["Anyone", "Soloqueue", "Sammy"]);

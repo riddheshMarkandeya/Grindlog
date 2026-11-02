@@ -7,6 +7,7 @@ import type { Season } from "../../shared/periods";
 import { resultFor, type Result } from "../../shared/result";
 import type { Friend, Goal, MatchDetail } from "../../shared/schemas/responses";
 import type { MyMatch, MyRow } from "../../shared/aggregate";
+import type { LobbyFriend, LobbyMatch } from "../../shared/friend-stats";
 
 const C = "query";
 
@@ -88,6 +89,34 @@ interface OtherRow {
   name: string;
   teams_seen: number;
 }
+
+/** A match row for readLobbies, with your row's columns (null when spectated). */
+type LobbyRow = Pick<MatchRow, "guid" | "started_at" | "ended_at" | "playlist_id" | "overtime" | "score_team0" | "score_team1" | "winner_team_num" | "end_kind" | "closed_via" | "mvp_key" | "camera_primary_id" | "player_key" | "primary_id" | "team_num" | "teams_seen" | "score" | "goals" | "assists" | "saves" | "shots">;
+
+/** Any player in a match, for team sizes, team totals and the listed friends. */
+interface LobbyPlayerRow {
+  match_guid: string;
+  player_key: string;
+  primary_id: string;
+  team_num: number | null;
+  teams_seen: number;
+  is_bot: number;
+  mine: number;
+  score: number;
+  goals: number;
+  assists: number;
+  saves: number;
+  shots: number;
+}
+
+const lineOf = (r: { player_key: string; score: number; goals: number; assists: number; saves: number; shots: number }) => ({
+  playerKey: r.player_key,
+  score: r.score,
+  goals: r.goals,
+  assists: r.assists,
+  saves: r.saves,
+  shots: r.shots,
+});
 
 /** On a team at any point in the match; nobody is on a null team. */
 const wasOn = (teamsSeen: number, team: number | null) => team !== null && (teamsSeen & (1 << team)) !== 0;
@@ -361,6 +390,65 @@ export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Lo
     });
   }
 
+  /**
+   * Every match you played, with team sizes, your final team's totals and the listed friends (humans,
+   * not yours) by side: with you if on your team at any point, against if only ever on the other.
+   * With no team of yours, nobody is listed. Every player row is read once: a personal history is
+   * small, and `timed` shows the cost if it grows.
+   */
+  function readLobbies(friendIds: readonly string[]): LobbyMatch[] {
+    return timed("readLobbies", () => {
+      const rows = tracker.all<LobbyRow>(
+        `SELECT m.guid, m.started_at, m.ended_at, m.playlist_id, m.overtime, m.score_team0, m.score_team1, m.winner_team_num, m.end_kind,
+           m.closed_via, m.mvp_key, m.camera_primary_id, p.player_key, p.primary_id, p.team_num, p.teams_seen, p.score, p.goals,
+           p.assists, p.saves, p.shots
+         FROM matches m
+         LEFT JOIN match_players p ON p.match_guid = m.guid AND p.primary_id IN (${MINE})
+         ORDER BY m.started_at, m.guid, p.player_key`,
+      );
+      const playersOf = Map.groupBy(
+        tracker.all<LobbyPlayerRow>(
+          `SELECT match_guid, player_key, primary_id, team_num, teams_seen, is_bot, primary_id IN (${MINE}) AS mine,
+             score, goals, assists, saves, shots
+           FROM match_players ORDER BY match_guid, primary_id`,
+        ),
+        (p) => p.match_guid,
+      );
+      const listed = new Set(friendIds);
+      return [...Map.groupBy(rows, (r) => r.guid).values()].flatMap((group) => {
+        const [m] = group as [LobbyRow, ...LobbyRow[]];
+        const me = pickMe(m, group);
+        if (me === null) return [];
+        const team = me.team_num;
+        const players = playersOf.get(m.guid) ?? [];
+        const onMine = players.filter((p) => team !== null && p.team_num === team);
+        const scores = team === null || m.score_team0 === null || m.score_team1 === null ? null : [m.score_team0, m.score_team1];
+        const mvp = m.mvp_key === null ? undefined : players.find((p) => p.player_key === m.mvp_key);
+        const friends = players.flatMap((p): LobbyFriend[] => {
+          if (team === null || p.is_bot === 1 || p.mine === 1 || !listed.has(p.primary_id)) return [];
+          const side = wasOn(p.teams_seen, team) ? "with" : wasOn(p.teams_seen, 1 - team) ? "against" : null;
+          return side === null ? [] : [{ id: p.primary_id, side, switched: p.teams_seen === 3, ...lineOf(p) }];
+        });
+        return [{
+          guid: m.guid,
+          startedAt: m.started_at,
+          endedAt: m.ended_at,
+          playlistId: m.playlist_id,
+          overtime: m.overtime === 1,
+          result: myResult(m, team),
+          goalDiff: scores === null || team === null ? null : (scores[team] ?? 0) - (scores[1 - team] ?? 0),
+          sizes: { mine: onMine.length, other: players.filter((p) => team !== null && p.team_num === 1 - team).length },
+          me: lineOf(me),
+          myTeamTotals: { score: onMine.reduce((n, p) => n + p.score, 0), goals: onMine.reduce((n, p) => n + p.goals, 0) },
+          mvpKey: m.mvp_key,
+          mvpOnMyTeam: mvp === undefined ? null : mvp.team_num === team,
+          youSwitched: me.teams_seen === 3,
+          friends,
+        }];
+      });
+    });
+  }
+
   /** Every friend by name: the nickname, else the name in their latest match. */
   function readFriends(): Friend[] {
     return timed("readFriends", () =>
@@ -372,6 +460,20 @@ export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Lo
       )
         .sort((a, b) => a.name.localeCompare(b.name)),
     );
+  }
+
+  /** The name each id used in its latest match; an id never seen is left out. */
+  function readLastNames(ids: readonly string[]): Map<string, string> {
+    const rows = timed("readLastNames", () =>
+      tracker.all<{ primary_id: string; name: string }>(
+        `SELECT p.primary_id, p.name FROM match_players p JOIN matches m ON m.guid = p.match_guid
+         WHERE p.primary_id IN (SELECT value FROM json_each(?))
+         ORDER BY m.started_at`,
+        JSON.stringify(ids),
+      ),
+    );
+    // In start order, so each id's last row wins.
+    return new Map(rows.map((r) => [r.primary_id, r.name]));
   }
 
   /** Every goal of these matches, in match then goal order. */
@@ -469,7 +571,9 @@ export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Lo
     readMyMatches,
     readResults,
     readTeammates,
+    readLobbies,
     readFriends,
+    readLastNames,
     readNeverSuggest: (): string[] =>
       timed("readNeverSuggest", () => tracker.all<{ primary_id: string }>("SELECT primary_id FROM never_suggest").map((r) => r.primary_id)),
     readGoals,

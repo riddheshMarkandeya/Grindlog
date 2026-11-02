@@ -17,8 +17,12 @@ export interface Stack {
   go: () => void;
 }
 
-/** What the stack's DB holds. A spec file picks one with `test.use({ seed })`, and gets its own worker and stack. */
-export type Seed = "rich" | "empty" | "few" | "share" | "settings" | "tables" | "friends";
+/**
+ * What the stack's DB holds. A spec file picks one with `test.use({ seed })`; files with the same
+ * seed share a worker and stack, so a spec that writes takes a seed of its own ("friends-page" is
+ * "friends" for the Friends page spec).
+ */
+export type Seed = "rich" | "empty" | "few" | "share" | "settings" | "tables" | "friends" | "friends-page";
 
 export const test = base.extend<{ consoleErrors: string[] }, { stack: Stack; seed: Seed }>({
   seed: ["rich", { scope: "worker", option: true }],

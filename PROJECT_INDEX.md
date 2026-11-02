@@ -81,6 +81,13 @@ maybe later.
   Task Scheduler doesn't restart a crashed task.
 
 ## Plans
+- `docs/plans/2026-11-02-wp9b-friends-page.md`: WP9b plan (the Friends page: suggestion banners,
+  pair cards, never-suggest list; a friend's scorebug and with/against zones, mode switch, carry and
+  compare, head-to-head pager; `readLobbies`, `/api/friends/detail`, suggest-again), review log.
+- `docs/reviews/2026-11-02-wp9b-friends-page.md`: WP9b review summary (2 rounds).
+- `docs/plans/2026-11-02-wp9a-friends-data.md`: WP9a plan (friends tables, suggestions, `?with=`
+  filter, friend remarks), review log.
+- `docs/reviews/2026-11-02-wp9a-friends-data.md`: WP9a review summary.
 - `docs/plans/2026-10-28-wp8b-settings-tables.md`: WP8b plan (Settings: the You table answering
   "is this you?", the Seasons table with add/edit/delete, `/api/ids` and `/api/seasons` writes,
   the section list), review log.

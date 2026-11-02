@@ -29,6 +29,9 @@ export function parseTeammate(value: string | null): { teammate: TeammateFilter;
   return parsed.success ? { teammate: parsed.data, bad: false } : { teammate: "anyone", bad: true };
 }
 
+/** The friends a "with teammate" filter can name: those on your team in at least one match. */
+export const offeredFriends = <F extends { with: { n: number } }>(friends: readonly F[]): F[] => friends.filter((f) => f.with.n > 0);
+
 /** Whether the filter names a friend not offered, so it resets to Anyone. Soloqueue always fits. */
 export function teammateMissing(value: TeammateFilter, offered: readonly { id: string }[]): boolean {
   if (value === "anyone" || value === "solo") return false;

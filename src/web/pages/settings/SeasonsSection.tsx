@@ -11,7 +11,8 @@ import { useNow } from "../../components/useNow";
 import { dateLabel } from "../../logic/format";
 import { conflictError, seasonErrors, seasonRows, type SeasonDraft, type SeasonErrors, type SeasonRow } from "../../logic/seasons";
 import { useDeleteSeason, useSaveSeason, useSeasons } from "../../queries";
-import { codeOf, SaveStatus, Section, TableState } from "./parts";
+import { SaveStatus } from "../../components/SaveStatus";
+import { codeOf, Section, TableState } from "./parts";
 import styles from "./Settings.module.css";
 
 /** The row being edited: `id` null is a new one. `failed` is a save that got no answer, or not a clash. */

@@ -9,7 +9,9 @@ import { REQUEST_HEADER } from "../../shared/constants";
 import {
   breakResponse,
   currentResponse,
+  friendDetailResponse,
   friendsResponse,
+  neverSuggestResponse,
   idsResponse,
   latestResponse,
   matchDetailResponse,
@@ -369,14 +371,15 @@ describe("friends", () => {
     writer.save(record("C", T0 + 30 * MIN, { players: [player(ME, 0), player(SAM, 0, { name: "Sam" }), player(THEM, 1)] }, { endedAt: T0 + 35 * MIN }));
   };
 
-  test("add, rename, remove and never-suggest each answer with the whole list", async () => {
+  test("add, rename, remove and never-suggest each answer with the whole list of cards", async () => {
     seedSam();
+    const card = { lastSeenName: "Sam", with: { w: 1, l: 0, n: 1 }, against: { w: 0, l: 0, n: 0 }, lastPlayed: T0 + 30 * MIN };
     let res = await post(`/api/friends?${q(SAM)}&nickname=Sammy`);
     expect(res.status).toBe(200);
-    expect(friendsResponse.parse(await res.json())).toEqual({ friends: [{ id: SAM, nickname: "Sammy", name: "Sammy" }] });
+    expect(friendsResponse.parse(await res.json())).toEqual({ friends: [{ id: SAM, nickname: "Sammy", name: "Sammy", ...card }] });
     res = await post(`/api/friends/nickname?${q(SAM)}`);
-    expect(friendsResponse.parse(await res.json()).friends).toEqual([{ id: SAM, nickname: null, name: "Sam" }]);
-    expect(await get(friendsResponse, "/api/friends")).toEqual({ friends: [{ id: SAM, nickname: null, name: "Sam" }] });
+    expect(friendsResponse.parse(await res.json()).friends).toEqual([{ id: SAM, nickname: null, name: "Sam", ...card }]);
+    expect(await get(friendsResponse, "/api/friends")).toEqual({ friends: [{ id: SAM, nickname: null, name: "Sam", ...card }] });
     res = await post(`/api/friends/remove?${q(SAM)}`);
     expect(friendsResponse.parse(await res.json()).friends).toEqual([]);
     res = await post(`/api/friends/never-suggest?${q(THEM)}`);
@@ -415,5 +418,26 @@ describe("friends", () => {
     expect((await post(`/api/friends/nickname?${q(SAM)}&nickname=${"x".repeat(33)}`)).status).toBe(400);
     expect((await post(`/api/friends/remove?${q(SAM)}`, {})).status).toBe(403);
     expect((await get(friendsResponse, "/api/friends")).friends).toHaveLength(1);
+  });
+
+  test("detail: a friend's page, 404 for anyone else, 400 without an id", async () => {
+    seedSam();
+    expect((await fetch(url(`/api/friends/detail?${q(SAM)}`))).status).toBe(404);
+    await post(`/api/friends?${q(SAM)}`);
+    const d = await get(friendDetailResponse, `/api/friends/detail?${q(SAM)}`);
+    expect(d.friend).toEqual({ id: SAM, nickname: null, name: "Sam", lastSeenName: "Sam" });
+    expect(d.view.with.record).toEqual({ w: 1, l: 0, n: 1 });
+    expect(d.view.with.modes.map((m) => m.mode)).toEqual(["3"]);
+    expect((await fetch(url("/api/friends/detail"))).status).toBe(400);
+  });
+
+  test("never-suggest list and suggest again: 404 when not on it, 403 without the header", async () => {
+    seedSam();
+    await post(`/api/friends/never-suggest?${q(SAM)}`);
+    expect(await get(neverSuggestResponse, "/api/friends/never-suggest")).toEqual({ players: [{ id: SAM, name: "Sam" }] });
+    expect((await post(`/api/friends/suggest-again?${q(SAM)}`, {})).status).toBe(403);
+    const res = await post(`/api/friends/suggest-again?${q(SAM)}`);
+    expect(neverSuggestResponse.parse(await res.json())).toEqual({ players: [] });
+    expect((await post(`/api/friends/suggest-again?${q(SAM)}`)).status).toBe(404);
   });
 });

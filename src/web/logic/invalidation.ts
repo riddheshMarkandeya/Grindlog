@@ -33,8 +33,9 @@ export function staleAfter(sessionKey: string | null, today: string | null): (qu
 }
 
 /**
- * The predicate for `invalidateQueries` after a You or Seasons save. Either can move every stat or
- * period, so it's coarse (the app is local). Settings and the two tables are spared: neither table
- * depends on the other, and the save put its own answer in the cache.
+ * The predicate for `invalidateQueries` after a You, Seasons or Friends save. Each can move every
+ * stat or period (friends are joined at read time, so any page's filter can change), so it's coarse
+ * (the app is local). Settings and the two tables are spared: neither table depends on the other,
+ * or on friends, and a table's save put its own answer in the cache.
  */
 export const staleAfterTables = ({ queryKey: [kind] }: CachedQuery): boolean => kind !== "settings" && kind !== "ids" && kind !== "seasons";

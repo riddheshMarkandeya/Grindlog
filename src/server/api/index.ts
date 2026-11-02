@@ -7,7 +7,9 @@ import { filterOnly, monthsParams, periodParams, playedDaysParams, sessionsParam
 import {
   breakResponse,
   currentResponse,
+  friendDetailResponse,
   friendsResponse,
+  neverSuggestResponse,
   idsResponse,
   latestResponse,
   matchDetailResponse,
@@ -83,19 +85,21 @@ function seasonWritten(write: SeasonWrite): Response {
   return Response.json(body, { status: 409 });
 }
 
-function friendWritten(write: FriendWrite): Response {
-  if (write.ok) return ok(friendsResponse, { friends: write.friends });
+/** A write answers with what the page shows after it: the friend cards, or the never-suggest list. */
+function friendWritten(write: FriendWrite, answer: () => Response): Response {
+  if (write.ok) return answer();
   return write.error === "not_found" ? notFound() : Response.json({ error: "conflict" }, { status: 409 });
 }
 
 export function createApi({ tracker, reader, status, staticDir, logger, now = Date.now, events: eventOptions }: ApiOptions) {
-  const pages = createPages({ reader, now });
+  const pages = createPages({ reader, logger, now });
   const hub = createEventHub({ status, logger, ...eventOptions });
   const remarks = createRemarks({ tracker, pages, logger, now });
   const settings = createSettings({ tracker, logger });
   const ids = createIds({ tracker, logger });
   const seasons = createSeasons({ tracker, reader, logger });
-  const friends = createFriends({ tracker, reader, logger, now });
+  const friends = createFriends({ tracker, logger, now });
+  const cards = () => ok(friendsResponse, pages.friends());
 
   const routes: Route<RouteHandler>[] = [
     { method: "GET", path: "/api/status", handler: () => ok(statusSchema, status()) },
@@ -213,15 +217,17 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
         return orNotFound(idsResponse, list && { ids: list });
       },
     },
-    { method: "GET", path: "/api/friends", handler: () => ok(friendsResponse, pages.friends()) },
+    { method: "GET", path: "/api/friends", handler: cards },
     { method: "GET", path: "/api/friends/suggestions", handler: () => ok(suggestionsResponse, pages.friendSuggestions()) },
+    { method: "GET", path: "/api/friends/detail", handler: ({ query }) => orNotFound(friendDetailResponse, pages.friendDetail(parse(friendIdParams, query).id)) },
+    { method: "GET", path: "/api/friends/never-suggest", handler: () => ok(neverSuggestResponse, pages.neverSuggested()) },
     // The id rides in the query string like the other writes; a PrimaryId's bars are encoded.
     {
       method: "POST",
       path: "/api/friends",
       handler: ({ query }) => {
         const p = parse(friendNicknameParams, query);
-        return friendWritten(friends.add(p.id, p.nickname));
+        return friendWritten(friends.add(p.id, p.nickname), cards);
       },
     },
     {
@@ -229,11 +235,16 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
       path: "/api/friends/nickname",
       handler: ({ query }) => {
         const p = parse(friendNicknameParams, query);
-        return friendWritten(friends.setNickname(p.id, p.nickname));
+        return friendWritten(friends.setNickname(p.id, p.nickname), cards);
       },
     },
-    { method: "POST", path: "/api/friends/remove", handler: ({ query }) => friendWritten(friends.remove(parse(friendIdParams, query).id)) },
-    { method: "POST", path: "/api/friends/never-suggest", handler: ({ query }) => friendWritten(friends.neverSuggest(parse(friendIdParams, query).id)) },
+    { method: "POST", path: "/api/friends/remove", handler: ({ query }) => friendWritten(friends.remove(parse(friendIdParams, query).id), cards) },
+    { method: "POST", path: "/api/friends/never-suggest", handler: ({ query }) => friendWritten(friends.neverSuggest(parse(friendIdParams, query).id), cards) },
+    {
+      method: "POST",
+      path: "/api/friends/suggest-again",
+      handler: ({ query }) => friendWritten(friends.suggestAgain(parse(friendIdParams, query).id), () => ok(neverSuggestResponse, pages.neverSuggested())),
+    },
     { method: "GET", path: "/api/settings", handler: () => ok(settingsSchema, settings.get()) },
     // The changes ride in the query string: every setting is one scalar, and handlers are synchronous.
     { method: "POST", path: "/api/settings", handler: ({ query }) => ok(settingsSchema, settings.save(parse(settingsPatch, query))) },

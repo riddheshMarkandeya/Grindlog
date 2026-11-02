@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { filterValue } from "../../shared/playlist-filter";
-import { filterLabel, filterOptions, parseFilter, parseTeammate, teammateMissing } from "./filter-options";
+import { filterLabel, filterOptions, offeredFriends, parseFilter, parseTeammate, teammateMissing } from "./filter-options";
 
 const flat = (groups: ReturnType<typeof filterOptions>) => groups.map((g) => [g.label, g.options.map((o) => `${o.value}=${o.label}`)]);
 
@@ -57,6 +57,13 @@ describe("teammateMissing", () => {
     expect(teammateMissing("solo", sam)).toBe(false);
     expect(teammateMissing({ friends: ["Epic|sam|0"] }, sam)).toBe(false);
     expect(teammateMissing({ friends: ["Epic|alex|0"] }, sam)).toBe(true);
+  });
+
+  test("Trends offers only friends ever on your team, so an opponent-only friend resets to Anyone", () => {
+    const card = (id: string, n: number) => ({ id, name: id, with: { w: 0, l: 0, n } });
+    const offered = offeredFriends([card("Epic|sam|0", 3), card("Epic|alex|0", 0)]);
+    expect(offered.map((f) => f.id)).toEqual(["Epic|sam|0"]);
+    expect(teammateMissing({ friends: ["Epic|alex|0"] }, offered)).toBe(true);
   });
 });
 

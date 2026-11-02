@@ -116,11 +116,6 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   API takes a list of friend ids (user, 2026-10-28), so this is mostly a picker plus a column
   group per extra member. Raised 2026-10-28 in
   the Friends prototype review (`prototype/friends-page`).
-- [ ] **[design, Low, Standard]** WP9b: Trends' With list offers every friend, so one who was only
-  ever an opponent (WP9b's Against tab lets you add them) filters Trends to nothing. Decide then
-  whether Trends lists only friends who were on your team at least once, as the recap lists only
-  the session's. Deferred from the WP9a review (user, 2026-11-02). Record:
-  `docs/plans/2026-11-02-wp9a-friends-data.md`.
 
 ## Watch list
 - [ ] **[design, Low, Standard]** Trigger: a `query/friend_switched_team` warn in tracker.log (a

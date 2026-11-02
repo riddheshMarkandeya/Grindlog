@@ -2,6 +2,7 @@
 // web parses with them, so a shape change is a type error on both sides.
 import { z } from "zod";
 import { FLAG_REASONS } from "../flags";
+import { MODE_ORDER, type FriendView } from "../friend-stats";
 import type { Season } from "../periods";
 import type { TrendStats } from "../trends";
 
@@ -234,7 +235,73 @@ export type IdRow = z.infer<typeof idsResponse>["ids"][number];
 export const friendSchema = z.object({ id: z.string(), nickname: z.string().nullable(), name: z.string() });
 export type Friend = z.infer<typeof friendSchema>;
 
-export const friendsResponse = z.object({ friends: z.array(friendSchema) });
+const wl = z.object({ w: z.number(), l: z.number(), n: z.number() });
+const streak = z.object({ result, length: z.number() }).nullable();
+const playlistRow = wl.extend({ label: z.string() });
+const perMatch = z.object({ matches: z.number(), winPct: z.number().nullable(), score: z.number(), goals: z.number(), assists: z.number(), saves: z.number(), shots: z.number() });
+const shares = z.tuple([z.number(), z.number(), z.number()]);
+const statLine = z.object({ score: z.number(), goals: z.number(), assists: z.number(), saves: z.number(), shots: z.number() });
+
+/** A friend on the Friends page: both records, when you last played them, and the name they last used (null if never seen). */
+export const friendCardSchema = friendSchema.extend({ lastSeenName: z.string().nullable(), with: wl, against: wl, lastPlayed: z.number().nullable() });
+export type FriendCard = z.infer<typeof friendCardSchema>;
+
+export const friendsResponse = z.object({ friends: z.array(friendCardSchema) });
+
+/** One friend's page, worked out on the server (`friendView` in shared/friend-stats). */
+export const friendDetailResponse = z.object({
+  friend: friendSchema.extend({ lastSeenName: z.string().nullable() }),
+  view: z.object({
+    with: z.object({
+      record: wl,
+      last: z.number().nullable(),
+      playlists: z.array(playlistRow),
+      streak,
+      bestWinStreak: z.number(),
+      best: playlistRow.nullable(),
+      worst: playlistRow.nullable(),
+      timeMs: z.number(),
+      overtime: wl,
+      modes: z.array(
+        z.object({
+          mode: z.enum(MODE_ORDER),
+          matches: z.number(),
+          carry: z.object({ matches: z.number(), score: shares, goals: shares, mvps: shares }),
+          compare: z.object({ with: perMatch, without: perMatch.nullable(), them: perMatch }),
+        }),
+      ),
+      defaultMode: z.enum(MODE_ORDER).nullable(),
+    }),
+    against: z.object({
+      record: wl,
+      last: z.number().nullable(),
+      playlists: z.array(playlistRow),
+      streak,
+      mvps: z.tuple([z.number(), z.number()]),
+      goals: z.tuple([z.number(), z.number()]),
+      biggestWin: z.object({ guid: z.string(), startedAt: z.number(), label: z.string(), goalDiff: z.number() }).nullable(),
+      overtime: wl,
+      matches: z.array(
+        z.object({
+          guid: z.string(),
+          sessionKey: z.string().nullable(),
+          startedAt: z.number(),
+          playlistId: z.number().nullable(),
+          label: z.string(),
+          result: result.nullable(),
+          me: statLine,
+          them: statLine,
+          mvp: z.enum(["me", "them"]).nullable(),
+        }),
+      ),
+    }),
+  }) satisfies z.ZodType<FriendView>,
+});
+export type FriendDetail = z.infer<typeof friendDetailResponse>;
+
+/** Players you said never to suggest, by the name they last used. */
+export const neverSuggestResponse = z.object({ players: z.array(z.object({ id: z.string(), name: z.string() })) });
+export type NeverSuggested = z.infer<typeof neverSuggestResponse>;
 
 /** Humans often on your team who aren't friends yet, most matches first. */
 export const suggestionsResponse = z.object({

@@ -1,0 +1,6 @@
+.status { font-size: 12px; font-weight: 600; }
+.tick { color: var(--up); white-space: nowrap; animation: fade 2.3s forwards; }
+@keyframes fade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .tick { animation: none; } }
+.failed { color: var(--down); }
+.link { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }

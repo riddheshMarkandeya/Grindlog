@@ -5,7 +5,8 @@ import { useEffect, useId, useRef } from "react";
 import type { IdRow } from "../../../shared/schemas/responses";
 import type { IdAnswer } from "../../../shared/schemas/tables";
 import { useIds, useSetIdStatus } from "../../queries";
-import { codeOf, SaveStatus, Section, TableState } from "./parts";
+import { SaveStatus } from "../../components/SaveStatus";
+import { codeOf, Section, TableState } from "./parts";
 import styles from "./Settings.module.css";
 
 const STATUS: Record<IdRow["status"], string> = { pending: "Waiting for you", confirmed: "You", rejected: "Not you" };

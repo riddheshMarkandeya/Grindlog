@@ -4,6 +4,8 @@ import { Header } from "./components/Header";
 import { Loading } from "./components/Loading";
 import { useLiveEvents } from "./events/useLiveEvents";
 import { rememberTheme } from "./logic/settings";
+import { FriendPage } from "./pages/friends/FriendPage";
+import { FriendsPage } from "./pages/friends/FriendsPage";
 import { NotFoundPage } from "./pages/Placeholders";
 import { RecapIndex, RecapSession } from "./pages/recap/RecapPage";
 import { SettingsPage } from "./pages/settings/SettingsPage";
@@ -46,6 +48,8 @@ export function App() {
             <Route path="/recap/:session/matches" element={<RecapSession view="matches" />} />
             <Route path="/recap/:session/match/:guid" element={<RecapSession view="match" />} />
             <Route path="/trends" element={<TrendsPage />} />
+            <Route path="/friends" element={<FriendsPage />} />
+            <Route path="/friends/:id" element={<FriendPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

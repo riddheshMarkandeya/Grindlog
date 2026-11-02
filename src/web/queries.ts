@@ -1,16 +1,21 @@
 // Every API query the pages share, with their cache keys. Lists live under "sessions"; a session's
 // detail, the heavy one, is "session"; one match with every player is "match"; a session's headline
 // lines are "remarks"; the Trends page reads "period", "played-days" and "seasons"; every page reads
-// "settings"; the Settings page also reads "ids"; the teammate filters read "friends". Page queries
-// take the teammate filter last in their key.
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+// "settings"; the Settings page also reads "ids"; the teammate filters and the Friends page read
+// "friends", and that page also reads "friend" (one friend's page), "friend-suggestions" and
+// "never-suggest". Page queries take the teammate filter last in their key.
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { REQUEST_HEADER } from "../shared/constants";
 import { filterValue, type PlaylistFilter } from "../shared/playlist-filter";
 import type { PeriodSpec } from "../shared/periods";
 import { teammateValue, type TeammateFilter } from "../shared/teammate-filter";
 import {
   currentResponse,
+  friendDetailResponse,
   friendsResponse,
+  neverSuggestResponse,
+  suggestionsResponse,
+  type FriendSuggestions,
   idsResponse,
   latestResponse,
   matchDetailResponse,
@@ -140,9 +145,28 @@ export function usePlayedDays(year: number, filter: PlaylistFilter, teammate: Te
   });
 }
 
-/** Every friend, by display name, for the Trends teammate filter. */
+const FRIENDS_KEY = ["friends"] as const;
+const SUGGESTIONS_KEY = ["friend-suggestions"] as const;
+const NEVER_KEY = ["never-suggest"] as const;
+// A PrimaryId has bars, so it's encoded; no nickname clears it.
+const friendQuery = (id: string, nickname?: string | null) => new URLSearchParams(nickname ? { id, nickname } : { id }).toString();
+
+/** Every friend, by display name, with both records: the Friends page's cards and the Trends teammate filter. */
 export function useFriends() {
-  return useQuery({ queryKey: ["friends"], queryFn: () => getJson("/api/friends", friendsResponse), select: (data) => data.friends });
+  return useQuery({ queryKey: FRIENDS_KEY, queryFn: () => getJson("/api/friends", friendsResponse), select: (data) => data.friends });
+}
+
+/** One friend's page; a 404 error when the id isn't a friend (removed, or a stale link). */
+export function useFriendDetail(id: string) {
+  return useQuery({ queryKey: ["friend", id], queryFn: () => getJson(`/api/friends/detail?${friendQuery(id)}`, friendDetailResponse) });
+}
+
+export function useSuggestions() {
+  return useQuery({ queryKey: SUGGESTIONS_KEY, queryFn: () => getJson("/api/friends/suggestions", suggestionsResponse), select: (data) => data.suggestions });
+}
+
+export function useNeverSuggested() {
+  return useQuery({ queryKey: NEVER_KEY, queryFn: () => getJson("/api/friends/never-suggest", neverSuggestResponse), select: (data) => data.players });
 }
 
 const SEASONS_KEY = ["seasons"] as const;
@@ -164,17 +188,25 @@ export function useIds() {
  * A write whose answer is the whole of what `key` holds: it goes straight into the cache, then
  * `stale` (if given) marks what else it may have moved.
  */
-function useWholeWrite<V, T>(key: readonly [string], write: (v: V) => Promise<T>, stale?: (query: CachedQuery) => boolean) {
+function useWholeWrite<V, T>(
+  key: readonly [string],
+  write: (v: V) => Promise<T>,
+  stale?: (query: CachedQuery) => boolean,
+  /** Cache edits that must land with the answer, before the caller's own onSuccess (focus, navigation) runs. */
+  alsoSet?: (queryClient: QueryClient, v: V) => void,
+) {
   const queryClient = useQueryClient();
   return useMutation({
     // One at a time per key: each answer is the whole thing, so an older one landing last would win.
     scope: { id: key[0] },
     mutationFn: write,
-    onSuccess: async (data) => {
+    onSuccess: async (data, v) => {
       // A refetch a reconnect started before the save would land with the old values.
       await queryClient.cancelQueries({ queryKey: key });
       queryClient.setQueryData(key, data);
-      if (stale) void queryClient.invalidateQueries({ predicate: stale });
+      alsoSet?.(queryClient, v);
+      // Never its own key: the answer just put there is whole.
+      if (stale) void queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] !== key[0] && stale(q) });
     },
   });
 }
@@ -194,6 +226,40 @@ export function useSaveSeason() {
 
 export function useDeleteSeason() {
   return useWholeWrite(SEASONS_KEY, (id: number) => postJson(`/api/seasons/${String(id)}/delete`, WRITE, seasonsResponse), staleAfterTables);
+}
+
+/** Drops a suggestion at once, so focus moves to the next one still on screen. */
+const dropSuggestion = (queryClient: QueryClient, { id }: { id: string }) => {
+  queryClient.setQueryData<FriendSuggestions>(SUGGESTIONS_KEY, (old) => old && { suggestions: old.suggestions.filter((s) => s.id !== id) });
+};
+
+export function useAddFriend() {
+  return useWholeWrite(FRIENDS_KEY, ({ id }: { id: string }) => postJson(`/api/friends?${friendQuery(id)}`, WRITE, friendsResponse), staleAfterTables, dropSuggestion);
+}
+
+export function useNeverSuggest() {
+  return useWholeWrite(FRIENDS_KEY, ({ id }: { id: string }) => postJson(`/api/friends/never-suggest?${friendQuery(id)}`, WRITE, friendsResponse), staleAfterTables, dropSuggestion);
+}
+
+/** Sets a nickname, or clears it with null. */
+export function useSetNickname() {
+  return useWholeWrite(FRIENDS_KEY, ({ id, nickname }: { id: string; nickname: string | null }) =>
+    postJson(`/api/friends/nickname?${friendQuery(id, nickname)}`, WRITE, friendsResponse), staleAfterTables,
+  );
+}
+
+/** The removed friend's page is dropped, not refetched: it's being left, and would answer 404. */
+export function useRemoveFriend() {
+  return useWholeWrite(
+    FRIENDS_KEY,
+    ({ id }: { id: string }) => postJson(`/api/friends/remove?${friendQuery(id)}`, WRITE, friendsResponse),
+    staleAfterTables,
+    (queryClient, { id }) => { queryClient.removeQueries({ queryKey: ["friend", id] }); },
+  );
+}
+
+export function useSuggestAgain() {
+  return useWholeWrite(NEVER_KEY, ({ id }: { id: string }) => postJson(`/api/friends/suggest-again?${friendQuery(id)}`, WRITE, neverSuggestResponse), staleAfterTables);
 }
 
 const SETTINGS_KEY = ["settings"] as const;

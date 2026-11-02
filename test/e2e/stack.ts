@@ -41,7 +41,7 @@ function logTail(dir: string, lines = 30): string {
 const HOUR = 60 * MIN;
 
 /** A match of ME's, won or lost, `start` ms after the local day's 4am start. */
-type MatchOver = Partial<Pick<MatchRecord["match"], "playlistId" | "checkFlags" | "scoreTeam0" | "endKind" | "winnerTeamNum" | "winnerSource" | "mvpSource">>;
+type MatchOver = Partial<Pick<MatchRecord["match"], "playlistId" | "checkFlags" | "scoreTeam0" | "endKind" | "winnerTeamNum" | "winnerSource" | "mvpSource" | "mvpKey" | "overtime">>;
 const match = (guid: string, day: string, start: number, won: boolean, over: MatchOver = {}, rows: Parameters<typeof record>[2] = {}) => {
   const at = dayStart(day) + start;
   return record(guid, at, rows, { endedAt: at + 5 * MIN, scoreTeam0: won ? 2 : 1, scoreTeam1: won ? 1 : 2, winnerTeamNum: won ? 0 : 1, mvpKey: won ? ME : null, ...over });
@@ -80,6 +80,11 @@ const HAT_TRICK: Parameters<typeof record>[2] = {
  * `friends`: last month, a 22-match session (e2e-fr-00) with FRIEND, nicknamed FRIEND_NICK, on
  * your team in its first four (a loss, two wins, a loss) and on the other team in the fifth, its
  * last match in Ranked Doubles without them, and a 2-match session (e2e-nofr-a) with no friend in it.
+ * For the Friends page, more sessions with FRIEND: on your team in 2 Ranked Doubles (won), 1 Doubles
+ * (lost) and 2 Private 2v2 (won, lost), so together they're 5–4 and their modes are 2v2, 3v3 and
+ * Private 2v2; against you in 12 Private 1v1 (won, lost in turn; the first an overtime win, the
+ * second their MVP), so head-to-head is 7–6 over two pages. OPAL is a friend only ever on the other
+ * team; KIM and LEE are teammates in 3 matches over 2 sessions, so both are suggested.
  * `share`: the share card's worst case. The current session is 48 matches of mixed results, one
  * left early, under a 32-character name; your saves stand out against three days ago, and you
  * hit no woodwork but had aerial touches, so the 8th tile is the two-line "Aerial touches".
@@ -124,7 +129,18 @@ function seed(dir: string, mode: Seed): void {
       }
       writer.save(match("e2e-nofr-a", day(1, 12), 8 * HOUR, true));
       writer.save(match("e2e-nofr-b", day(1, 12), 8 * HOUR + 10 * MIN, false));
+      const sam = (team: 0 | 1) => player(FRIEND, team, { name: "SamInGame" });
+      const duo = [player(ME, 0), sam(0), player(THEM, 1), player(OTHER, 1)];
+      const together: [number, boolean][] = [[11, true], [11, true], [2, false], [6, true], [6, false]];
+      for (const [i, [playlistId, won]] of together.entries()) writer.save(match(`e2e-tog-${String(i)}`, day(1, 18), 10 * HOUR + i * 6 * MIN, won, { playlistId }, { players: duo }));
+      for (let i = 0; i < 12; i++) {
+        writer.save(match(`e2e-h2h-${String(i).padStart(2, "0")}`, day(1, 22), 10 * HOUR + i * 6 * MIN, i % 2 === 0, { playlistId: 6, overtime: i === 0, ...(i === 1 ? { mvpKey: FRIEND } : {}) }, { players: [player(ME, 0), sam(1)] }));
+      }
+      writer.save(match("e2e-opal", day(1, 20), 10 * HOUR, true, {}, { players: [player(ME, 0), player(OPAL, 1, { name: "Opal" })] }));
+      const pair = [player(ME, 0), player(KIM, 0, { name: "Kim" }), player(LEE, 0, { name: "Lee" }), player(MAX, 0, { name: "Max" }), player(THEM, 1)];
+      for (const [i, [d, at]] of ([[24, 0], [24, 10], [26, 0]] as const).entries()) writer.save(match(`e2e-pair-${String(i)}`, day(1, d), 10 * HOUR + at * MIN, true, {}, { players: pair }));
       storage.tracker.run("INSERT INTO friends (primary_id, nickname, added_at) VALUES (?, ?, ?)", FRIEND, FRIEND_NICK, now);
+      storage.tracker.run("INSERT INTO friends (primary_id, nickname, added_at) VALUES (?, NULL, ?)", OPAL, now + 1);
       return;
     }
     writer.save(match("e2e-old", day(2, 15), 14 * HOUR, true));
@@ -156,6 +172,11 @@ const SHARE_NAME = "WWW_MaximumWidthNameWWWWWWWWWWWW";
 const SHARE_NICK = "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW";
 const FRIEND = "Steam|e2e-sam|0";
 const FRIEND_NICK = "Sammy";
+const OPAL = "Epic|e2e-opal|0";
+const KIM = "Epic|e2e-kim|0";
+const LEE = "Epic|e2e-lee|0";
+const MAX = "Epic|e2e-max|0";
+const OTHER = "Epic|e2e-other|0";
 
 function seedShare(storage: ReturnType<typeof openStorage>, logger: ReturnType<typeof createLogger>, now: number): void {
   const writer = createRecordWriter({ tracker: storage.tracker, logger });
@@ -193,8 +214,9 @@ async function main(): Promise<void> {
     // The installed path, so the tracker's default staticDir is what's served.
     cpSync(dist, join(dir, "bin", "web"), { recursive: true });
     const mode = process.argv[2];
-    // `settings` seeds as `rich`; its own name only buys a separate stack, so the settings it saves stay there.
-    seed(dir, mode === "empty" || mode === "few" || mode === "share" || mode === "tables" || mode === "friends" ? mode : "rich");
+    // `settings` seeds as `rich` and `friends-page` as `friends`; their own names only buy a separate
+    // stack, so what they save stays there.
+    seed(dir, mode === "empty" || mode === "few" || mode === "share" || mode === "tables" || mode === "friends" ? mode : mode === "friends-page" ? "friends" : "rich");
   } catch (err) {
     removeDir(dir);
     throw err;

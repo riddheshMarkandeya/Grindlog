@@ -16,6 +16,7 @@ export function Header() {
         <nav className={styles.topnav} aria-label="Pages">
           <NavLink to="/recap" className={tab}>Recap</NavLink>
           <NavLink to="/trends" className={tab}>Trends</NavLink>
+          <NavLink to="/friends" className={tab}>Friends</NavLink>
         </nav>
         <div className={styles.right}>
           <StatusBadge />

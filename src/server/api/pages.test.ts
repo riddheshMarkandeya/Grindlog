@@ -45,7 +45,7 @@ function seed() {
   const watch = (guid: string, at: number) => {
     writer.save(record(guid, at, { players: [player(THEM, 0), player("Epic|x|0", 1)], goals: [], statfeed: [] }, { endedAt: at + 5 * MIN }));
   };
-  const pages = (now = t(12, 31, 12)) => createPages({ reader: createQueryReader({ tracker: storage.tracker, logger: memoryLogger() }), now: () => now });
+  const pages = (now = t(12, 31, 12)) => createPages({ reader: createQueryReader({ tracker: storage.tracker, logger: memoryLogger() }), logger: memoryLogger(), now: () => now });
   return { play, watch, pages };
 }
 
@@ -360,7 +360,7 @@ describe("the teammate filter", () => {
       const players = [player(ME, 0), player(THEM, 1), ...others.map(([id, team, name]) => player(id, team, { name: name ?? id }))];
       writer.save(record(guid, at, { players }, { endedAt: at + 5 * MIN, playlistId, winnerTeamNum: won ? 0 : 1 }));
     };
-    const pages = (now = t(12, 31, 12)) => createPages({ reader: createQueryReader({ tracker: storage.tracker, logger: memoryLogger() }), now: () => now });
+    const pages = (now = t(12, 31, 12)) => createPages({ reader: createQueryReader({ tracker: storage.tracker, logger: memoryLogger() }), logger: memoryLogger(), now: () => now });
     return { play, pages };
   }
   const sam = { friends: [SAM] } as const;
@@ -445,5 +445,41 @@ describe("the teammate filter", () => {
     expect(pages().friendSuggestions().suggestions).toEqual([{ id: KIM, name: "kim2", matches: 3, sessions: 2 }]);
     storage.tracker.run("INSERT INTO never_suggest (primary_id, added_at) VALUES (?, 1)", KIM);
     expect(pages().friendSuggestions().suggestions).toEqual([]);
+  });
+
+  test("friends: each with both records and when you last played them; named by nickname, seen as the last name", () => {
+    const { play, pages } = seedWith();
+    addFriend(SAM, "Sammy");
+    addFriend(ALEX);
+    play("A", t(10, 10, 10), [[SAM, 0, "sam1"]]);
+    play("B", t(10, 10, 10, 10), [[SAM, 1, "sam2"]], { won: false });
+    play("C", t(10, 10, 10, 20), [[SAM, 1]], { playlistId: 8 }); // offline play doesn't count
+    expect(pages().friends().friends).toEqual([
+      { id: ALEX, nickname: null, name: ALEX, lastSeenName: null, with: { w: 0, l: 0, n: 0 }, against: { w: 0, l: 0, n: 0 }, lastPlayed: null },
+      { id: SAM, nickname: "Sammy", name: "Sammy", lastSeenName: SAM, with: { w: 1, l: 0, n: 1 }, against: { w: 0, l: 1, n: 1 }, lastPlayed: t(10, 10, 10, 10) },
+    ]);
+  });
+
+  test("friend detail: null for someone not a friend; both sides, with the session of each match against them", () => {
+    const { play, pages } = seedWith();
+    play("A", t(10, 10, 10), [[SAM, 0]]);
+    expect(pages().friendDetail(SAM)).toBeNull();
+    addFriend(SAM, "Sammy");
+    play("B", t(10, 12, 10), [[SAM, 1, "Sam"]], { won: false });
+    const d = pages().friendDetail(SAM);
+    expect(d?.friend).toEqual({ id: SAM, nickname: "Sammy", name: "Sammy", lastSeenName: "Sam" });
+    expect(d?.view.with.record).toEqual({ w: 1, l: 0, n: 1 });
+    expect(d?.view.against.matches.map((m) => [m.guid, m.sessionKey])).toEqual([["B", "B"]]);
+  });
+
+  test("never suggested: by last name seen, then id", () => {
+    const { play, pages } = seedWith();
+    play("A", t(10, 10, 10), [[ALEX, 0, "zed"], [SAM, 0, "amy"]]);
+    for (const id of [ALEX, SAM, "Epic|gone|0"]) storage.tracker.run("INSERT INTO never_suggest (primary_id, added_at) VALUES (?, 1)", id);
+    expect(pages().neverSuggested().players).toEqual([
+      { id: SAM, name: "amy" },
+      { id: "Epic|gone|0", name: "Epic|gone|0" },
+      { id: ALEX, name: "zed" },
+    ]);
   });
 });
