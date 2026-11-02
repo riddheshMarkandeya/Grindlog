@@ -131,6 +131,20 @@ export const trackerMigrations: readonly string[] = [
   );
   CREATE INDEX remark_shown_session ON remark_shown (session_key, shown_at);
   `,
+  // Friends: one PrimaryId each, with an optional nickname; the name otherwise comes from their
+  // latest match. Matches aren't touched, so removing a friend keeps them; the removed id goes on
+  // the never-suggest list.
+  `
+  CREATE TABLE friends (
+    primary_id TEXT PRIMARY KEY,
+    nickname   TEXT,
+    added_at   INTEGER NOT NULL
+  );
+  CREATE TABLE never_suggest (
+    primary_id TEXT PRIMARY KEY,
+    added_at   INTEGER NOT NULL
+  );
+  `,
 ];
 
 export const rawMigrations: readonly string[] = [

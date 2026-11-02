@@ -2,7 +2,8 @@
 // filter lives in the query string as its API value.
 import { playlistInfo, type PlaylistGroup } from "../../shared/playlists";
 import { filterValue, GROUPS, type PlaylistFilter } from "../../shared/playlist-filter";
-import { filterParam } from "../../shared/schemas/params";
+import { filterParam, teammateParam } from "../../shared/schemas/params";
+import type { TeammateFilter } from "../../shared/teammate-filter";
 
 export interface FilterOption {
   value: string;
@@ -19,6 +20,19 @@ export function parseFilter(value: string | null, fallback: PlaylistFilter = "ev
   if (value === null) return { filter: fallback, bad: false };
   const parsed = filterParam.safeParse(value);
   return parsed.success ? { filter: parsed.data, bad: false } : { filter: fallback, bad: true };
+}
+
+/** The teammate filter `?with=` names; left out is anyone, a bad value is anyone and `bad`. */
+export function parseTeammate(value: string | null): { teammate: TeammateFilter; bad: boolean } {
+  if (value === null) return { teammate: "anyone", bad: false };
+  const parsed = teammateParam.safeParse(value);
+  return parsed.success ? { teammate: parsed.data, bad: false } : { teammate: "anyone", bad: true };
+}
+
+/** Whether the filter names a friend not offered, so it resets to Anyone. Soloqueue always fits. */
+export function teammateMissing(value: TeammateFilter, offered: readonly { id: string }[]): boolean {
+  if (value === "anyone" || value === "solo") return false;
+  return !value.friends.every((id) => offered.some((f) => f.id === id));
 }
 
 // Each group's playlists are listed singly under its "All" entry. Private is one entry (its ids are

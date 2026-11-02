@@ -32,6 +32,10 @@ describe("fillRemark", () => {
     expect(fillRemark("{n} win(s), {n} match(es).", { n: 2 }, KMH24)).toBe("2 wins, 2 matches.");
   });
 
+  test("a friend's name goes in as it is", () => {
+    expect(fillRemark("{w}–{l} with {friend}.", { w: 3, l: 1, friend: "Sam (n) {w}" }, KMH24)).toBe("3–1 with Sam (n) {w}.");
+  });
+
   test("a value the line needs but didn't get stays visible rather than blank", () => {
     expect(fillRemark("{hours} hours.", {}, KMH24)).toBe("{hours} hours.");
   });

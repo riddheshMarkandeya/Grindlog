@@ -2,6 +2,7 @@
 // revisits. Only the session still going on is re-fitted as matches land (and a pick made while
 // it was, on the first view after); ↻ re-rolls.
 import { filterValue, type PlaylistFilter } from "../../shared/playlist-filter";
+import { teammateValue, type TeammateFilter } from "../../shared/teammate-filter";
 import type { Remarks } from "../../shared/schemas/responses";
 import type { Pages } from "../api/pages";
 import type { Db } from "../db/sqlite";
@@ -22,6 +23,12 @@ interface PickRow {
   picked_at: number;
 }
 
+/** The pick's key: the playlist filter's value alone for anyone, so picks stored before friends still match. */
+function keyOf(filter: PlaylistFilter, teammate: TeammateFilter): string {
+  const t = teammateValue(teammate);
+  return t === null ? filterValue(filter) : `${filterValue(filter)}|${t === "solo" ? "solo" : `with:${t}`}`;
+}
+
 const textOf = (lines: readonly { id: string; text: string }[], id: string) => lines.find((l) => l.id === id)?.text ?? "";
 
 export function createRemarks({ tracker, pages, logger, now = Date.now, rng = Math.random }: { tracker: Db; pages: Pages; logger: Logger; now?: () => number; rng?: () => number }) {
@@ -36,12 +43,12 @@ export function createRemarks({ tracker, pages, logger, now = Date.now, rng = Ma
   }
 
   /** Null when the session is unknown or has nothing of yours under the filter. */
-  function remarks(key: string, filter: PlaylistFilter, reroll: boolean): Remarks | null {
-    const detail = pages.sessionDetail(key, filter);
+  function remarks(key: string, filter: PlaylistFilter, teammate: TeammateFilter, reroll: boolean): Remarks | null {
+    const detail = pages.sessionDetail(key, filter, teammate);
     if (!detail?.matches.length) return null;
-    const f = filterValue(filter);
+    const f = keyOf(filter, teammate);
     const mood = moodOf(detail.aggregate, detail.baseline);
-    const fired = triggersFor(detail);
+    const fired = triggersFor({ ...detail, teammate });
     return tracker.transaction(() => {
       const row = tracker.get<PickRow>("SELECT mood_band, mood_line, quip_trigger, quip_line, picked_at FROM remark_picks WHERE session_key = ? AND filter = ?", key, f);
       const stored: StoredPick | null = row ? { moodBand: row.mood_band, moodLine: row.mood_line, quipTrigger: row.quip_trigger, quipLine: row.quip_line } : null;
@@ -91,8 +98,8 @@ export function createRemarks({ tracker, pages, logger, now = Date.now, rng = Ma
   }
 
   return {
-    get: (key: string, filter: PlaylistFilter) => remarks(key, filter, false),
-    reroll: (key: string, filter: PlaylistFilter) => remarks(key, filter, true),
+    get: (key: string, filter: PlaylistFilter, teammate: TeammateFilter = "anyone") => remarks(key, filter, teammate, false),
+    reroll: (key: string, filter: PlaylistFilter, teammate: TeammateFilter = "anyone") => remarks(key, filter, teammate, true),
   };
 }
 

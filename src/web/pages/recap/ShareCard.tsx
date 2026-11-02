@@ -4,10 +4,11 @@
 import { toBlob } from "html-to-image";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { filterValue, type PlaylistFilter } from "../../../shared/playlist-filter";
+import { teammateValue, type TeammateFilter } from "../../../shared/teammate-filter";
 import type { SessionDetail, SessionSummary } from "../../../shared/schemas/responses";
 import { cx } from "../../components/cx";
 import { plural } from "../../logic/format";
-import { formLine, LINE_MIN, PAD, shareCard, shareFilename, type ShareCardView } from "../../logic/share-card";
+import { formLine, LINE_MIN, PAD, shareCard, shareFilename, type ShareCardView, type ShareTeammate } from "../../logic/share-card";
 import { useMatchDetail, useRemarks, useSettings } from "../../queries";
 import styles from "./ShareCard.module.css";
 
@@ -15,6 +16,7 @@ interface Props {
   detail: SessionDetail;
   summary: SessionSummary;
   filter: PlaylistFilter;
+  teammate: TeammateFilter;
 }
 
 /** The bar's Share button and its dialog; what's inside, and its queries, exist only while open. */
@@ -23,7 +25,7 @@ export function ShareButton(props: Props) {
   const [open, setOpen] = useState(false);
   const titleId = useId();
   const show = () => {
-    console.debug("[rlt] share/open", { key: props.detail.key, filter: filterValue(props.filter), matches: props.summary.matches });
+    console.debug("[rlt] share/open", { key: props.detail.key, filter: filterValue(props.filter), with: teammateValue(props.teammate), matches: props.summary.matches });
     dialog.current?.showModal();
     setOpen(true);
   };
@@ -42,8 +44,11 @@ const errorText = (e: unknown) => (e instanceof Error ? `${e.name}: ${e.message}
 type Kind = "copy" | "download";
 const FAILED = { render: "Couldn't make the image", clipboard: "Couldn't copy, try Download", save: "Couldn't save the image" } as const;
 
-function ShareDialog({ detail, summary, filter, titleId, onClose }: Props & { titleId: string; onClose: () => void }) {
+function ShareDialog({ detail, summary, filter, teammate, titleId, onClose }: Props & { titleId: string; onClose: () => void }) {
   const f = filterValue(filter);
+  // The recap resets a friend who isn't in the session, so the name is always there.
+  const onCard: ShareTeammate =
+    typeof teammate === "object" ? { name: detail.friendsPresent.find((p) => teammate.friends.includes(p.id))?.name ?? "friend" } : teammate;
   // Picked at opening: a match landing while the card is open would refetch, and blank it, for the
   // same name.
   const [guid] = useState(() => detail.matches.findLast((m) => m.me !== null)?.guid ?? "");
@@ -52,13 +57,13 @@ function ShareDialog({ detail, summary, filter, titleId, onClose }: Props & { ti
   const settings = useSettings();
   const withMood = settings.remarks && settings.moodLine;
   // Mood off: nothing to fetch, and a disabled query stays pending, so it isn't waited for.
-  const remarks = useRemarks(detail.key, filter, withMood);
+  const remarks = useRemarks(detail.key, filter, teammate, withMood);
   const ready = (guid === "" || !match.isPending) && (!withMood || !remarks.isPending);
   // Once drawn, the card stays: a reload greys the buttons rather than unmount it mid-export.
   const [shown, setShown] = useState(false);
   if (ready && !shown) setShown(true);
   const name = match.data?.players.find((p) => p.isMe)?.name ?? null;
-  const view = shareCard({ detail, summary, filter, name, mood: withMood ? (remarks.data?.mood.text ?? null) : null, units: settings });
+  const view = shareCard({ detail, summary, filter, name, mood: withMood ? (remarks.data?.mood.text ?? null) : null, units: settings, teammate: onCard });
   const card = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
@@ -104,7 +109,7 @@ function ShareDialog({ detail, summary, filter, titleId, onClose }: Props & { ti
         const url = URL.createObjectURL(await png);
         const a = document.createElement("a");
         a.href = url;
-        a.download = shareFilename(detail, filter);
+        a.download = shareFilename(detail, filter, onCard);
         a.click();
         setTimeout(() => { URL.revokeObjectURL(url); }, 1000);
       }

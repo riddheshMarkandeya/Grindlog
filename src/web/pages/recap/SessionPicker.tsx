@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState, type RefObject } from 
 import { Link, useLocation } from "react-router";
 import { monthOf } from "../../../shared/periods";
 import type { PlaylistFilter } from "../../../shared/playlist-filter";
+import type { TeammateFilter } from "../../../shared/teammate-filter";
 import type { SessionDetail, SessionSummary } from "../../../shared/schemas/responses";
 import { dayLabel, durationText, monthLabel, ordinal, plural, timeRange } from "../../logic/format";
 import { groupByDay, monthRange, strip } from "../../logic/picker";
@@ -19,11 +20,13 @@ type PageView = Exclude<RecapView, { match: string }>;
 export function SessionPicker({
   detail,
   filter,
+  teammate,
   view,
   buttonRef: button,
 }: {
   detail: SessionDetail;
   filter: PlaylistFilter;
+  teammate: TeammateFilter;
   view: PageView;
   buttonRef: RefObject<HTMLButtonElement | null>;
 }) {
@@ -64,8 +67,8 @@ export function SessionPicker({
 
   return (
     <div className={styles.nav} ref={nav}>
-      <Step to={detail.prevMonth} filter={filter} view={view} label="Previous month" icon="months-back" />
-      <Step to={detail.prev} filter={filter} view={view} label="Previous session" icon="back" />
+      <Step to={detail.prevMonth} filter={filter} teammate={teammate} view={view} label="Previous month" icon="months-back" />
+      <Step to={detail.prev} filter={filter} teammate={teammate} view={view} label="Previous session" icon="back" />
       {/* The page's h1 names the session; the button inside it opens the list (as an accordion header does). */}
       <h1 className={styles.heading}>
         <button
@@ -81,9 +84,9 @@ export function SessionPicker({
           {summary && summary.ofDay > 1 && <span className={styles.chip}>{ordinal(summary.ordinal)} of {summary.ofDay} that day</span>}
         </button>
       </h1>
-      <Step to={detail.next} filter={filter} view={view} label="Next session" icon="on" />
-      <Step to={detail.nextMonth} filter={filter} view={view} label="Next month" icon="months-on" />
-      {open && <MonthList id={popId} month={monthOf(detail.day)} currentKey={detail.key} filter={filter} view={view} onPick={closeToButton} />}
+      <Step to={detail.next} filter={filter} teammate={teammate} view={view} label="Next session" icon="on" />
+      <Step to={detail.nextMonth} filter={filter} teammate={teammate} view={view} label="Next month" icon="months-on" />
+      {open && <MonthList id={popId} month={monthOf(detail.day)} currentKey={detail.key} filter={filter} teammate={teammate} view={view} onPick={closeToButton} />}
     </div>
   );
 }
@@ -96,7 +99,7 @@ const PATHS = {
   "months-on": ["m6 17 5-5-5-5", "m13 17 5-5-5-5"],
 } as const;
 
-function Step({ to, filter, view, label, icon }: { to: string | null; filter: PlaylistFilter; view: PageView; label: string; icon: keyof typeof PATHS }) {
+function Step({ to, filter, teammate, view, label, icon }: { to: string | null; filter: PlaylistFilter; teammate: TeammateFilter; view: PageView; label: string; icon: keyof typeof PATHS }) {
   const glyph = (
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {PATHS[icon].map((d) => <path key={d} d={d} />)}
@@ -105,13 +108,13 @@ function Step({ to, filter, view, label, icon }: { to: string | null; filter: Pl
   return to === null ? (
     <button type="button" className={styles.step} disabled aria-label={label} title={label}>{glyph}</button>
   ) : (
-    <Link className={styles.step} to={recapPath(to, filter, view)} aria-label={label} title={label}>{glyph}</Link>
+    <Link className={styles.step} to={recapPath(to, filter, view, teammate)} aria-label={label} title={label}>{glyph}</Link>
   );
 }
 
-function MonthList({ id, month, currentKey, filter, view, onPick }: { id: string; month: string; currentKey: string; filter: PlaylistFilter; view: PageView; onPick: () => void }) {
+function MonthList({ id, month, currentKey, filter, teammate, view, onPick }: { id: string; month: string; currentKey: string; filter: PlaylistFilter; teammate: TeammateFilter; view: PageView; onPick: () => void }) {
   const { from, to } = monthRange(month);
-  const list = useSessionList(filter, from, to);
+  const list = useSessionList(filter, from, to, teammate);
   const pop = useRef<HTMLDivElement>(null);
 
   // Opening puts focus on the open session's row once the list arrives, else on its first row.
@@ -124,22 +127,22 @@ function MonthList({ id, month, currentKey, filter, view, onPick }: { id: string
     <div id={id} ref={pop} className={styles.pop}>
       <h2 className={styles.sec}>{monthLabel(month)}</h2>
       {list.isError && <p className={styles.note}>Couldn't load this month's sessions.</p>}
-      {list.data?.length === 0 && <p className={styles.note}>No sessions under this filter this month.</p>}
+      {list.data?.length === 0 && <p className={styles.note}>No sessions under these filters this month.</p>}
       {list.data && groupByDay(list.data).map((g) => (
         <section key={g.day} aria-label={dayLabel(g.day)}>
           <h3 className={styles.day}>{dayLabel(g.day)}</h3>
-          {g.sessions.map((s) => <Row key={s.key} s={s} current={s.key === currentKey} filter={filter} view={view} onPick={onPick} />)}
+          {g.sessions.map((s) => <Row key={s.key} s={s} current={s.key === currentKey} filter={filter} teammate={teammate} view={view} onPick={onPick} />)}
         </section>
       ))}
     </div>
   );
 }
 
-function Row({ s, current, filter, view, onPick }: { s: SessionSummary; current: boolean; filter: PlaylistFilter; view: PageView; onPick: () => void }) {
+function Row({ s, current, filter, teammate, view, onPick }: { s: SessionSummary; current: boolean; filter: PlaylistFilter; teammate: TeammateFilter; view: PageView; onPick: () => void }) {
   const { squares, more } = strip(s.results, STRIP_MAX);
   const { clock: hours } = useSettings();
   return (
-    <Link className={styles.row} to={recapPath(s.key, filter, view)} aria-current={current} onClick={onPick}>
+    <Link className={styles.row} to={recapPath(s.key, filter, view, teammate)} aria-current={current} onClick={onPick}>
       <span>{timeRange(s.startedAt, s.endedAt, hours)}</span>
       <span className="num">{s.wins}–{s.losses}</span>
       <span className={styles.sm}>{plural(s.matches, "match", "matches")} · {durationText(s.endedAt - s.startedAt)}</span>

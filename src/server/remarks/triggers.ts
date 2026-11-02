@@ -2,6 +2,7 @@
 // the numbers their lines show. Thresholds are first guesses from the copy, kept here rather than
 // as settings; the inert triggers have no check here, so they never fire.
 import type { Aggregate, MyMatch } from "../../shared/aggregate";
+import type { TeammateFilter } from "../../shared/teammate-filter";
 import type { Band, GoalKind, TriggerId } from "./copy";
 
 export const THRESHOLDS = {
@@ -17,6 +18,9 @@ export const THRESHOLDS = {
   demosGiven: 5,
   crossbars: 2,
   marathonMs: 3 * 3_600_000,
+  /** Matches with one friend before a duo line; the copy says 3 for good, and bad takes the same. */
+  duoMatches: 3,
+  soloqueueMatches: 4,
   /** Local hours [from, to) a session's end counts as late night; the spec only fixes the start. */
   lateNightFromHour: 1,
   lateNightToHour: 6,
@@ -42,7 +46,7 @@ export function moodOf(session: Pick<Aggregate, "wins" | "losses">, base: Pick<A
   return { band, z, n };
 }
 
-export type RemarkValues = Partial<Record<"n" | "w" | "l" | "speed" | "hours" | "time", number>>;
+export type RemarkValues = Partial<Record<"n" | "w" | "l" | "speed" | "hours" | "time", number>> & { friend?: string };
 
 export interface Fired {
   id: TriggerId;
@@ -51,12 +55,34 @@ export interface Fired {
   kinds?: GoalKind[];
 }
 
-/** The whole session's span (time at the PC), and your matches under the filter with their aggregate. */
+/** The whole session's span (time at the PC), and your matches under the filters with their aggregate. */
 export interface SessionFacts {
   startedAt: number;
   endedAt: number;
   matches: readonly MyMatch[];
   aggregate: Aggregate;
+  /** Friends on your team in the session under the playlist filter, by display name. */
+  friendsPresent: readonly { id: string; name: string }[];
+  teammate: TeammateFilter;
+}
+
+/**
+ * The friend you played most with (at least the minimum), with your record together. A tie goes to
+ * the friend the teammate filter names, then to the lower name, so the pick is stable.
+ */
+function duo({ matches, friendsPresent, teammate }: SessionFacts): { friend: string; w: number; l: number } | null {
+  const filtered = typeof teammate === "object" ? teammate.friends : [];
+  const ranked = friendsPresent
+    .map((f) => {
+      const together = matches.filter((m) => m.me !== null && m.friends.includes(f.id));
+      const [w, l] = [together.filter((m) => m.result === "win").length, together.filter((m) => m.result === "loss").length];
+      // Decided matches only, so a 1–1 with an unfinished third never fires.
+      return { f, n: w + l, w, l };
+    })
+    .filter((d) => d.n >= THRESHOLDS.duoMatches)
+    .sort((a, b) => b.n - a.n || Number(filtered.includes(b.f.id)) - Number(filtered.includes(a.f.id)) || a.f.name.localeCompare(b.f.name));
+  const [top] = ranked;
+  return top ? { friend: top.f.name, w: top.w, l: top.l } : null;
 }
 
 /** Your team scored nothing; a match without your team or the score can't say. */
@@ -66,7 +92,8 @@ function shutOut(m: MyMatch): boolean {
   return (team === 0 ? m.scoreTeam0 : m.scoreTeam1) === 0;
 }
 
-export function triggersFor({ startedAt, endedAt, matches, aggregate: agg }: SessionFacts): Fired[] {
+export function triggersFor(facts: SessionFacts): Fired[] {
+  const { startedAt, endedAt, matches, aggregate: agg } = facts;
   const out: Fired[] = [];
   const add = (cond: boolean, id: TriggerId, values: RemarkValues = {}) => {
     if (cond) out.push({ id, values });
@@ -105,5 +132,9 @@ export function triggersFor({ startedAt, endedAt, matches, aggregate: agg }: Ses
   add(endedAt - startedAt >= THRESHOLDS.marathonMs, "marathon", { hours: Math.round((endedAt - startedAt) / 3_600_000) });
   const endHour = new Date(endedAt).getHours();
   add(endHour >= THRESHOLDS.lateNightFromHour && endHour < THRESHOLDS.lateNightToHour, "late_night", { time: endedAt });
+
+  const d = duo(facts);
+  add(d !== null, d !== null && d.w < d.l ? "duo_bad" : "duo_good", d ?? {});
+  add(facts.friendsPresent.length === 0 && count(() => true) >= THRESHOLDS.soloqueueMatches, "soloqueue");
   return out;
 }

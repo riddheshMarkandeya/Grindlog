@@ -218,7 +218,7 @@ test("the playlist filter: in the URL, only what was played, and notes when noth
   await expect(bug(page, "1 win, 0 losses")).toBeVisible();
 
   await page.goto("/recap/e2e-seed-won?filter=private");
-  await expect(page.getByText("No matches under this filter in this session.")).toBeVisible();
+  await expect(page.getByText("No matches under these filters in this session.")).toBeVisible();
 
   await page.goto("/recap?filter=17");
   await expect(page.getByText("No matches under this filter yet.")).toBeVisible();

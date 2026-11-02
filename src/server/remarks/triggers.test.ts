@@ -45,6 +45,7 @@ const match = (over: Partial<MyMatch> = {}, row: Partial<MyRow> = {}): MyMatch =
     winnerTeamNum: 0,
     mvpKey: null,
     flags: [],
+    friends: [],
     me: me(row),
     result: "win",
     goals: [],
@@ -55,7 +56,20 @@ const match = (over: Partial<MyMatch> = {}, row: Partial<MyRow> = {}): MyMatch =
 const loss = (over: Partial<MyMatch> = {}, row: Partial<MyRow> = {}) => match({ result: "loss", winnerTeamNum: 1, scoreTeam0: 1, scoreTeam1: 2, ...over }, row);
 
 /** A 1-hour evening session ending at 21:00 over these matches. */
-const facts = (matches: MyMatch[], over: Partial<SessionFacts> = {}): SessionFacts => ({ startedAt: at(20), endedAt: at(21), matches, aggregate: aggregate(matches), ...over });
+const SAM = "Epic|sam|0";
+const ALEX = "Epic|alex|0";
+const SAMMY = { id: SAM, name: "Sammy" };
+const ALEXA = { id: ALEX, name: "Alexa" };
+/** A 1-hour evening session ending at 21:00 over these matches; a friend is present unless said otherwise, so soloqueue stays out of the way. */
+const facts = (matches: MyMatch[], over: Partial<SessionFacts> = {}): SessionFacts => ({
+  startedAt: at(20),
+  endedAt: at(21),
+  matches,
+  aggregate: aggregate(matches),
+  friendsPresent: [SAMMY],
+  teammate: "anyone",
+  ...over,
+});
 const fired = (f: SessionFacts) => triggersFor(f).map((t) => t.id);
 const firedOne = (f: SessionFacts, id: TriggerId) => triggersFor(f).find((t) => t.id === id);
 
@@ -185,5 +199,47 @@ describe("triggersFor", () => {
     const ids = fired(facts(ms, { startedAt: at(1) - 4 * HOUR, endedAt: at(2) }));
     expect(ids.length).toBeGreaterThan(10);
     for (const id of ids) expect(TRIGGERS[id].inert).toBeUndefined();
+  });
+});
+
+describe("friend triggers", () => {
+  const withSam = (over: Partial<MyMatch> = {}) => match({ friends: [SAM], ...over });
+
+  test("duo good: 3 decided matches with a friend, wins at least losses, named by display name", () => {
+    const f = facts([withSam(), withSam(), loss({ friends: [SAM] }), match()]);
+    expect(firedOne(f, "duo_good")?.values).toEqual({ w: 2, l: 1, friend: "Sammy" });
+    expect(fired(f)).not.toContain("duo_bad");
+    // A match with no result doesn't count towards the 3, so a 1–1 or 0–0 never fires.
+    expect(fired(facts([withSam(), loss({ friends: [SAM] }), withSam({ result: null, winnerTeamNum: null })]))).not.toContain("duo_good");
+    const undecided = withSam({ result: null, winnerTeamNum: null });
+    expect(firedOne(facts([withSam(), loss({ friends: [SAM] }), withSam(), undecided]), "duo_good")?.values).toEqual({ w: 2, l: 1, friend: "Sammy" });
+  });
+
+  test("duo bad: fewer wins than losses over 3 matches together", () => {
+    const f = facts([withSam(), loss({ friends: [SAM] }), loss({ friends: [SAM] })]);
+    expect(firedOne(f, "duo_bad")?.values).toEqual({ w: 1, l: 2, friend: "Sammy" });
+    expect(fired(f)).not.toContain("duo_good");
+  });
+
+  test("2 matches together is below the minimum, good or bad", () => {
+    expect(fired(facts([withSam(), withSam(), match(), match()]))).not.toContain("duo_good");
+    expect(fired(facts([loss({ friends: [SAM] }), loss({ friends: [SAM] })]))).not.toContain("duo_bad");
+  });
+
+  test("one duo per session: the friend with the most matches; a tie goes to the filtered friend, then the lower name", () => {
+    const both = (over: Partial<MyMatch> = {}) => match({ friends: [SAM, ALEX], ...over });
+    const present = { friendsPresent: [ALEXA, SAMMY] };
+    const more = facts([both(), both(), both({ friends: [SAM] }), loss()], present);
+    expect(triggersFor(more).filter((t) => t.id === "duo_good" || t.id === "duo_bad").map((t) => t.values.friend)).toEqual(["Sammy"]);
+    const tie = [both(), both(), loss({ friends: [SAM, ALEX] })];
+    expect(firedOne(facts(tie, present), "duo_good")?.values.friend).toBe("Alexa");
+    expect(firedOne(facts(tie, { ...present, teammate: { friends: [SAM] } }), "duo_good")?.values.friend).toBe("Sammy");
+  });
+
+  test("soloqueue night: no friend on your team all session and at least 4 matches", () => {
+    const four = [match(), match(), loss(), match()];
+    expect(fired(facts(four, { friendsPresent: [] }))).toContain("soloqueue");
+    expect(fired(facts(four.slice(0, 3), { friendsPresent: [] }))).not.toContain("soloqueue");
+    expect(fired(facts(four))).not.toContain("soloqueue");
   });
 });

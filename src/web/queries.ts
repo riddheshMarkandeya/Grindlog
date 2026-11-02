@@ -1,13 +1,16 @@
 // Every API query the pages share, with their cache keys. Lists live under "sessions"; a session's
 // detail, the heavy one, is "session"; one match with every player is "match"; a session's headline
 // lines are "remarks"; the Trends page reads "period", "played-days" and "seasons"; every page reads
-// "settings"; the Settings page also reads "ids".
+// "settings"; the Settings page also reads "ids"; the teammate filters read "friends". Page queries
+// take the teammate filter last in their key.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { REQUEST_HEADER } from "../shared/constants";
 import { filterValue, type PlaylistFilter } from "../shared/playlist-filter";
 import type { PeriodSpec } from "../shared/periods";
+import { teammateValue, type TeammateFilter } from "../shared/teammate-filter";
 import {
   currentResponse,
+  friendsResponse,
   idsResponse,
   latestResponse,
   matchDetailResponse,
@@ -28,6 +31,13 @@ import { periodQuery } from "./logic/trends";
 /** The header every POST carries; the server refuses writes without it. */
 const WRITE = { [REQUEST_HEADER]: "1" };
 
+/** `&with=…` for a teammate filter, encoded as a PrimaryId has bars; nothing for anyone. */
+function withQuery(t: TeammateFilter): string {
+  const v = teammateValue(t);
+  return v === null ? "" : `&with=${encodeURIComponent(v)}`;
+}
+const withKey = (t: TeammateFilter) => teammateValue(t) ?? "anyone";
+
 /** The current session under "everything", for the header chip and the Start new session button. */
 export function useCurrentSession() {
   return useQuery({
@@ -37,31 +47,31 @@ export function useCurrentSession() {
   });
 }
 
-/** The newest session under the filter, however old; null when there's none. */
-export function useLatestSession(filter: PlaylistFilter) {
+/** The newest session under the filters, however old; null when there's none. */
+export function useLatestSession(filter: PlaylistFilter, teammate: TeammateFilter) {
   const f = filterValue(filter);
   return useQuery({
-    queryKey: ["sessions", "latest", f],
-    queryFn: () => getJson(`/api/sessions/latest?filter=${f}`, latestResponse),
+    queryKey: ["sessions", "latest", f, withKey(teammate)],
+    queryFn: () => getJson(`/api/sessions/latest?filter=${f}${withQuery(teammate)}`, latestResponse),
   });
 }
 
 /** Sessions whose day is in [from, to], newest first. */
-export function useSessionList(filter: PlaylistFilter, from: string, to: string) {
+export function useSessionList(filter: PlaylistFilter, from: string, to: string, teammate: TeammateFilter) {
   const f = filterValue(filter);
   return useQuery({
-    queryKey: ["sessions", "list", f, from, to],
-    queryFn: () => getJson(`/api/sessions?filter=${f}&from=${from}&to=${to}`, sessionsResponse),
+    queryKey: ["sessions", "list", f, from, to, withKey(teammate)],
+    queryFn: () => getJson(`/api/sessions?filter=${f}&from=${from}&to=${to}${withQuery(teammate)}`, sessionsResponse),
     select: (data) => data.sessions,
   });
 }
 
-/** One session under the filter. */
-export function useSessionDetail(key: string, filter: PlaylistFilter) {
+/** One session under the filters. */
+export function useSessionDetail(key: string, filter: PlaylistFilter, teammate: TeammateFilter) {
   const f = filterValue(filter);
   return useQuery({
-    queryKey: ["session", key, f],
-    queryFn: () => getJson(`/api/sessions/${encodeURIComponent(key)}?filter=${f}`, sessionDetailResponse),
+    queryKey: ["session", key, f, withKey(teammate)],
+    queryFn: () => getJson(`/api/sessions/${encodeURIComponent(key)}?filter=${f}${withQuery(teammate)}`, sessionDetailResponse),
   });
 }
 
@@ -75,30 +85,30 @@ export function useMatchDetail(guid: string, enabled = true) {
 }
 
 const remarksPath = (key: string) => `/api/sessions/${encodeURIComponent(key)}/remarks`;
-const remarksKey = (key: string, f: string) => ["remarks", key, f] as const;
+const remarksKey = (key: string, f: string, teammate: TeammateFilter) => ["remarks", key, f, withKey(teammate)] as const;
 
-/** A session's headline lines under the filter. The server stores them, so a refetch gives the same lines unless the live session moved on. */
-export function useRemarks(key: string, filter: PlaylistFilter, enabled = true) {
+/** A session's headline lines under the filters. The server stores them, so a refetch gives the same lines unless the live session moved on. */
+export function useRemarks(key: string, filter: PlaylistFilter, teammate: TeammateFilter, enabled = true) {
   const f = filterValue(filter);
   return useQuery({
-    queryKey: remarksKey(key, f),
-    queryFn: () => getJson(`${remarksPath(key)}?filter=${f}`, remarksResponse),
+    queryKey: remarksKey(key, f, teammate),
+    queryFn: () => getJson(`${remarksPath(key)}?filter=${f}${withQuery(teammate)}`, remarksResponse),
     // Off, nothing is fetched: the first GET would store a pick for a headline nobody sees.
     enabled,
   });
 }
 
 /** ↻: new lines for the session, stored by the server and put straight into the cache. */
-export function useRerollRemarks(key: string, filter: PlaylistFilter) {
+export function useRerollRemarks(key: string, filter: PlaylistFilter, teammate: TeammateFilter) {
   const queryClient = useQueryClient();
   const f = filterValue(filter);
   return useMutation({
-    mutationFn: () => postJson(`${remarksPath(key)}/reroll?filter=${f}`, WRITE, remarksResponse),
+    mutationFn: () => postJson(`${remarksPath(key)}/reroll?filter=${f}${withQuery(teammate)}`, WRITE, remarksResponse),
     onSuccess: (data) => {
-      queryClient.setQueryData(remarksKey(key, f), data);
+      queryClient.setQueryData(remarksKey(key, f, teammate), data);
       // Cancels a GET a match refetch started before the reroll (it would land with the old lines),
       // and refetches in case a match the POST didn't see landed meanwhile: the stored pick wins.
-      void queryClient.invalidateQueries({ queryKey: remarksKey(key, f) });
+      void queryClient.invalidateQueries({ queryKey: remarksKey(key, f, teammate) });
     },
   });
 }
@@ -107,25 +117,32 @@ export function useRerollRemarks(key: string, filter: PlaylistFilter) {
  * A period under the filter, with the period it's compared with and its buckets. Keyed by today too:
  * cached queries never go stale, and a rolling or running period moves on at the day's cutoff.
  */
-export function usePeriod(spec: PeriodSpec, filter: PlaylistFilter, today: string, window: number) {
+export function usePeriod(spec: PeriodSpec, filter: PlaylistFilter, today: string, window: number, teammate: TeammateFilter) {
   const f = filterValue(filter);
   const q = periodQuery(spec).toString();
   return useQuery({
-    queryKey: ["period", q, f, today, window],
-    queryFn: () => getJson(`/api/period?${q}&filter=${f}&window=${String(window)}`, periodResponse),
+    queryKey: ["period", q, f, today, window, withKey(teammate)],
+    queryFn: () => getJson(`/api/period?${q}&filter=${f}&window=${String(window)}${withQuery(teammate)}`, periodResponse),
   });
 }
 
-/** The days you played in a year under the filter, and your first day and total whatever the filter. */
-export function usePlayedDays(year: number, filter: PlaylistFilter) {
+/** The days you played in a year under the filters, and your first day and total whatever the filters. */
+export function usePlayedDays(year: number, filter: PlaylistFilter, teammate: TeammateFilter) {
   const f = filterValue(filter);
+  const w = withKey(teammate);
   return useQuery({
-    queryKey: ["played-days", year, f],
-    queryFn: () => getJson(`/api/played-days?year=${String(year)}&filter=${f}`, playedDaysResponse),
-    // Paging the strip's year changes only its ticks (the page's gate and the stepper's bounds stay),
-    // so it keeps the page up rather than loading it again. A new filter's ticks wait for their load.
-    placeholderData: (prev, prevQuery) => (prevQuery?.queryKey[2] === f ? prev : undefined),
+    queryKey: ["played-days", year, f, w],
+    queryFn: () => getJson(`/api/played-days?year=${String(year)}&filter=${f}${withQuery(teammate)}`, playedDaysResponse),
+    // Paging the strip's year changes only its ticks, and the first day and total ignore the filters,
+    // so the page stays up (controls mounted, focus kept) rather than loading again. New filters'
+    // ticks are blank until their load: the old ones would mark days wrongly.
+    placeholderData: (prev, prevQuery) => (prev === undefined || (prevQuery?.queryKey[2] === f && prevQuery.queryKey[3] === w) ? prev : { ...prev, days: [] }),
   });
+}
+
+/** Every friend, by display name, for the Trends teammate filter. */
+export function useFriends() {
+  return useQuery({ queryKey: ["friends"], queryFn: () => getJson("/api/friends", friendsResponse), select: (data) => data.friends });
 }
 
 const SEASONS_KEY = ["seasons"] as const;

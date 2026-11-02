@@ -5,13 +5,21 @@
 import { BASELINE_DAYS } from "../../shared/constants";
 import { daysBefore, dayOf, monthOf, periodRange, type PeriodRange, type PeriodSpec, type Season } from "../../shared/periods";
 import { inFilter, playlistsPresent, type PlaylistFilter } from "../../shared/playlist-filter";
-import type { LatestSession, MatchDetail, MonthFolds, PeriodView, PlayedDays, SessionDetail, SessionList, SessionSummary } from "../../shared/schemas/responses";
+import { withTeammate, type TeammateFilter } from "../../shared/teammate-filter";
+import type { FriendSuggestions, LatestSession, MatchDetail, MonthFolds, PeriodView, PlayedDays, SessionDetail, SessionList, SessionSummary } from "../../shared/schemas/responses";
 import { aggregate, baseline, byPlaylist, type MyMatch } from "../../shared/aggregate";
 import { bucketKind, buckets, previousRange, rollingWindows, trendStats } from "../../shared/trends";
 import type { MatchResult, QueryReader } from "../query/read";
 import { currentSession, cutSessions, type Session } from "../query/sessions";
 
-const yours = (filter: PlaylistFilter) => (m: { playlistId: number | null }) => inFilter(m.playlistId, filter);
+const yours =
+  (filter: PlaylistFilter, teammate: TeammateFilter = "anyone") =>
+  (m: { playlistId: number | null; friends: readonly string[] }) =>
+    inFilter(m.playlistId, filter) && withTeammate(m.friends, teammate);
+
+/** Suggested: a teammate in at least this many matches, across at least this many sessions. */
+const SUGGEST_MATCHES = 3;
+const SUGGEST_SESSIONS = 2;
 const played = (m: MyMatch) => m.me !== null;
 
 export function createPages({ reader, now }: { reader: QueryReader; now: () => number }) {
@@ -20,19 +28,21 @@ export function createPages({ reader, now }: { reader: QueryReader; now: () => n
     const results = reader.readResults();
     const all = cutSessions(results, breaks);
     const byGuid = new Map(results.map((r) => [r.guid, r]));
-    const rowsOf = (s: Session, filter: PlaylistFilter): MatchResult[] =>
-      s.guids.flatMap((g) => {
+    const rowsOf = (s: Session, filter: PlaylistFilter, teammate: TeammateFilter): MatchResult[] => {
+      const wanted = yours(filter, teammate);
+      return s.guids.flatMap((g) => {
         const r = byGuid.get(g);
-        return r?.played && inFilter(r.playlistId, filter) ? [r] : [];
+        return r?.played && wanted(r) ? [r] : [];
       });
+    };
     return { all, current: currentSession(all, breaks, now()), rowsOf, results };
   }
   type Index = ReturnType<typeof index>;
 
-  /** The sessions with a match you played under the filter, oldest first, numbered within their day. */
-  function summaries({ all, rowsOf }: Index, filter: PlaylistFilter): SessionSummary[] {
+  /** The sessions with a match you played under the filters, oldest first, numbered within their day. */
+  function summaries({ all, rowsOf }: Index, filter: PlaylistFilter, teammate: TeammateFilter): SessionSummary[] {
     const listed = all.flatMap((s) => {
-      const rows = rowsOf(s, filter);
+      const rows = rowsOf(s, filter, teammate);
       return rows.length ? [{ s, rows, day: dayOf(s.startedAt) }] : [];
     });
     const perDay = Map.groupBy(listed, (l) => l.day);
@@ -53,17 +63,17 @@ export function createPages({ reader, now }: { reader: QueryReader; now: () => n
     });
   }
 
-  function sessionList(filter: PlaylistFilter, fromDay: string, toDay: string): SessionList {
+  function sessionList(filter: PlaylistFilter, fromDay: string, toDay: string, teammate: TeammateFilter = "anyone"): SessionList {
     const idx = index();
-    const listed = summaries(idx, filter);
+    const listed = summaries(idx, filter, teammate);
     const sessions = listed.filter((s) => fromDay <= s.day && s.day <= toDay);
     // Only a session the filter lists, so the key never names one missing from the list.
     const currentKey = listed.find((s) => s.key === idx.current?.key)?.key ?? null;
     return { sessions: sessions.reverse(), currentKey };
   }
 
-  function monthFolds(filter: PlaylistFilter, beforeDay: string): MonthFolds {
-    const before = summaries(index(), filter).filter((s) => s.day < beforeDay);
+  function monthFolds(filter: PlaylistFilter, beforeDay: string, teammate: TeammateFilter = "anyone"): MonthFolds {
+    const before = summaries(index(), filter, teammate).filter((s) => s.day < beforeDay);
     const months = [...Map.groupBy(before, (s) => monthOf(s.day)).entries()].map(([month, ss]) => ({
       month,
       sessions: ss.length,
@@ -73,34 +83,40 @@ export function createPages({ reader, now }: { reader: QueryReader; now: () => n
     return { months: months.reverse() };
   }
 
-  /** Null when there's no current session or nothing in it is under the filter. */
-  function currentSummary(filter: PlaylistFilter): SessionSummary | null {
+  /** Null when there's no current session or nothing in it is under the filters. */
+  function currentSummary(filter: PlaylistFilter, teammate: TeammateFilter = "anyone"): SessionSummary | null {
     const idx = index();
-    return idx.current === null ? null : (summaries(idx, filter).find((s) => s.key === idx.current?.key) ?? null);
+    return idx.current === null ? null : (summaries(idx, filter, teammate).find((s) => s.key === idx.current?.key) ?? null);
   }
 
-  /** The newest session with a match you played under the filter, however old (null when there's
+  /** The newest session with a match you played under the filters, however old (null when there's
    *  none), and the playlists of every match you played. */
-  function latest(filter: PlaylistFilter): LatestSession {
+  function latest(filter: PlaylistFilter, teammate: TeammateFilter = "anyone"): LatestSession {
     const idx = index();
     return {
-      session: summaries(idx, filter).at(-1) ?? null,
+      session: summaries(idx, filter, teammate).at(-1) ?? null,
       playlistsPresent: playlistsPresent(idx.results.filter((r) => r.played).map((r) => r.playlistId)),
     };
   }
 
   /** Null for a key no session has, such as one a break has since re-cut. */
-  function sessionDetail(key: string, filter: PlaylistFilter): SessionDetail | null {
+  function sessionDetail(key: string, filter: PlaylistFilter, teammate: TeammateFilter = "anyone"): SessionDetail | null {
     const idx = index();
     const session = idx.all.find((s) => s.key === key);
     if (!session) return null;
-    const listed = summaries(idx, filter);
+    const listed = summaries(idx, filter, teammate);
     const day = dayOf(session.startedAt);
     const month = monthOf(day);
     const rows = reader.readMyMatches({ guids: session.guids }).filter(played);
-    const matches = rows.filter(yours(filter));
+    const matches = rows.filter(yours(filter, teammate));
     // The baseline reads only the window before this session, not all history.
-    const before = reader.readMyMatches({ from: daysBefore(session.startedAt, BASELINE_DAYS), to: session.startedAt }).filter(yours(filter));
+    const before = reader.readMyMatches({ from: daysBefore(session.startedAt, BASELINE_DAYS), to: session.startedAt }).filter(yours(filter, teammate));
+    // Under the playlist filter only, so a friend offered in the dropdown never filters to nothing.
+    const present = new Set(rows.filter(yours(filter)).flatMap((m) => m.friends));
+    const friendsPresent = reader
+      .readFriends()
+      .filter((f) => present.has(f.id))
+      .map(({ id, name }) => ({ id, name }));
     return {
       key,
       day,
@@ -112,6 +128,7 @@ export function createPages({ reader, now }: { reader: QueryReader; now: () => n
       aggregate: aggregate(matches),
       byPlaylist: byPlaylist(matches),
       playlistsPresent: playlistsPresent(rows.map((m) => m.playlistId)),
+      friendsPresent,
       baseline: baseline(before, session.startedAt),
       goals: reader.readGoals(matches.map((m) => m.guid)),
       // By time, so a session with nothing under the filter still has neighbours.
@@ -136,14 +153,15 @@ export function createPages({ reader, now }: { reader: QueryReader; now: () => n
    * Each match counts in the period it started in; a session across an edge counts in both. Null
    * for an unknown season. Buckets and the previous period follow the filter like the aggregate.
    */
-  function period(spec: PeriodSpec, filter: PlaylistFilter, window: number): PeriodView | null {
+  function period(spec: PeriodSpec, filter: PlaylistFilter, window: number, teammate: TeammateFilter = "anyone"): PeriodView | null {
     const at = now();
     const seasons = reader.readSeasons();
     const range = periodRange(spec, { now: at, seasons });
     if (!range) return null;
     const mine = (r: PeriodRange) => reader.readMyMatches({ from: r.from ?? undefined, to: r.to }).filter(played);
     const rows = mine(range);
-    const matches = rows.filter(yours(filter));
+    const wanted = yours(filter, teammate);
+    const matches = rows.filter(wanted);
     const idx = index();
     const inRange = (r: MatchResult) => (range.from === null || r.startedAt >= range.from) && r.startedAt < range.to;
     // In start order, as the reader returns them; the buckets ascend without overlap, so they take
@@ -151,14 +169,14 @@ export function createPages({ reader, now }: { reader: QueryReader; now: () => n
     const firstDay = matches[0] ? dayOf(matches[0].startedAt) : null;
     const prevRange = previousRange(spec, range, { now: at, seasons });
     const kind = bucketKind(spec);
-    const sessionOf = kind === "day" ? daySessions(idx, filter) : () => null;
+    const sessionOf = kind === "day" ? daySessions(idx, filter, teammate) : () => null;
     let next = 0;
     return {
       range,
       aggregate: aggregate(matches),
       playlistsPresent: playlistsPresent(rows.map((m) => m.playlistId)),
-      sessions: idx.all.filter((s) => idx.rowsOf(s, filter).some(inRange)).length,
-      previous: prevRange && { range: prevRange, aggregate: aggregate(mine(prevRange).filter(yours(filter))) },
+      sessions: idx.all.filter((s) => idx.rowsOf(s, filter, teammate).some(inRange)).length,
+      previous: prevRange && { range: prevRange, aggregate: aggregate(mine(prevRange).filter(wanted)) },
       firstDay,
       bucket: kind,
       buckets: buckets(spec, range, { now: at, firstDay }).map((b) => {
@@ -169,7 +187,7 @@ export function createPages({ reader, now }: { reader: QueryReader; now: () => n
         const first = matches[start];
         return { ...b, stats: trendStats(aggregate(matches.slice(start, next))), session: next > start && first ? sessionOf(b.day, first.guid) : null };
       }),
-      rolling: rolling(idx, range, filter, matches, window),
+      rolling: rolling(idx, range, wanted, matches, window),
     };
   }
 
@@ -177,9 +195,9 @@ export function createPages({ reader, now }: { reader: QueryReader; now: () => n
    * Where a day's recap opens: the day's first listed session, or, for a day holding only the tail
    * of a session that began before the cutoff, the session of the day's first match.
    */
-  function daySessions(idx: Index, filter: PlaylistFilter) {
+  function daySessions(idx: Index, filter: PlaylistFilter, teammate: TeammateFilter) {
     const firstOfDay = new Map<string, string>();
-    for (const s of summaries(idx, filter)) if (!firstOfDay.has(s.day)) firstOfDay.set(s.day, s.key);
+    for (const s of summaries(idx, filter, teammate)) if (!firstOfDay.has(s.day)) firstOfDay.set(s.day, s.key);
     // The fallback is rare, so its map over every session is built on first use.
     let keyByGuid: Map<string, string> | undefined;
     const byGuid = (g: string) => (keyByGuid ??= new Map(idx.all.flatMap((s) => s.guids.map((guid) => [guid, s.key] as const)))).get(g);
@@ -187,9 +205,8 @@ export function createPages({ reader, now }: { reader: QueryReader; now: () => n
   }
 
   /** Only the last `size` − 1 matches before the period are read, so a window never needs the whole history. */
-  function rolling({ results }: Index, range: PeriodRange, filter: PlaylistFilter, matches: MyMatch[], size: number) {
+  function rolling({ results }: Index, range: PeriodRange, wanted: ReturnType<typeof yours>, matches: MyMatch[], size: number) {
     const from = range.from;
-    const wanted = yours(filter);
     const prior = from === null ? [] : results.filter((r) => r.played && r.startedAt < from && wanted(r));
     const reach = prior.slice(Math.max(0, prior.length - (size - 1)));
     const before = reach.length ? reader.readMyMatches({ guids: reach.map((r) => r.guid) }).filter(played) : [];
@@ -197,10 +214,10 @@ export function createPages({ reader, now }: { reader: QueryReader; now: () => n
   }
 
   /** Read from the results alone (in start order): a day's count needs no sessions. */
-  function playedDays(year: number, filter: PlaylistFilter): PlayedDays {
+  function playedDays(year: number, filter: PlaylistFilter, teammate: TeammateFilter = "anyone"): PlayedDays {
     const mine = reader.readResults().filter((r) => r.played);
     const prefix = `${String(year)}-`;
-    const days = mine.filter(yours(filter)).map((r) => dayOf(r.startedAt)).filter((d) => d.startsWith(prefix));
+    const days = mine.filter(yours(filter, teammate)).map((r) => dayOf(r.startedAt)).filter((d) => d.startsWith(prefix));
     return {
       days: [...Map.groupBy(days, (d) => d).entries()].map(([day, ds]) => ({ day, matches: ds.length })),
       firstDay: mine[0] ? dayOf(mine[0].startedAt) : null,
@@ -208,8 +225,29 @@ export function createPages({ reader, now }: { reader: QueryReader; now: () => n
     };
   }
 
+  /** Humans often on your team who aren't friends or never-suggest; named by their latest match. */
+  function friendSuggestions(): FriendSuggestions {
+    const { all } = index();
+    const sessionOf = new Map(all.flatMap((s) => s.guids.map((g) => [g, s.key] as const)));
+    const skip = new Set([...reader.readFriends().map((f) => f.id), ...reader.readNeverSuggest()]);
+    // In start order, so each id's last row has the name they used most recently.
+    const byId = Map.groupBy(
+      reader.readTeammates().filter((t) => !skip.has(t.primaryId)),
+      (t) => t.primaryId,
+    );
+    const suggestions = [...byId.entries()].flatMap(([id, rows]) => {
+      const matches = new Set(rows.map((r) => r.guid)).size;
+      const sessions = new Set(rows.map((r) => sessionOf.get(r.guid))).size;
+      const name = rows.at(-1)?.name ?? id;
+      return matches >= SUGGEST_MATCHES && sessions >= SUGGEST_SESSIONS ? [{ id, name, matches, sessions }] : [];
+    });
+    return { suggestions: suggestions.sort((a, b) => b.matches - a.matches || a.name.localeCompare(b.name)) };
+  }
+
   return {
     sessionList,
+    friendSuggestions,
+    friends: () => ({ friends: reader.readFriends() }),
     monthFolds,
     currentSummary,
     latest,

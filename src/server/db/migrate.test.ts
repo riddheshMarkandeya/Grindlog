@@ -147,4 +147,17 @@ describe("tracker schema", () => {
     migrate(d, "tracker", trackerMigrations, { logger });
     expect(d.all("SELECT guid, rule_versions FROM matches")).toEqual([{ guid: "G", rule_versions: null }]);
   });
+
+  test("a DB at version 5 gains friends and never-suggest, and keeps its remark picks", () => {
+    const logger = memoryLogger();
+    const d = db();
+    migrate(d, "tracker", trackerMigrations.slice(0, 5), { logger });
+    d.run("INSERT INTO remark_shown (line_id, session_key, shown_at) VALUES ('l', 's', 1)");
+    migrate(d, "tracker", trackerMigrations, { logger });
+    expect(d.pragma("user_version")).toBe(6);
+    expect(tables(d)).toEqual(expect.arrayContaining(["friends", "never_suggest"]));
+    d.run("INSERT INTO friends (primary_id, nickname, added_at) VALUES ('Epic|sam|0', NULL, 1)");
+    expect(d.all("SELECT primary_id, nickname FROM friends")).toEqual([{ primary_id: "Epic|sam|0", nickname: null }]);
+    expect(d.all("SELECT line_id FROM remark_shown")).toEqual([{ line_id: "l" }]);
+  });
 });

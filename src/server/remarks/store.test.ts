@@ -82,6 +82,24 @@ describe("remarks store", () => {
     expect(picked().map((f) => f.filter)).toEqual(["everything", "13"]);
   });
 
+  test("a teammate filter keys its own pick; anyone keeps the playlist filter's key, so older picks still match", () => {
+    const { play, remarks, picked } = setup();
+    for (let i = 0; i < 4; i++) play(`M${String(i)}`, slot(i));
+    const r = remarks(T0 + DAY);
+    storage.tracker.run("INSERT INTO remark_picks (session_key, filter, mood_band, mood_line, quip_trigger, quip_line, picked_at) VALUES ('M0', 'everything', 'great', 'great-1', NULL, NULL, ?)", T0 + DAY);
+    expect(r.get("M0", "everything", "anyone")?.mood.band).toBe("great");
+    expect(r.get("M0", "everything", "solo")).not.toBeNull();
+    expect(r.get("M0", "ranked", { friends: ["Epic|sam|0"] })).toBeNull();
+    expect(picked().map((f) => f.filter)).toEqual(["everything|solo"]);
+  });
+
+  test("a soloqueue night fires its quip once you've played 4 with no friend on your team", () => {
+    const { play, remarks, picked } = setup();
+    for (let i = 0; i < 4; i++) play(`M${String(i)}`, slot(i));
+    remarks(T0 + DAY).get("M0", "everything");
+    expect(picked()[0]?.fired).toContain("soloqueue");
+  });
+
   test("reroll changes both lines and the change sticks", () => {
     const { play, remarks, picked } = setup();
     play("M0", slot(0));

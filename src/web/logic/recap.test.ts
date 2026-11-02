@@ -95,6 +95,13 @@ test("a session's path carries the filter only when it isn't the default", () =>
   expect(recapPath(null, "ranked")).toBe("/recap?filter=ranked");
 });
 
+test("the teammate filter rides along encoded, left out for anyone", () => {
+  const sam = { friends: ["Epic|sam|0"] };
+  expect(recapPath("ABC", "everything", "overview", sam)).toBe("/recap/ABC?filter=everything&with=Epic%7Csam%7C0");
+  expect(recapPath("ABC", "ranked", { match: "G" }, "solo")).toBe("/recap/ABC/match/G?filter=ranked&with=solo");
+  expect(recapPath(null, "ranked", "overview", "anyone")).toBe("/recap?filter=ranked");
+});
+
 test("the matches page and a match's page, under the same filter", () => {
   expect(recapPath("ABC", "everything", "matches")).toBe("/recap/ABC/matches?filter=everything");
   expect(recapPath("ABC", "ranked", { match: "G/1 2" })).toBe("/recap/ABC/match/G%2F1%202?filter=ranked");

@@ -346,3 +346,104 @@ describe("match detail, periods and seasons", () => {
     expect(pages().sessionDetail("A", "casual")?.goals.map((g) => g.matchGuid)).toEqual(["B"]);
   });
 });
+
+describe("the teammate filter", () => {
+  const SAM = "Epic|sam|0";
+  const ALEX = "Epic|alex|0";
+  let added = 0;
+  const addFriend = (id: string, nickname: string | null = null) =>
+    storage.tracker.run("INSERT INTO friends (primary_id, nickname, added_at) VALUES (?, ?, ?)", id, nickname, (added += 1));
+  /** A match of yours with these players beside you and THEM: [id, team, name]. */
+  function seedWith() {
+    const writer = createRecordWriter({ tracker: storage.tracker, logger: memoryLogger(), now: () => 1 });
+    const play = (guid: string, at: number, others: [string, 0 | 1, string?][] = [], { playlistId = RANKED, won = true } = {}) => {
+      const players = [player(ME, 0), player(THEM, 1), ...others.map(([id, team, name]) => player(id, team, { name: name ?? id }))];
+      writer.save(record(guid, at, { players }, { endedAt: at + 5 * MIN, playlistId, winnerTeamNum: won ? 0 : 1 }));
+    };
+    const pages = (now = t(12, 31, 12)) => createPages({ reader: createQueryReader({ tracker: storage.tracker, logger: memoryLogger() }), now: () => now });
+    return { play, pages };
+  }
+  const sam = { friends: [SAM] } as const;
+
+  test("list, months, current and latest count only the matches with the friend", () => {
+    const { play, pages } = seedWith();
+    addFriend(SAM);
+    play("A", t(10, 10, 10), [[SAM, 0]]);
+    play("B", t(10, 10, 10, 10));
+    play("C", t(10, 12, 10));
+    const p = pages(t(10, 12, 10, 10));
+    expect(p.sessionList("everything", "2026-10-01", "2026-10-31", sam).sessions.map((s) => [s.key, s.matches])).toEqual([["A", 1]]);
+    expect(p.sessionList("everything", "2026-10-01", "2026-10-31", "solo").sessions.map((s) => [s.key, s.matches])).toEqual([["C", 1], ["A", 1]]);
+    expect(p.monthFolds("everything", "2026-11-01", sam).months).toEqual([{ month: "2026-10", sessions: 1, wins: 1, losses: 0 }]);
+    expect(p.currentSummary("everything", sam)).toBeNull();
+    expect(p.latest("everything", sam).session?.key).toBe("A");
+  });
+
+  test("soloqueue: a friend on the other team doesn't count against it", () => {
+    const { play, pages } = seedWith();
+    addFriend(SAM);
+    play("A", t(10, 10, 10), [[SAM, 1]]);
+    play("B", t(10, 10, 10, 10), [[SAM, 0]]);
+    const d = pages().sessionDetail("A", "everything", "solo");
+    expect(d?.matches.map((m) => m.guid)).toEqual(["A"]);
+  });
+
+  test("detail: matches, baseline and steps follow it; friendsPresent follows only the playlist filter", () => {
+    const { play, pages } = seedWith();
+    addFriend(SAM, "Sammy");
+    addFriend(ALEX);
+    play("P", t(10, 1, 10), [[SAM, 0]], { won: false }); // the baseline with Sam
+    play("Q", t(10, 1, 10, 10), [], { won: true });
+    play("A", t(10, 10, 10), [[SAM, 0]]);
+    play("B", t(10, 10, 10, 10), [[ALEX, 0, "Alex"]], { playlistId: CASUAL });
+    play("C", t(10, 10, 10, 20));
+    play("N", t(10, 12, 10));
+    const d = pages().sessionDetail("A", "everything", sam);
+    expect(d?.matches.map((m) => m.guid)).toEqual(["A"]);
+    expect(d?.baseline).toMatchObject({ matches: 1, wins: 0 });
+    expect([d?.prev, d?.next]).toEqual(["P", null]);
+    expect(d?.friendsPresent).toEqual([{ id: ALEX, name: "Alex" }, { id: SAM, name: "Sammy" }]);
+    expect(pages().sessionDetail("A", "casual", sam)?.friendsPresent).toEqual([{ id: ALEX, name: "Alex" }]);
+    expect(pages().sessionDetail("A", "ranked")?.friendsPresent).toEqual([{ id: SAM, name: "Sammy" }]);
+    expect(pages().sessionDetail("N", "everything")?.friendsPresent).toEqual([]);
+  });
+
+  test("period and rolling follow it; played days' first day and total don't", () => {
+    const { play, pages } = seedWith();
+    addFriend(SAM);
+    play("A", t(10, 10, 10), [[SAM, 0]]);
+    play("B", t(10, 10, 12));
+    play("C", t(10, 11, 12), [[SAM, 0]], { won: false });
+    const v = pages().period({ kind: "month", day: "2026-10-01" }, "everything", 2, sam);
+    expect(v?.aggregate).toMatchObject({ matches: 2, wins: 1, losses: 1 });
+    expect(v?.sessions).toBe(2);
+    expect(v?.rolling.map((r) => r.n)).toEqual([2]);
+    expect(pages().playedDays(2026, "everything", sam)).toEqual({
+      days: [
+        { day: "2026-10-10", matches: 1 },
+        { day: "2026-10-11", matches: 1 },
+      ],
+      firstDay: "2026-10-10",
+      totalMatches: 3,
+    });
+  });
+
+  test("suggestions: teammates in 3+ matches over 2+ sessions, not friends, not never-suggest, not bots", () => {
+    const { play, pages } = seedWith();
+    const KIM = "Epic|kim|0";
+    const LEE = "Epic|lee|0";
+    const BOT = "Bot|b|0";
+    // Kim: 3 over two sessions. Lee: 3 in one session. Alex: 2. Sam: a friend. The opponent THEM is never a teammate.
+    play("A1", t(10, 10, 10), [[KIM, 0, "kim1"], [LEE, 0], [ALEX, 0], [SAM, 0]]);
+    play("A2", t(10, 10, 10, 10), [[KIM, 0], [LEE, 0], [ALEX, 0], [SAM, 0]]);
+    play("A3", t(10, 10, 10, 20), [[LEE, 0], [SAM, 0]]);
+    play("B1", t(10, 12, 10), [[KIM, 0, "kim2"], [SAM, 0]]);
+    const writer = createRecordWriter({ tracker: storage.tracker, logger: memoryLogger(), now: () => 1 });
+    for (const [g, at] of [["X1", t(10, 13, 10)], ["X2", t(10, 13, 10, 10)], ["X3", t(10, 14, 10)]] as const)
+      writer.save(record(g, at, { players: [player(ME, 0), player(BOT, 0, { isBot: true })] }, { endedAt: at + 5 * MIN }));
+    addFriend(SAM);
+    expect(pages().friendSuggestions().suggestions).toEqual([{ id: KIM, name: "kim2", matches: 3, sessions: 2 }]);
+    storage.tracker.run("INSERT INTO never_suggest (primary_id, added_at) VALUES (?, 1)", KIM);
+    expect(pages().friendSuggestions().suggestions).toEqual([]);
+  });
+});

@@ -1,12 +1,13 @@
-// The Trends page's state and text: the period, filter, metric, strip year and x axis in the query string,
+// The Trends page's state and text: the period, filters, metric, strip year and x axis in the query string,
 // the quick picks, ‹ › and their bounds, the header's lines, the tiles and the year strip's layout.
 // Days are local `YYYY-MM-DD` with the 4am cutoff; the page passes today as `dayOf(Date.now())`.
 import { calendarSpan, monthOf, monthStart, nextMonthStart, seasonsByStart, shiftDay, weekStart, type PeriodSpec, type Season } from "../../shared/periods";
 import { filterValue, type PlaylistFilter } from "../../shared/playlist-filter";
+import { teammateValue, type TeammateFilter } from "../../shared/teammate-filter";
 import { periodParams, playedDaysParams } from "../../shared/schemas/params";
 import { nextSpec, previousSpec, type TrendStats } from "../../shared/trends";
 import { dayLabel, decimal, monthLabel } from "./format";
-import { parseFilter } from "./filter-options";
+import { parseFilter, parseTeammate } from "./filter-options";
 import { pct, vsAverage } from "./recap";
 
 /** Below this many played matches in total, the page shows the "not enough data yet" note. */
@@ -27,6 +28,7 @@ export const METRICS: readonly { id: MetricId; label: string; icon: TrendIcon | 
 export interface TrendsState {
   spec: PeriodSpec;
   filter: PlaylistFilter;
+  teammate: TeammateFilter;
   metric: MetricId;
   /** The strip's year; null is the year the period ends in. */
   year: number | null;
@@ -64,6 +66,10 @@ export function parseTrends(params: URLSearchParams, defaultFilter: PlaylistFilt
   if (parsed.bad) bad.push("filter");
   const filter = parsed.filter;
 
+  const withParsed = parseTeammate(params.get("with"));
+  if (withParsed.bad) bad.push("with");
+  const teammate = withParsed.teammate;
+
   let metric: MetricId = "win";
   const rawMetric = get("metric");
   if (rawMetric !== undefined) {
@@ -86,7 +92,7 @@ export function parseTrends(params: URLSearchParams, defaultFilter: PlaylistFilt
     if (rawX === "auto" || rawX === "date" || rawX === "match") x = rawX;
     else bad.push("x");
   }
-  return { state: { spec, filter, metric, year, x }, bad };
+  return { state: { spec, filter, teammate, metric, year, x }, bad };
 }
 
 /** A period as the query parameters `/api/period` and the page's URL both take. */
@@ -97,11 +103,13 @@ export function periodQuery(spec: PeriodSpec): URLSearchParams {
   return q;
 }
 
-export function trendsPath({ spec, filter, metric, year, x }: TrendsState): string {
+export function trendsPath({ spec, filter, teammate, metric, year, x }: TrendsState): string {
   const q = periodQuery(spec);
   if (spec.kind === DEFAULT_SPEC.kind) q.delete("kind");
   // Always written: the default filter is a setting, so leaving it out would change what a link means.
   q.set("filter", filterValue(filter));
+  const t = teammateValue(teammate);
+  if (t !== null) q.set("with", t);
   if (metric !== "win") q.set("metric", metric);
   if (year !== null) q.set("year", String(year));
   if (x !== "auto") q.set("x", x);
@@ -112,7 +120,7 @@ export function trendsPath({ spec, filter, metric, year, x }: TrendsState): stri
 /** The state after a change. A new period or filter puts the x axis back on auto: what fits one period doesn't carry over. */
 export const patchTrends = (state: TrendsState, patch: Partial<TrendsState>): TrendsState => ({
   ...state,
-  ...("spec" in patch || "filter" in patch ? { x: "auto" } : {}),
+  ...("spec" in patch || "filter" in patch || "teammate" in patch ? { x: "auto" } : {}),
   ...patch,
 });
 

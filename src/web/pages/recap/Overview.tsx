@@ -4,6 +4,7 @@
 import { useId } from "react";
 import { Link } from "react-router";
 import { filterValue, type PlaylistFilter } from "../../../shared/playlist-filter";
+import { teammateValue, type TeammateFilter } from "../../../shared/teammate-filter";
 import { playlistInfo } from "../../../shared/playlists";
 import type { AggregateWire, MyMatchWire, SessionDetail, SessionSummary } from "../../../shared/schemas/responses";
 import assistIcon from "../../assets/icons/Assist.png";
@@ -14,6 +15,7 @@ import saveIcon from "../../assets/icons/Save.png";
 import shotIcon from "../../assets/icons/Shot.png";
 import { cx } from "../../components/cx";
 import { GoalMap } from "../../components/GoalMap";
+import { Tile, Tiles } from "../../components/Tile";
 import { clock, dayLabel, decimal, durationText, plural } from "../../logic/format";
 import {
   extrasCards,
@@ -37,12 +39,12 @@ import { fillRemark } from "../../logic/remarks";
 import { useRemarks, useRerollRemarks, useSettings } from "../../queries";
 import styles from "./Overview.module.css";
 
-export function Overview({ detail, summary, filter }: { detail: SessionDetail; summary: SessionSummary; filter: PlaylistFilter }) {
-  const matchPath = (guid: string) => recapPath(detail.key, filter, { match: guid });
+export function Overview({ detail, summary, filter, teammate }: { detail: SessionDetail; summary: SessionSummary; filter: PlaylistFilter; teammate: TeammateFilter }) {
+  const matchPath = (guid: string) => recapPath(detail.key, filter, { match: guid }, teammate);
   return (
     <>
       <Scorebug detail={detail} summary={summary} />
-      <Headline detail={detail} filter={filter} />
+      <Headline detail={detail} filter={filter} teammate={teammate} />
       <MatchCards matches={detail.matches} matchPath={matchPath} />
       <PerGame detail={detail} />
       <StandoutAndPlaylists detail={detail} />
@@ -79,10 +81,10 @@ function Scorebug({ detail, summary }: { detail: SessionDetail; summary: Session
  * the headline doesn't wait. With the mood line switched off, ↻ follows the quip; with no quip
  * either, there's nothing to show.
  */
-function Remarks({ sessionKey, filter }: { sessionKey: string; filter: PlaylistFilter }) {
+function Remarks({ sessionKey, filter, teammate }: { sessionKey: string; filter: PlaylistFilter; teammate: TeammateFilter }) {
   const settings = useSettings();
-  const { data } = useRemarks(sessionKey, filter);
-  const reroll = useRerollRemarks(sessionKey, filter);
+  const { data } = useRemarks(sessionKey, filter, teammate);
+  const reroll = useRerollRemarks(sessionKey, filter, teammate);
   if (!data) return null;
   const quip = data.quip && fillRemark(data.quip.text, data.quip.values, settings);
   if (!settings.moodLine && !quip) return null;
@@ -109,7 +111,7 @@ function Remarks({ sessionKey, filter }: { sessionKey: string; filter: PlaylistF
   );
 }
 
-function Headline({ detail, filter }: { detail: SessionDetail; filter: PlaylistFilter }) {
+function Headline({ detail, filter, teammate }: { detail: SessionDetail; filter: PlaylistFilter; teammate: TeammateFilter }) {
   // Off, the lines aren't fetched either, so no pick is stored for a headline nobody saw.
   const { remarks } = useSettings();
   const delta = winPctDelta(detail.aggregate, detail.baseline);
@@ -117,7 +119,7 @@ function Headline({ detail, filter }: { detail: SessionDetail; filter: PlaylistF
   return (
     <div className={styles.sub}>
       {/* Keyed so a reroll's pending or failed state doesn't follow you to another session. */}
-      {remarks && <Remarks key={`${detail.key}|${filterValue(filter)}`} sessionKey={detail.key} filter={filter} />}
+      {remarks && <Remarks key={`${detail.key}|${filterValue(filter)}|${teammateValue(teammate) ?? ""}`} sessionKey={detail.key} filter={filter} teammate={teammate} />}
       {delta && (
         <p className={styles.delta}>
           {delta.points === 0 ? (
@@ -129,22 +131,11 @@ function Headline({ detail, filter }: { detail: SessionDetail; filter: PlaylistF
         </p>
       )}
       {tiles.length > 0 && (
-        <ul className={styles.tiles}>
+        <Tiles>
           {tiles.map((t) => (
-            <li key={t.id}>
-              <b className="num">
-                {t.id === "mvps" && <img className={styles.ico} src={mvpIcon} alt="" />}
-                {t.value}
-                {t.vs && (
-                  <small className={t.vs.dir === "up" ? styles.up : t.vs.dir === "down" ? styles.down : styles.muted}>
-                    {t.vs.dir === "up" ? "▲" : t.vs.dir === "down" ? "▼" : "="} avg {t.vs.avg}
-                  </small>
-                )}
-              </b>
-              <span>{t.label}</span>
-            </li>
+            <Tile key={t.id} label={t.label} value={t.value} icon={t.id === "mvps" ? mvpIcon : undefined} vs={t.vs && { dir: t.vs.dir, text: `avg ${t.vs.avg}` }} />
           ))}
-        </ul>
+        </Tiles>
       )}
     </div>
   );

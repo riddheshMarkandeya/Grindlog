@@ -38,6 +38,7 @@ const match = (over: Partial<MyMatch> = {}): MyMatch => {
     winnerTeamNum: 0,
     mvpKey: null,
     flags: [],
+    friends: [],
     me: me(),
     result: "win",
     goals: [{ speedKmh: 90, ownGoal: false }],

@@ -215,7 +215,6 @@ const triggers = {
   },
   duo_good: {
     tier: "common",
-    inert: "Needs friends (WP9).",
     lines: [
       l("duo-good-1", "You and {friend} went {w}–{l}. Keep the duo together."),
       l("duo-good-2", "{w}–{l} with {friend}. Somebody's been practicing. One of you, anyway."),
@@ -225,7 +224,6 @@ const triggers = {
   },
   duo_bad: {
     tier: "common",
-    inert: "Needs friends (WP9).",
     lines: [
       l("duo-bad-1", "{w}–{l} with {friend}. Maybe it's them. Maybe it's you. It's both."),
       l("duo-bad-2", "You and {friend} went {w}–{l}. Couples therapy is an option."),
@@ -235,7 +233,6 @@ const triggers = {
   },
   soloqueue: {
     tier: "common",
-    inert: "Needs friends (WP9).",
     lines: [
       l("soloqueue-1", "All soloqueue tonight. Every teammate a mystery box."),
       l("soloqueue-2", "Soloqueue all night. Strangers' rotations, your rank."),

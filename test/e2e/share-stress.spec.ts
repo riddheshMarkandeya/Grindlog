@@ -1,5 +1,5 @@
 // The share card's worst case (the share seed): a live 48-match session, a 32-character name, the
-// longest mood line, a filter pill beside the name, the stood-out callout and a two-line 8th tile,
+// longest mood line, the longest filter pill beside the name, the stood-out callout and a two-line 8th tile,
 // all inside 360×480.
 import { MOOD_LINES } from "../../src/server/remarks/copy";
 import { expect, test } from "./fixtures";
@@ -19,11 +19,11 @@ test("the longest of everything still fits: no overflow, the footer inside, the 
     const body = (await res.json()) as { mood: { band: string; text: string } };
     await route.fulfill({ response: res, json: { ...body, mood: { ...body.mood, text: LONGEST } } });
   });
-  // A chosen filter, so the pill takes width from the name.
-  await page.goto("/recap/e2e-share-00?filter=13");
+  // Both filters, with a 32-character nickname: the longest pill, taking width from the name.
+  await page.goto("/recap/e2e-share-00?filter=13&with=Steam%7Ce2e-sam%7C0");
   await openCard(page);
   const dialog = shareDialog(page);
-  await expect(dialog.locator("[data-part=pill]")).toHaveText("Ranked Standard");
+  await expect(dialog.locator("[data-part=pill]")).toHaveText(`Ranked Standard · with ${"W".repeat(32)}`);
   await expect(dialog.getByText("● live")).toBeVisible();
   await expect(dialog.getByText(LONGEST)).toBeVisible();
   await expect(dialog.locator("[data-tile]")).toHaveCount(8);

@@ -1,0 +1,14 @@
+/* The condensed face is Windows' own Bahnschrift, so nothing is fetched. */
+.tiles { display: flex; justify-content: center; flex-wrap: wrap; gap: var(--s3); margin: var(--s4) 0 0; padding: 0; list-style: none; }
+.tiles li { min-width: 120px; background: var(--surf); border: 1px solid var(--line); border-radius: var(--r); padding: 8px 16px; }
+.tiles b {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-family: Bahnschrift, "Arial Narrow", "Segoe UI", sans-serif; font-stretch: condensed;
+  font-size: 30px; font-style: italic; font-weight: 800; line-height: 1.1;
+}
+.tiles b small { font-size: 16px; font-style: normal; font-weight: 600; }
+.tiles span { display: block; font-size: 13px; letter-spacing: .1em; color: var(--ink2); text-transform: uppercase; }
+.ico { width: 26px; height: 26px; object-fit: contain; }
+.up { color: var(--up); }
+.down { color: var(--down); }
+.muted { color: var(--ink2); }

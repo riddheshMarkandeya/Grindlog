@@ -1,5 +1,5 @@
 // The e2e stack, run under Bun by the Playwright fixture (seeding needs bun:sqlite): a temp data dir
-// seeded per the mode in argv (`rich`, the default, `empty`, `few`, `share` or `tables`), the repo's web build copied to the
+// seeded per the mode in argv (`rich`, the default, `empty`, `few`, `share`, `tables` or `friends`), the repo's web build copied to the
 // installed path, a gated replay of the completed fixture, and the real tracker. Protocol: prints
 // `ready {"url","dataDir"}` on stdout; the stdin line `go` releases the replay; stdin EOF tears
 // everything down.
@@ -77,9 +77,14 @@ const HAT_TRICK: Parameters<typeof record>[2] = {
  * `tables`: `rich`, plus a pending guess per You test that answers one and a rejected id, none of
  * them a player in any match (TABLE_IDS).
  * `empty`: no matches at all.
+ * `friends`: last month, a 22-match session (e2e-fr-00) with FRIEND, nicknamed FRIEND_NICK, on
+ * your team in its first four (a loss, two wins, a loss) and on the other team in the fifth, its
+ * last match in Ranked Doubles without them, and a 2-match session (e2e-nofr-a) with no friend in it.
  * `share`: the share card's worst case. The current session is 48 matches of mixed results, one
  * left early, under a 32-character name; your saves stand out against three days ago, and you
  * hit no woodwork but had aerial touches, so the 8th tile is the two-line "Aerial touches".
+ * A friend with a 32-character nickname is on your team in every match, baseline too, for the
+ * longest label.
  */
 function seed(dir: string, mode: Seed): void {
   const logger = createLogger({ dir });
@@ -95,6 +100,7 @@ function seed(dir: string, mode: Seed): void {
     const now = Date.now();
     if (mode === "share") {
       seedShare(storage, logger, now);
+      storage.tracker.run("INSERT INTO friends (primary_id, nickname, added_at) VALUES (?, ?, ?)", FRIEND, SHARE_NICK, now);
       return;
     }
     // Days of months before the current session's, so which month holds each session doesn't
@@ -109,6 +115,16 @@ function seed(dir: string, mode: Seed): void {
       // Under the Trends page's 20 matches: its "not enough data yet" note.
       writer.save(match("e2e-few-a", day(1, 5), 10 * HOUR, true));
       writer.save(match("e2e-few-b", day(1, 5), 10 * HOUR + 10 * MIN, false));
+      return;
+    }
+    if (mode === "friends") {
+      for (let i = 0; i < 22; i++) {
+        const players = i < 4 ? [player(ME, 0), player(FRIEND, 0, { name: "SamInGame" }), player(THEM, 1)] : i === 4 ? [player(ME, 0), player(FRIEND, 1, { name: "SamInGame" })] : [player(ME, 0), player(THEM, 1)];
+        writer.save(match(`e2e-fr-${String(i).padStart(2, "0")}`, day(1, 5), 10 * HOUR + i * 6 * MIN, i % 3 !== 0, i === 21 ? { playlistId: 11 } : {}, { players }));
+      }
+      writer.save(match("e2e-nofr-a", day(1, 12), 8 * HOUR, true));
+      writer.save(match("e2e-nofr-b", day(1, 12), 8 * HOUR + 10 * MIN, false));
+      storage.tracker.run("INSERT INTO friends (primary_id, nickname, added_at) VALUES (?, ?, ?)", FRIEND, FRIEND_NICK, now);
       return;
     }
     writer.save(match("e2e-old", day(2, 15), 14 * HOUR, true));
@@ -136,17 +152,22 @@ const TABLE_IDS = [
 
 // 32 characters, the most a name has, and wide ones: it has to be cut.
 const SHARE_NAME = "WWW_MaximumWidthNameWWWWWWWWWWWW";
+// 32 characters too, the most a nickname has.
+const SHARE_NICK = "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW";
+const FRIEND = "Steam|e2e-sam|0";
+const FRIEND_NICK = "Sammy";
 
 function seedShare(storage: ReturnType<typeof openStorage>, logger: ReturnType<typeof createLogger>, now: number): void {
   const writer = createRecordWriter({ tracker: storage.tracker, logger });
-  for (let i = 0; i < 6; i++) writer.save(record(`e2e-base-${String(i)}`, now - 3 * 24 * HOUR + i * 6 * MIN, { players: [player(ME, 0, { saves: 1 }), player(THEM, 1)] }, { endedAt: now - 3 * 24 * HOUR + i * 6 * MIN + 5 * MIN }));
+  for (let i = 0; i < 6; i++) writer.save(record(`e2e-base-${String(i)}`, now - 3 * 24 * HOUR + i * 6 * MIN, { players: [player(ME, 0, { saves: 1 }), player(FRIEND, 0, { saves: 0 }), player(THEM, 1)] }, { endedAt: now - 3 * 24 * HOUR + i * 6 * MIN + 5 * MIN }));
   const me = player(ME, 0, { name: SHARE_NAME, saves: 3, extras: { ...player(ME, 0).extras, woodwork_hits: 0, aerial_touches: 4 } });
+  const friend = player(FRIEND, 0, { saves: 0 });
   const start = now - (47 * 6 + 10) * MIN;
   for (let i = 0; i < 48; i++) {
     const at = start + i * 6 * MIN;
     const won = (i * 7) % 11 < 6;
     const result: Partial<MatchRecord["match"]> = i === 20 ? { endKind: "left", winnerTeamNum: null, winnerSource: null } : { scoreTeam0: won ? 2 : 1, scoreTeam1: won ? 1 : 2, winnerTeamNum: won ? 0 : 1, mvpKey: won ? ME : null };
-    writer.save(record(`e2e-share-${String(i).padStart(2, "0")}`, at, { players: [me, player(THEM, 1)] }, { endedAt: at + 5 * MIN, ...result }));
+    writer.save(record(`e2e-share-${String(i).padStart(2, "0")}`, at, { players: [me, friend, player(THEM, 1)] }, { endedAt: at + 5 * MIN, ...result }));
   }
 }
 
@@ -173,7 +194,7 @@ async function main(): Promise<void> {
     cpSync(dist, join(dir, "bin", "web"), { recursive: true });
     const mode = process.argv[2];
     // `settings` seeds as `rich`; its own name only buys a separate stack, so the settings it saves stay there.
-    seed(dir, mode === "empty" || mode === "few" || mode === "share" || mode === "tables" ? mode : "rich");
+    seed(dir, mode === "empty" || mode === "few" || mode === "share" || mode === "tables" || mode === "friends" ? mode : "rich");
   } catch (err) {
     removeDir(dir);
     throw err;

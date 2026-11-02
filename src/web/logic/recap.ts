@@ -5,6 +5,7 @@ import { playlistInfo } from "../../shared/playlists";
 import type { FlagReason } from "../../shared/flags";
 import type { AggregateWire, MatchDetail, MyMatchWire, SessionDetail } from "../../shared/schemas/responses";
 import { filterValue } from "../../shared/playlist-filter";
+import { teammateValue, type TeammateFilter } from "../../shared/teammate-filter";
 import { clock, decimal, SPEED_LABEL, speedIn, type Units } from "./format";
 
 /** A share as whole percent. */
@@ -182,10 +183,12 @@ export type RecapView = "overview" | "matches" | { match: string };
  * A session's recap (or the latest one's, for a null key), always with its filter: the default is a
  * setting, so a URL without one would change meaning when the setting does.
  */
-export function recapPath(key: string | null, filter: PlaylistFilter, view: RecapView = "overview"): string {
+export function recapPath(key: string | null, filter: PlaylistFilter, view: RecapView = "overview", teammate: TeammateFilter = "anyone"): string {
   const session = key === null ? "/recap" : `/recap/${encodeURIComponent(key)}`;
   const path = key === null || view === "overview" ? session : view === "matches" ? `${session}/matches` : `${session}/match/${encodeURIComponent(view.match)}`;
-  return `${path}?filter=${filterValue(filter)}`;
+  const t = teammateValue(teammate);
+  // A PrimaryId has bars, so it's encoded.
+  return `${path}?filter=${filterValue(filter)}${t === null ? "" : `&with=${encodeURIComponent(t)}`}`;
 }
 
 const counted = (r: "win" | "loss") => `counted as a ${r}`;

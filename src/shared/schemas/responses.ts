@@ -76,6 +76,8 @@ export const myMatchSchema = z.object({
   /** Your goals. */
   goals: z.array(z.object({ speedKmh: z.number().nullable(), ownGoal: z.boolean() })),
   statfeed: z.record(z.string(), z.number()),
+  /** Your friends who were on your team at any point, by PrimaryId. */
+  friends: z.array(z.string()),
 });
 
 export const goalSchema = z.object({
@@ -138,9 +140,11 @@ export const sessionDetailResponse = z.object({
   byPlaylist: z.array(z.object({ playlistId: z.number().nullable(), aggregate: aggregateSchema })),
   /** Every playlist you played in the session, whatever the filter, for the dropdown. */
   playlistsPresent: z.array(z.number()),
+  /** Friends on your team in the session's matches under the playlist filter (not the teammate filter), by name. */
+  friendsPresent: z.array(z.object({ id: z.string(), name: z.string() })),
   baseline: aggregateSchema,
   goals: z.array(goalSchema),
-  /** The neighbouring sessions listed under the filter. */
+  /** The neighbouring sessions listed under both filters. */
   prev: z.string().nullable(),
   next: z.string().nullable(),
   prevMonth: z.string().nullable(),
@@ -226,6 +230,18 @@ export const idsResponse = z.object({
 });
 export type IdRow = z.infer<typeof idsResponse>["ids"][number];
 
+/** A friend: one PrimaryId, named by the nickname, else the name in their latest match. */
+export const friendSchema = z.object({ id: z.string(), nickname: z.string().nullable(), name: z.string() });
+export type Friend = z.infer<typeof friendSchema>;
+
+export const friendsResponse = z.object({ friends: z.array(friendSchema) });
+
+/** Humans often on your team who aren't friends yet, most matches first. */
+export const suggestionsResponse = z.object({
+  suggestions: z.array(z.object({ id: z.string(), name: z.string(), matches: z.number(), sessions: z.number() })),
+});
+export type FriendSuggestions = z.infer<typeof suggestionsResponse>;
+
 /** A season write refused because another season has that name or start. */
 export const seasonConflict = z.object({ error: z.enum(["duplicate_name", "duplicate_start"]) });
 
@@ -238,10 +254,10 @@ export const statusSchema = z.object({
 
 export const breakResponse = z.object({ at: z.number() });
 
-/** A session's headline remarks. Texts are templates: `{n}`-style placeholders filled from `values` (raw numbers, km/h, epoch ms). */
+/** A session's headline remarks. Texts are templates: `{n}`-style placeholders filled from `values` (raw numbers, km/h, epoch ms, a friend's name). */
 export const remarksResponse = z.object({
   mood: z.object({ band: z.string(), text: z.string() }),
-  quip: z.object({ trigger: z.string(), text: z.string(), values: z.record(z.string(), z.number()) }).nullable(),
+  quip: z.object({ trigger: z.string(), text: z.string(), values: z.record(z.string(), z.union([z.number(), z.string()])) }).nullable(),
 });
 
 /** Server-sent events, by event name. */

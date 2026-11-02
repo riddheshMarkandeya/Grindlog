@@ -185,9 +185,9 @@ describe("readResults", () => {
     // Two of your ids: the camera's is you, as readMyMatches picks.
     writer.save(record("C", 3000, { players: [player(ME, 0), player(ALT, 1)] }, { cameraPrimaryId: ALT, playlistId: null }));
     expect(reader.readResults()).toEqual([
-      { guid: "A", startedAt: 1000, endedAt: 1300, playlistId: 13, played: true, result: "win" },
-      { guid: "B", startedAt: 2000, endedAt: 2300, playlistId: 6, played: false, result: null },
-      { guid: "C", startedAt: 3000, endedAt: 3300, playlistId: null, played: true, result: "loss" },
+      { guid: "A", startedAt: 1000, endedAt: 1300, playlistId: 13, played: true, result: "win", friends: [] },
+      { guid: "B", startedAt: 2000, endedAt: 2300, playlistId: 6, played: false, result: null, friends: [] },
+      { guid: "C", startedAt: 3000, endedAt: 3300, playlistId: null, played: true, result: "loss", friends: [] },
     ]);
     expect(lines("read").at(-1)?.fields).toMatchObject({ fn: "readResults", rows: 3 });
   });
@@ -268,5 +268,95 @@ describe("readMatch", () => {
     expect(reader.readMatch("G")?.result).toBe("loss");
     expect(reader.readMatch("H")?.players.some((p) => p.isMe)).toBe(false);
     expect(reader.readMatch("H")?.result).toBeNull();
+  });
+});
+
+describe("friends on your team", () => {
+  const SAM = "Epic|sam|0";
+  let added = 0;
+  const BOT = "Bot|bot|0";
+  const addFriend = (id: string, nickname: string | null = null) =>
+    storage.tracker.run("INSERT INTO friends (primary_id, nickname, added_at) VALUES (?, ?, ?)", id, nickname, (added += 1));
+  const duo = (guid: string, at: number, samTeam: 0 | 1, over: Partial<ReturnType<typeof player>> = {}, meOver: Partial<ReturnType<typeof player>> = {}) =>
+    record(guid, at, { players: [player(ME, 0, meOver), player(SAM, samTeam, over), player(THEM, 1)] });
+
+  test("a friend on your team at any point is with you; on the other team they aren't", () => {
+    const { writer, reader, addId } = setup();
+    addId(ME, "confirmed");
+    addFriend(SAM);
+    writer.save(duo("G1", 1000, 0));
+    writer.save(duo("G2", 2000, 1));
+    writer.save(record("G3", 3000));
+    expect(reader.readMyMatches().map((m) => [m.guid, m.friends])).toEqual([["G1", [SAM]], ["G2", []], ["G3", []]]);
+    expect(reader.readResults().map((m) => [m.guid, m.friends])).toEqual([["G1", [SAM]], ["G2", []], ["G3", []]]);
+  });
+
+  test("a teammate who isn't a friend, a bot friend and your own id are never friends in a match", () => {
+    const { writer, reader, addId } = setup();
+    addId(ME, "confirmed");
+    addFriend(BOT);
+    addFriend(ME);
+    writer.save(record("G", 1000, { players: [player(ME, 0), player(SAM, 0), player(BOT, 0, { isBot: true }), player(THEM, 1)] }));
+    expect(reader.readMyMatches()[0]?.friends).toEqual([]);
+  });
+
+  test("with no team of yours, you have no friends in the match; spectated neither", () => {
+    const { writer, reader, addId } = setup();
+    addId(ME, "confirmed");
+    addFriend(SAM);
+    writer.save(record("G1", 1000, { players: [player(ME, 0, { teamNum: null, teamsSeen: 0 }), player(SAM, 0)] }));
+    writer.save(record("G2", 2000, { players: [player(SAM, 0), player(THEM, 1)] }));
+    expect(reader.readMyMatches().map((m) => m.friends)).toEqual([[], []]);
+    expect(reader.readResults().map((m) => m.friends)).toEqual([[], []]);
+  });
+
+  test("a friend who switched teams still counts, and is logged once per match", () => {
+    const { writer, reader, addId, lines } = setup();
+    addId(ME, "confirmed");
+    addFriend(SAM);
+    writer.save(duo("G", 1000, 1, { teamsSeen: 3 }));
+    expect(reader.readMyMatches()[0]?.friends).toEqual([SAM]);
+    reader.readResults();
+    expect(lines("friend_switched_team").map((l) => l.fields)).toEqual([{ guid: "G", ids: [SAM], you: false }]);
+  });
+
+  test("when you switched, your final team decides, and the line says so", () => {
+    const { writer, reader, addId, lines } = setup();
+    addId(ME, "confirmed");
+    addFriend(SAM);
+    writer.save(duo("G", 1000, 1, {}, { teamsSeen: 3 }));
+    expect(reader.readMyMatches()[0]?.friends).toEqual([]);
+    expect(lines("friend_switched_team").map((l) => l.fields)).toEqual([{ guid: "G", ids: [], you: true }]);
+  });
+
+  test("adding a friend later re-labels the matches already stored", () => {
+    const { writer, reader, addId } = setup();
+    addId(ME, "confirmed");
+    writer.save(duo("G", 1000, 0));
+    expect(reader.readResults()[0]?.friends).toEqual([]);
+    addFriend(SAM);
+    expect(reader.readResults()[0]?.friends).toEqual([SAM]);
+  });
+
+  test("readTeammates: every human on your team who isn't you, friend or not", () => {
+    const { writer, reader, addId } = setup();
+    addId(ME, "confirmed");
+    writer.save(record("G1", 1000, { players: [player(ME, 0), player(SAM, 0, { name: "Sam" }), player(BOT, 0, { isBot: true }), player(THEM, 1)] }));
+    writer.save(record("G2", 2000, { players: [player(SAM, 0)] }));
+    expect(reader.readTeammates()).toEqual([{ guid: "G1", primaryId: SAM, name: "Sam" }]);
+  });
+
+  test("readFriends: named by the nickname, else the name from their latest match, else the id; listed by name", () => {
+    const { writer, reader } = setup();
+    addFriend(SAM, "Sammy");
+    addFriend(THEM);
+    addFriend("Epic|never|0");
+    writer.save(record("G1", 1000, { players: [player(ME, 0), player(SAM, 0, { name: "old" }), player(THEM, 1, { name: "Them" })] }));
+    writer.save(record("G2", 2000, { players: [player(ME, 0), player(SAM, 0, { name: "new" })] }));
+    expect(reader.readFriends()).toEqual([
+      { id: "Epic|never|0", nickname: null, name: "Epic|never|0" },
+      { id: SAM, nickname: "Sammy", name: "Sammy" },
+      { id: THEM, nickname: null, name: "Them" },
+    ]);
   });
 });

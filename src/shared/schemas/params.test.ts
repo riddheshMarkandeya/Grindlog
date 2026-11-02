@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { dayParam, filterParam, monthsParams, periodParams, sessionsParams } from "./params";
+import { dayParam, filterOnly, filterParam, monthsParams, periodParams, playedDaysParams, sessionsParams, teammateParam } from "./params";
 
 describe("dayParam", () => {
   test("a real calendar day only", () => {
@@ -16,6 +16,27 @@ describe("dayParam", () => {
   });
 });
 
+describe("teammateParam", () => {
+  test("anyone when left out, solo, or a PrimaryId as one friend", () => {
+    expect(teammateParam.parse(undefined)).toBe("anyone");
+    expect(teammateParam.parse("solo")).toBe("solo");
+    expect(teammateParam.parse("Epic|sam|0")).toEqual({ friends: ["Epic|sam|0"] });
+    expect(teammateParam.parse("Steam|76561198000000001|0")).toEqual({ friends: ["Steam|76561198000000001|0"] });
+  });
+
+  test("refuses what can't be a PrimaryId", () => {
+    for (const bad of ["", "anyone", "Epic|sam", "nobars", `Epic|${"x".repeat(100)}|0`]) expect(teammateParam.safeParse(bad).success, bad).toBe(false);
+  });
+
+  test("rides along on the page params", () => {
+    expect(filterOnly.parse({ with: "solo" })).toEqual({ filter: "everything", with: "solo" });
+    expect(sessionsParams.parse({ from: "2026-01-01", to: "2026-01-02" }).with).toBe("anyone");
+    expect(monthsParams.parse({ before: "2026-01-01", with: "Epic|sam|0" }).with).toEqual({ friends: ["Epic|sam|0"] });
+    expect(periodParams.parse({ kind: "all", with: "solo" }).with).toBe("solo");
+    expect(playedDaysParams.parse({ year: "2026", with: "solo" }).with).toBe("solo");
+  });
+});
+
 describe("filterParam", () => {
   test("a group, a playlist id, or everything by default", () => {
     expect(filterParam.parse("ranked")).toBe("ranked");
@@ -28,21 +49,21 @@ describe("filterParam", () => {
 
 describe("page params", () => {
   test("sessions: from and to are days, from no later than to", () => {
-    expect(sessionsParams.parse({ from: "2026-10-01", to: "2026-10-14" })).toEqual({ filter: "everything", from: "2026-10-01", to: "2026-10-14" });
+    expect(sessionsParams.parse({ from: "2026-10-01", to: "2026-10-14" })).toEqual({ filter: "everything", with: "anyone", from: "2026-10-01", to: "2026-10-14" });
     expect(sessionsParams.safeParse({ from: "2026-10-01", to: "2026-10-01" }).success).toBe(true);
     expect(sessionsParams.safeParse({ from: "2026-10-15", to: "2026-10-14" }).success).toBe(false);
     expect(sessionsParams.safeParse({ from: "2026-10-01" }).success).toBe(false);
   });
 
   test("months: a before day", () => {
-    expect(monthsParams.parse({ before: "2026-10-01", filter: "casual" })).toEqual({ before: "2026-10-01", filter: "casual" });
+    expect(monthsParams.parse({ before: "2026-10-01", filter: "casual" })).toEqual({ before: "2026-10-01", filter: "casual", with: "anyone" });
     expect(monthsParams.safeParse({}).success).toBe(false);
   });
 
   test("period: one shape per kind, giving a PeriodSpec", () => {
-    expect(periodParams.parse({ kind: "week", day: "2026-10-21" })).toEqual({ spec: { kind: "week", day: "2026-10-21" }, filter: "everything", window: 20 });
-    expect(periodParams.parse({ kind: "season", season: "2", filter: "ranked" })).toEqual({ spec: { kind: "season", id: 2 }, filter: "ranked", window: 20 });
-    expect(periodParams.parse({ kind: "last30" })).toEqual({ spec: { kind: "last30" }, filter: "everything", window: 20 });
+    expect(periodParams.parse({ kind: "week", day: "2026-10-21" })).toEqual({ spec: { kind: "week", day: "2026-10-21" }, filter: "everything", with: "anyone", window: 20 });
+    expect(periodParams.parse({ kind: "season", season: "2", filter: "ranked" })).toEqual({ spec: { kind: "season", id: 2 }, filter: "ranked", with: "anyone", window: 20 });
+    expect(periodParams.parse({ kind: "last30" })).toEqual({ spec: { kind: "last30" }, filter: "everything", with: "anyone", window: 20 });
     for (const bad of [{ kind: "week" }, { kind: "season" }, { kind: "season", season: "x" }, { kind: "season", season: "1.5" }, { kind: "decade" }, {}]) {
       expect(periodParams.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
     }

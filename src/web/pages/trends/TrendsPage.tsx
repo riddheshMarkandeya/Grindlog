@@ -5,12 +5,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { dayOf, periodRange, shiftDay } from "../../../shared/periods";
+import { teammateValue } from "../../../shared/teammate-filter";
 import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { useNow } from "../../components/useNow";
+import { teammateMissing } from "../../logic/filter-options";
 import { chartMode } from "../../logic/trend-chart";
 import { ENOUGH_MATCHES, parseTrends, patchTrends, stripYear, trendsPath, type TrendsState } from "../../logic/trends";
-import { usePeriod, usePlayedDays, useSeasons, useSettings } from "../../queries";
+import { useFriends, usePeriod, usePlayedDays, useSeasons, useSettings } from "../../queries";
 import { MetricTiles } from "./MetricTiles";
 import { PeriodControls } from "./PeriodControls";
 import { PeriodHeader, StatsLine } from "./PeriodHeader";
@@ -44,14 +46,26 @@ export function TrendsPage() {
   // The period's first and last day; all time starts at your first match under the filter.
   const lastDay = range ? dayOf(range.to - 1) : today;
   const year = stripYear(state.year, lastDay, today);
-  const played = usePlayedDays(year, state.filter);
+  const played = usePlayedDays(year, state.filter, state.teammate);
   const { rollingWindow } = useSettings();
-  const period = usePeriod(state.spec, state.filter, today, rollingWindow);
+  const period = usePeriod(state.spec, state.filter, today, rollingWindow, state.teammate);
+  const friends = useFriends();
   const firstDay = played.data?.firstDay ?? null;
   const fromDay = range && range.from !== null ? dayOf(range.from) : (period.data?.firstDay ?? null);
   const days = fromDay !== null && range && range.to > (range.from ?? -Infinity) ? { from: fromDay, last: lastDay < fromDay ? fromDay : lastDay } : null;
 
   const go = (patch: Partial<TrendsState>) => { void navigate(trendsPath(patchTrends(state, patch))); };
+
+  // Once the friends load, an id that isn't one goes back to Anyone; replaced, so Back doesn't
+  // return to it. Not a patch: the x axis the URL set stays, as the user changed nothing.
+  const missing = friends.data !== undefined && teammateMissing(state.teammate, friends.data);
+  const resetTo = missing ? trendsPath({ ...state, teammate: "anyone" }) : null;
+  const missingWith = teammateValue(state.teammate);
+  useEffect(() => {
+    if (resetTo === null) return;
+    console.info("[rlt] trends/with_reset", { with: missingWith });
+    void navigate(resetTo, { replace: true });
+  }, [resetTo, missingWith, navigate]);
 
   // Logged when the chart's mode or its inputs change, so the console says why By match was shown.
   const chart = period.data ? chartMode(state.x, period.data.buckets, period.data.rolling.length) : null;
@@ -123,8 +137,10 @@ export function TrendsPage() {
         playedDays={played.data.days}
         selected={days && { from: days.from, to: shiftDay(days.last, 1) }}
         present={present}
+        friends={friends.data ?? []}
         onPeriod={(spec, keepYear) => { go({ spec, year: keepYear ? state.year : null }); }}
         onFilter={(filter) => { go({ filter }); }}
+        onTeammate={(teammate) => { go({ teammate }); }}
         onYear={(y) => { go({ year: y }); }}
       />
       {range === null ? (

@@ -222,12 +222,17 @@ describe("the W/L chart", () => {
 });
 
 describe("where a bucket goes", () => {
-  const state: TrendsState = { spec: { kind: "last30" }, filter: "ranked", metric: "saves", year: 2025, x: "date" };
+  const state: TrendsState = { spec: { kind: "last30" }, filter: "ranked", teammate: "anyone", metric: "saves", year: 2025, x: "date" };
 
   test("a day opens its session's recap under the filter; an empty one goes nowhere", () => {
     const bs = days("2026-10-12", [3, 0]);
     expect(bucketHref(first(bs), "day", state)).toBe("/recap/s-2026-10-12?filter=ranked");
     expect(bucketHref(first(bs.slice(1)), "day", state)).toBeNull();
+  });
+
+  test("a day's recap keeps the teammate filter, encoded", () => {
+    const bs = days("2026-10-12", [3]);
+    expect(bucketHref(first(bs), "day", { ...state, teammate: { friends: ["Epic|sam|0"] } })).toBe("/recap/s-2026-10-12?filter=ranked&with=Epic%7Csam%7C0");
   });
 
   test("a week or month opens that period on Trends, the year and x axis reset", () => {

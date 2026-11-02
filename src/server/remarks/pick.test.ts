@@ -33,7 +33,7 @@ describe("pick: a first view", () => {
 
   test("inert triggers are ignored even if handed in", () => {
     expect(pick(input({ fired: [on("bicycle_goal"), on("marathon")] })).quipTrigger).toBe("marathon");
-    expect(pick(input({ fired: [on("duo_good")] })).quipTrigger).toBeNull();
+    expect(pick(input({ fired: [on("demoed_a_lot")] })).quipTrigger).toBeNull();
   });
 
   test("aerial-or-long picks only lines of the kinds that happened", () => {

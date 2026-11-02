@@ -9,6 +9,7 @@ import { REQUEST_HEADER } from "../../shared/constants";
 import {
   breakResponse,
   currentResponse,
+  friendsResponse,
   idsResponse,
   latestResponse,
   matchDetailResponse,
@@ -21,6 +22,7 @@ import {
   sessionDetailResponse,
   sessionsResponse,
   statusSchema,
+  suggestionsResponse,
   type Status,
 } from "../../shared/schemas/responses";
 import { DEFAULT_SETTINGS, settingsSchema } from "../../shared/schemas/settings";
@@ -28,7 +30,7 @@ import { startHost, type Host } from "../host";
 import { createQueryReader } from "../query/read";
 import { createRecordWriter } from "../records/save";
 import { openStorage, type Storage } from "../storage";
-import { ME, memoryLogger, record } from "../testing";
+import { ME, memoryLogger, player, record, THEM } from "../testing";
 import { createApi, type Api } from "./index";
 
 let dir: string;
@@ -355,5 +357,63 @@ describe("match ended", () => {
     api.matchEnded("A");
     expect(await events.next()).toEqual({ event: "match_ended", data: { guid: "A", sessionKey: "A" } });
     await events.cancel();
+  });
+});
+
+describe("friends", () => {
+  const SAM = "Epic|sam|0";
+  const post = (path: string, headers: Record<string, string> = { [REQUEST_HEADER]: "1" }) => fetch(url(path), { method: "POST", headers });
+  const q = (id: string) => `id=${encodeURIComponent(id)}`;
+  const seedSam = () => {
+    const writer = createRecordWriter({ tracker: storage.tracker, logger: memoryLogger(), now: () => 1 });
+    writer.save(record("C", T0 + 30 * MIN, { players: [player(ME, 0), player(SAM, 0, { name: "Sam" }), player(THEM, 1)] }, { endedAt: T0 + 35 * MIN }));
+  };
+
+  test("add, rename, remove and never-suggest each answer with the whole list", async () => {
+    seedSam();
+    let res = await post(`/api/friends?${q(SAM)}&nickname=Sammy`);
+    expect(res.status).toBe(200);
+    expect(friendsResponse.parse(await res.json())).toEqual({ friends: [{ id: SAM, nickname: "Sammy", name: "Sammy" }] });
+    res = await post(`/api/friends/nickname?${q(SAM)}`);
+    expect(friendsResponse.parse(await res.json()).friends).toEqual([{ id: SAM, nickname: null, name: "Sam" }]);
+    expect(await get(friendsResponse, "/api/friends")).toEqual({ friends: [{ id: SAM, nickname: null, name: "Sam" }] });
+    res = await post(`/api/friends/remove?${q(SAM)}`);
+    expect(friendsResponse.parse(await res.json()).friends).toEqual([]);
+    res = await post(`/api/friends/never-suggest?${q(THEM)}`);
+    expect(res.status).toBe(200);
+    expect((await get(suggestionsResponse, "/api/friends/suggestions")).suggestions).toEqual([]);
+  });
+
+  test("with= filters the pages; a bad one is 400", async () => {
+    seedSam();
+    await post(`/api/friends?${q(SAM)}`);
+    const w = `with=${encodeURIComponent(SAM)}`;
+    expect((await get(sessionsResponse, `/api/sessions?from=2026-10-01&to=2026-10-31&${w}`)).sessions.map((s) => s.matches)).toEqual([1]);
+    expect((await get(sessionsResponse, "/api/sessions?from=2026-10-01&to=2026-10-31&with=solo")).sessions.map((s) => s.matches)).toEqual([2]);
+    const detail = await get(sessionDetailResponse, `/api/sessions/A?${w}`);
+    expect([detail.matches.map((m) => m.guid), detail.friendsPresent]).toEqual([["C"], [{ id: SAM, name: "Sam" }]]);
+    expect((await get(sessionDetailResponse, "/api/sessions/A")).matches[2]?.friends).toEqual([SAM]);
+    expect((await get(monthsResponse, `/api/sessions/months?before=2026-12-01&${w}`)).months[0]?.sessions).toBe(1);
+    expect((await get(currentResponse, `/api/sessions/current?${w}`)).session?.matches).toBe(1);
+    expect((await get(latestResponse, `/api/sessions/latest?${w}`)).session?.key).toBe("A");
+    expect((await get(periodResponse, `/api/period?kind=month&day=2026-10-01&${w}`)).aggregate.matches).toBe(1);
+    expect((await get(playedDaysResponse, `/api/played-days?year=2026&${w}`)).days).toEqual([{ day: "2026-10-10", matches: 1 }]);
+    expect((await get(remarksResponse, `/api/sessions/A/remarks?${w}`)).mood.text).toBeTypeOf("string");
+    for (const bad of ["with=", "with=Epic%7Csam", "with=anyone"]) expect((await fetch(url(`/api/sessions/A?${bad}`))).status, bad).toBe(400);
+  });
+
+  test("404 for someone not seen or not a friend, 409 for a friend twice, 400 without an id or with a long nickname, 403 without the header", async () => {
+    seedSam();
+    expect((await post(`/api/friends?${q("Epic|nobody|0")}`)).status).toBe(404);
+    expect((await post(`/api/friends?${q(ME)}`)).status).toBe(404);
+    expect((await post(`/api/friends/nickname?${q(SAM)}&nickname=x`)).status).toBe(404);
+    expect((await post(`/api/friends/remove?${q(SAM)}`)).status).toBe(404);
+    expect((await post(`/api/friends?${q(SAM)}`)).status).toBe(200);
+    expect((await post(`/api/friends?${q(SAM)}`)).status).toBe(409);
+    expect((await post(`/api/friends/never-suggest?${q(SAM)}`)).status).toBe(409);
+    expect((await post("/api/friends")).status).toBe(400);
+    expect((await post(`/api/friends/nickname?${q(SAM)}&nickname=${"x".repeat(33)}`)).status).toBe(400);
+    expect((await post(`/api/friends/remove?${q(SAM)}`, {})).status).toBe(403);
+    expect((await get(friendsResponse, "/api/friends")).friends).toHaveLength(1);
   });
 });

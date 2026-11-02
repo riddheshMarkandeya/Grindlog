@@ -9,6 +9,7 @@
 .ico { width: 18px; height: 18px; object-fit: contain; vertical-align: middle; }
 
 .bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3); }
+.filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); }
 .picks { display: flex; flex-wrap: wrap; gap: 6px; }
 .picks button {
   background: var(--surf2); border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px;

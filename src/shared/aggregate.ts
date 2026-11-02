@@ -47,6 +47,8 @@ export interface MyMatch {
   goals: { speedKmh: number | null; ownGoal: boolean }[];
   /** Your statfeed counts by event name. */
   statfeed: Record<string, number>;
+  /** Your friends who were on your team at any point, by PrimaryId; [] with no team of yours. */
+  friends: string[];
 }
 
 const COUNTED = ["goals", "assists", "saves", "shots", "demos", "score"] as const;

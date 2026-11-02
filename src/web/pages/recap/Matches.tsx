@@ -2,6 +2,7 @@
 // its match page; the table's box is capped and keeps its header and totals in view.
 import { Link } from "react-router";
 import type { PlaylistFilter } from "../../../shared/playlist-filter";
+import type { TeammateFilter } from "../../../shared/teammate-filter";
 import { playlistInfo } from "../../../shared/playlists";
 import type { SessionDetail } from "../../../shared/schemas/responses";
 import mvpIcon from "../../assets/icons/MVP.png";
@@ -23,7 +24,7 @@ const COLS: readonly (readonly ["score" | "goals" | "assists" | "saves" | "shots
 
 const shown = (v: number | null | undefined) => (v == null ? "–" : String(v));
 
-export function Matches({ detail, filter }: { detail: SessionDetail; filter: PlaylistFilter }) {
+export function Matches({ detail, filter, teammate }: { detail: SessionDetail; filter: PlaylistFilter; teammate: TeammateFilter }) {
   const { matches, aggregate: a } = detail;
   const { clock: hours } = useSettings();
   const wl = a.wins === null || a.losses === null ? "" : ` · ${String(a.wins)}–${String(a.losses)}`;
@@ -49,7 +50,7 @@ export function Matches({ detail, filter }: { detail: SessionDetail; filter: Pla
               const flag = flagShort(m.flags);
               return (
                 <tr key={m.guid} className={cx(m.result === "win" && styles.win, m.result === "loss" && styles.loss)}>
-                  <td><Link className={styles.open} to={recapPath(detail.key, filter, { match: m.guid })} aria-label={matchLabel(m, n, hours)}>{n}</Link></td>
+                  <td><Link className={styles.open} to={recapPath(detail.key, filter, { match: m.guid }, teammate)} aria-label={matchLabel(m, n, hours)}>{n}</Link></td>
                   <td>{clock(m.startedAt, hours)}</td>
                   <td>{playlistInfo(m.playlistId).name}</td>
                   <td className={styles.result}>

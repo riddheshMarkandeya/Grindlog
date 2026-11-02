@@ -8,6 +8,9 @@ import { filterLabel } from "./filter-options";
 import { clock, dayLabel, decimal, durationText, SPEED_LABEL, speedIn, type Units } from "./format";
 import { pct, stoodOut } from "./recap";
 
+/** The teammate filter as the card shows it: the friend by display name. */
+export type ShareTeammate = "anyone" | "solo" | { name: string };
+
 export interface ShareCardInput {
   detail: Pick<SessionDetail, "day" | "startedAt" | "endedAt" | "current" | "aggregate" | "baseline">;
   summary: Pick<SessionSummary, "wins" | "losses" | "results">;
@@ -16,6 +19,7 @@ export interface ShareCardInput {
   name: string | null;
   mood: string | null;
   units: Units;
+  teammate: ShareTeammate;
 }
 
 export interface ShareTile { id: string; label: string; value: string; sub: string | null }
@@ -24,7 +28,7 @@ export interface ShareCardView {
   name: string | null;
   when: string;
   live: boolean;
-  /** The chosen filter; null on the default, which says nothing a friend would need. */
+  /** The chosen filters, " · " between; null on the defaults, which say nothing a friend would need. */
   label: string | null;
   wins: number;
   losses: number;
@@ -66,7 +70,9 @@ function stoodLine(a: AggregateWire, base: AggregateWire, units: Units): ShareCa
   return null;
 }
 
-export function shareCard({ detail, summary, filter, name, mood, units }: ShareCardInput): ShareCardView {
+const teammateLabel = (t: ShareTeammate): string | null => (t === "anyone" ? null : t === "solo" ? "Soloqueue" : `with ${t.name}`);
+
+export function shareCard({ detail, summary, filter, name, mood, units, teammate }: ShareCardInput): ShareCardView {
   const a = detail.aggregate;
   const nullStats: string[] = [];
   const fixed = (id: string, label: string, v: number | null, show: (n: number) => string = String, sub: string | null = null): ShareTile => {
@@ -88,7 +94,7 @@ export function shareCard({ detail, summary, filter, name, mood, units }: ShareC
     name,
     when: `${dayLabel(detail.day)} · ${clock(detail.startedAt, units.clock)} · ${durationText(detail.endedAt - detail.startedAt)}${detail.current ? " so far" : ""}`,
     live: detail.current,
-    label: filter === "everything" ? null : filterLabel(filter),
+    label: [filter === "everything" ? null : filterLabel(filter), teammateLabel(teammate)].filter((l) => l !== null).join(" · ") || null,
     wins: summary.wins,
     losses: summary.losses,
     winPct: a.winPct === null ? null : pct(a.winPct),
@@ -103,17 +109,16 @@ export function shareCard({ detail, summary, filter, name, mood, units }: ShareC
 
 const two = (n: number) => String(n).padStart(2, "0");
 
-/** `rl-session-2026-10-27-2010-ranked-doubles.png`: the local start and the filter. */
-export function shareFilename({ startedAt }: { startedAt: number }, filter: PlaylistFilter): string {
+const slugOf = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+/** `rl-session-2026-10-27-2010-ranked-doubles-with-sam.png`: the local start and the filters. */
+export function shareFilename({ startedAt }: { startedAt: number }, filter: PlaylistFilter, teammate: ShareTeammate = "anyone"): string {
   const d = new Date(startedAt);
   const when = `${String(d.getFullYear())}-${two(d.getMonth() + 1)}-${two(d.getDate())}-${two(d.getHours())}${two(d.getMinutes())}`;
-  const slug =
-    typeof filter === "object"
-      ? playlistInfo(filter.playlist).name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
-      : filter === "everything"
-        ? "all"
-        : filter;
-  return `rl-session-${when}-${slug}.png`;
+  const slug = typeof filter === "object" ? slugOf(playlistInfo(filter.playlist).name) : filter === "everything" ? "all" : filter;
+  // A name with no ASCII letters or digits slugs to nothing.
+  const withSlug = teammate === "anyone" ? "" : teammate === "solo" ? "-solo" : `-with-${slugOf(teammate.name) || "friend"}`;
+  return `rl-session-${when}-${slug}${withSlug}.png`;
 }
 
 /** The form line's height when the text leaves it no more room. */

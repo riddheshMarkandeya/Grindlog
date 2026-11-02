@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { filterValue } from "../../shared/playlist-filter";
-import { filterLabel, filterOptions, parseFilter } from "./filter-options";
+import { filterLabel, filterOptions, parseFilter, parseTeammate, teammateMissing } from "./filter-options";
 
 const flat = (groups: ReturnType<typeof filterOptions>) => groups.map((g) => [g.label, g.options.map((o) => `${o.value}=${o.label}`)]);
 
@@ -37,6 +37,26 @@ describe("filterLabel", () => {
     expect(filterLabel("private")).toBe("Private matches");
     expect(filterLabel({ playlist: 11 })).toBe("Ranked Doubles");
     expect(filterLabel({ playlist: 99 })).toBe("Unknown playlist (99)");
+  });
+});
+
+describe("teammate in the URL", () => {
+  test("left out is anyone; solo or an id; a bad value is anyone and bad", () => {
+    expect(parseTeammate(null)).toEqual({ teammate: "anyone", bad: false });
+    expect(parseTeammate("solo")).toEqual({ teammate: "solo", bad: false });
+    expect(parseTeammate("Epic|sam|0")).toEqual({ teammate: { friends: ["Epic|sam|0"] }, bad: false });
+    expect(parseTeammate("anyone")).toEqual({ teammate: "anyone", bad: true });
+  });
+});
+
+describe("teammateMissing", () => {
+  const sam = [{ id: "Epic|sam|0" }];
+  test("anyone and soloqueue always fit; a friend must be offered", () => {
+    expect(teammateMissing("anyone", [])).toBe(false);
+    expect(teammateMissing("solo", [])).toBe(false);
+    expect(teammateMissing("solo", sam)).toBe(false);
+    expect(teammateMissing({ friends: ["Epic|sam|0"] }, sam)).toBe(false);
+    expect(teammateMissing({ friends: ["Epic|alex|0"] }, sam)).toBe(true);
   });
 });
 

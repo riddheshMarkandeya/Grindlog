@@ -21,6 +21,7 @@ const input = (over: { aggregate?: Partial<AggregateWire>; baseline?: AggregateW
   name: over.name === undefined ? "Ridd" : over.name,
   mood: over.mood === undefined ? "Tonight you were the ball's favorite." : over.mood,
   units: over.units ?? { clock: "24h", speed: "kmh" },
+  teammate: over.teammate ?? "anyone",
 });
 const tiles = (i: ShareCardInput) => shareCard(i).tiles.map((t) => [t.label, t.value, t.sub]);
 
@@ -128,6 +129,12 @@ describe("shareCard header and record", () => {
     const bare = shareCard(input({ name: null, mood: null }));
     expect([bare.label, bare.name, bare.mood]).toEqual([null, null, null]);
   });
+
+  test("the label adds the teammate filter after the playlist, or stands alone", () => {
+    expect(shareCard(input({ filter: { playlist: 11 }, teammate: { name: "Sam" } })).label).toBe("Ranked Doubles · with Sam");
+    expect(shareCard(input({ teammate: { name: "Sam" } })).label).toBe("with Sam");
+    expect(shareCard(input({ filter: "ranked", teammate: "solo" })).label).toBe("All ranked · Soloqueue");
+  });
 });
 
 describe("shareFilename", () => {
@@ -137,5 +144,12 @@ describe("shareFilename", () => {
     expect(shareFilename(at, "ranked")).toBe("rl-session-2026-10-07-0905-ranked.png");
     expect(shareFilename({ startedAt: START }, { playlist: 11 })).toBe("rl-session-2026-10-27-2010-ranked-doubles.png");
     expect(shareFilename(at, { playlist: 99 })).toBe("rl-session-2026-10-07-0905-unknown-playlist-99.png");
+  });
+
+  test("the teammate filter adds -with-<name> or -solo; a name with no ASCII letters is -with-friend", () => {
+    const at = { startedAt: new Date(2026, 9, 7, 9, 5).getTime() };
+    expect(shareFilename(at, "ranked", { name: "Sam the Man!" })).toBe("rl-session-2026-10-07-0905-ranked-with-sam-the-man.png");
+    expect(shareFilename(at, "everything", "solo")).toBe("rl-session-2026-10-07-0905-all-solo.png");
+    expect(shareFilename(at, "everything", { name: "ゆき" })).toBe("rl-session-2026-10-07-0905-all-with-friend.png");
   });
 });

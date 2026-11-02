@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { Link } from "react-router";
 import { aggregate } from "../../../shared/aggregate";
 import type { PlaylistFilter } from "../../../shared/playlist-filter";
+import type { TeammateFilter } from "../../../shared/teammate-filter";
 import { playlistInfo } from "../../../shared/playlists";
 import type { MatchDetail, MyMatchWire, SessionDetail } from "../../../shared/schemas/responses";
 import { ApiError } from "../../api";
@@ -17,20 +18,22 @@ import { useMatchDetail, useSettings } from "../../queries";
 import { ExtrasSection } from "./Overview";
 import styles from "./MatchView.module.css";
 
-export function MatchView({ detail, filter, guid }: { detail: SessionDetail; filter: PlaylistFilter; guid: string }) {
+interface Filters { detail: SessionDetail; filter: PlaylistFilter; teammate: TeammateFilter; guid: string }
+
+export function MatchView({ detail, filter, teammate, guid }: Filters) {
   const i = detail.matches.findIndex((m) => m.guid === guid);
   const m = detail.matches[i];
   return (
     <div className={styles.split}>
-      <Rail detail={detail} filter={filter} guid={guid} />
+      <Rail detail={detail} filter={filter} teammate={teammate} guid={guid} />
       <div className={styles.detail}>
-        {m ? <Match detail={detail} m={m} n={i + 1} /> : <NotInView detail={detail} filter={filter} guid={guid} />}
+        {m ? <Match detail={detail} m={m} n={i + 1} /> : <NotInView detail={detail} filter={filter} teammate={teammate} guid={guid} />}
       </div>
     </div>
   );
 }
 
-function Rail({ detail, filter, guid }: { detail: SessionDetail; filter: PlaylistFilter; guid: string }) {
+function Rail({ detail, filter, teammate, guid }: Filters) {
   const box = useRef<HTMLElement>(null);
   const { clock: hours } = useSettings();
   // Keeps the open match in view: centred in the list's own scroll box, so the page doesn't move.
@@ -43,7 +46,7 @@ function Rail({ detail, filter, guid }: { detail: SessionDetail; filter: Playlis
 
   return (
     <nav ref={box} className={styles.rail} aria-label="Matches" data-nav="rail">
-      <Link className={styles.all} to={recapPath(detail.key, filter, "matches")}>
+      <Link className={styles.all} to={recapPath(detail.key, filter, "matches", teammate)}>
         ← All matches<span className={styles.meta}>full numbers table</span>
       </Link>
       <ol>
@@ -56,7 +59,7 @@ function Rail({ detail, filter, guid }: { detail: SessionDetail; filter: Playlis
             <li key={m.guid}>
               <Link
                 className={cx(styles.row, m.result === "win" && styles.win, m.result === "loss" && styles.loss)}
-                to={recapPath(detail.key, filter, { match: m.guid })}
+                to={recapPath(detail.key, filter, { match: m.guid }, teammate)}
                 aria-current={m.guid === guid ? "page" : undefined}
                 aria-label={matchLabel(m, i + 1, hours)}
               >
@@ -179,8 +182,8 @@ function PlayerRow({ p }: { p: MatchDetail["players"][number] }) {
   );
 }
 
-/** A match page for a guid this session's list doesn't hold under the filter. */
-function NotInView({ detail, filter, guid }: { detail: SessionDetail; filter: PlaylistFilter; guid: string }) {
+/** A match page for a guid this session's list doesn't hold under the filters. */
+function NotInView({ detail, filter, teammate, guid }: Filters) {
   const full = useMatchDetail(guid);
   const status = full.error instanceof ApiError ? full.error.status : full.error ? "network" : null;
   const elsewhere = full.data?.sessionKey ?? null;
@@ -198,9 +201,11 @@ function NotInView({ detail, filter, guid }: { detail: SessionDetail; filter: Pl
     <div className={styles.panel}>
       <h2 className={styles.h3}>{heading}</h2>
       <ul className={styles.links}>
-        {elsewhere !== null && elsewhere !== detail.key && <li><Link to={recapPath(elsewhere, filter, { match: guid })}>Open it in its own session</Link></li>}
-        {elsewhere === detail.key && filter !== "everything" && <li><Link to={recapPath(detail.key, "everything", { match: guid })}>Show it under every playlist</Link></li>}
-        <li><Link to={recapPath(detail.key, filter, "matches")}>All matches in this session</Link></li>
+        {elsewhere !== null && elsewhere !== detail.key && <li><Link to={recapPath(elsewhere, filter, { match: guid }, teammate)}>Open it in its own session</Link></li>}
+        {elsewhere === detail.key && (filter !== "everything" || teammate !== "anyone") && (
+          <li><Link to={recapPath(detail.key, "everything", { match: guid })}>{teammate === "anyone" ? "Show it under every playlist" : "Show it with no filters"}</Link></li>
+        )}
+        <li><Link to={recapPath(detail.key, filter, "matches", teammate)}>All matches in this session</Link></li>
       </ul>
     </div>
   );

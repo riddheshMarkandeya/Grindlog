@@ -7,6 +7,7 @@ import { filterOnly, monthsParams, periodParams, playedDaysParams, sessionsParam
 import {
   breakResponse,
   currentResponse,
+  friendsResponse,
   idsResponse,
   latestResponse,
   matchDetailResponse,
@@ -19,11 +20,13 @@ import {
   sessionDetailResponse,
   sessionsResponse,
   statusSchema,
+  suggestionsResponse,
   type Status,
 } from "../../shared/schemas/responses";
 import { settingsPatch, settingsSchema } from "../../shared/schemas/settings";
-import { idStatusParams, seasonIdParams, seasonInput } from "../../shared/schemas/tables";
+import { friendIdParams, friendNicknameParams, idStatusParams, seasonIdParams, seasonInput } from "../../shared/schemas/tables";
 import type { Db } from "../db/sqlite";
+import { createFriends, type FriendWrite } from "../friends";
 import { createIds } from "../ids";
 import type { Logger } from "../log";
 import type { QueryReader } from "../query/read";
@@ -80,6 +83,11 @@ function seasonWritten(write: SeasonWrite): Response {
   return Response.json(body, { status: 409 });
 }
 
+function friendWritten(write: FriendWrite): Response {
+  if (write.ok) return ok(friendsResponse, { friends: write.friends });
+  return write.error === "not_found" ? notFound() : Response.json({ error: "conflict" }, { status: 409 });
+}
+
 export function createApi({ tracker, reader, status, staticDir, logger, now = Date.now, events: eventOptions }: ApiOptions) {
   const pages = createPages({ reader, now });
   const hub = createEventHub({ status, logger, ...eventOptions });
@@ -87,6 +95,7 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
   const settings = createSettings({ tracker, logger });
   const ids = createIds({ tracker, logger });
   const seasons = createSeasons({ tracker, reader, logger });
+  const friends = createFriends({ tracker, reader, logger, now });
 
   const routes: Route<RouteHandler>[] = [
     { method: "GET", path: "/api/status", handler: () => ok(statusSchema, status()) },
@@ -105,7 +114,7 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
       path: "/api/sessions",
       handler: ({ query }) => {
         const p = parse(sessionsParams, query);
-        return ok(sessionsResponse, pages.sessionList(p.filter, p.from, p.to));
+        return ok(sessionsResponse, pages.sessionList(p.filter, p.from, p.to, p.with));
       },
     },
     {
@@ -113,34 +122,49 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
       path: "/api/sessions/months",
       handler: ({ query }) => {
         const p = parse(monthsParams, query);
-        return ok(monthsResponse, pages.monthFolds(p.filter, p.before));
+        return ok(monthsResponse, pages.monthFolds(p.filter, p.before, p.with));
       },
     },
     {
       method: "GET",
       path: "/api/sessions/current",
-      handler: ({ query }) => ok(currentResponse, { session: pages.currentSummary(parse(filterOnly, query).filter) }),
+      handler: ({ query }) => {
+        const p = parse(filterOnly, query);
+        return ok(currentResponse, { session: pages.currentSummary(p.filter, p.with) });
+      },
     },
     {
       method: "GET",
       path: "/api/sessions/latest",
-      handler: ({ query }) => ok(latestResponse, pages.latest(parse(filterOnly, query).filter)),
+      handler: ({ query }) => {
+        const p = parse(filterOnly, query);
+        return ok(latestResponse, pages.latest(p.filter, p.with));
+      },
     },
     {
       method: "GET",
       path: "/api/sessions/:key",
-      handler: ({ query, params }) => orNotFound(sessionDetailResponse, pages.sessionDetail(params.key ?? "", parse(filterOnly, query).filter)),
+      handler: ({ query, params }) => {
+        const p = parse(filterOnly, query);
+        return orNotFound(sessionDetailResponse, pages.sessionDetail(params.key ?? "", p.filter, p.with));
+      },
     },
     {
       method: "GET",
       path: "/api/sessions/:key/remarks",
       // Picks and stores on first view: a revisit shows the same lines.
-      handler: ({ query, params }) => orNotFound(remarksResponse, remarks.get(params.key ?? "", parse(filterOnly, query).filter)),
+      handler: ({ query, params }) => {
+        const p = parse(filterOnly, query);
+        return orNotFound(remarksResponse, remarks.get(params.key ?? "", p.filter, p.with));
+      },
     },
     {
       method: "POST",
       path: "/api/sessions/:key/remarks/reroll",
-      handler: ({ query, params }) => orNotFound(remarksResponse, remarks.reroll(params.key ?? "", parse(filterOnly, query).filter)),
+      handler: ({ query, params }) => {
+        const p = parse(filterOnly, query);
+        return orNotFound(remarksResponse, remarks.reroll(params.key ?? "", p.filter, p.with));
+      },
     },
     {
       method: "POST",
@@ -160,7 +184,7 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
       path: "/api/period",
       handler: ({ query }) => {
         const p = parse(periodParams, query);
-        return orNotFound(periodResponse, pages.period(p.spec, p.filter, p.window));
+        return orNotFound(periodResponse, pages.period(p.spec, p.filter, p.window, p.with));
       },
     },
     {
@@ -168,7 +192,7 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
       path: "/api/played-days",
       handler: ({ query }) => {
         const p = parse(playedDaysParams, query);
-        return ok(playedDaysResponse, pages.playedDays(p.year, p.filter));
+        return ok(playedDaysResponse, pages.playedDays(p.year, p.filter, p.with));
       },
     },
     { method: "GET", path: "/api/seasons", handler: () => ok(seasonsResponse, { seasons: pages.seasons() }) },
@@ -189,6 +213,27 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
         return orNotFound(idsResponse, list && { ids: list });
       },
     },
+    { method: "GET", path: "/api/friends", handler: () => ok(friendsResponse, pages.friends()) },
+    { method: "GET", path: "/api/friends/suggestions", handler: () => ok(suggestionsResponse, pages.friendSuggestions()) },
+    // The id rides in the query string like the other writes; a PrimaryId's bars are encoded.
+    {
+      method: "POST",
+      path: "/api/friends",
+      handler: ({ query }) => {
+        const p = parse(friendNicknameParams, query);
+        return friendWritten(friends.add(p.id, p.nickname));
+      },
+    },
+    {
+      method: "POST",
+      path: "/api/friends/nickname",
+      handler: ({ query }) => {
+        const p = parse(friendNicknameParams, query);
+        return friendWritten(friends.setNickname(p.id, p.nickname));
+      },
+    },
+    { method: "POST", path: "/api/friends/remove", handler: ({ query }) => friendWritten(friends.remove(parse(friendIdParams, query).id)) },
+    { method: "POST", path: "/api/friends/never-suggest", handler: ({ query }) => friendWritten(friends.neverSuggest(parse(friendIdParams, query).id)) },
     { method: "GET", path: "/api/settings", handler: () => ok(settingsSchema, settings.get()) },
     // The changes ride in the query string: every setting is one scalar, and handlers are synchronous.
     { method: "POST", path: "/api/settings", handler: ({ query }) => ok(settingsSchema, settings.save(parse(settingsPatch, query))) },

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { idStatus, seasonInput } from "./tables";
+import { friendIdParams, friendNicknameParams, idStatus, NICKNAME_MAX, seasonInput } from "./tables";
 
 describe("seasonInput", () => {
   test("a name is trimmed; the start is a real day", () => {
@@ -25,5 +25,21 @@ describe("idStatus", () => {
     expect(idStatus.parse("confirmed")).toBe("confirmed");
     expect(idStatus.parse("rejected")).toBe("rejected");
     expect(idStatus.safeParse("pending").success).toBe(false);
+  });
+});
+
+describe("friend params", () => {
+  test("a nickname is trimmed, blank or left out is none, and 32 characters is the most", () => {
+    expect(friendNicknameParams.parse({ id: "Epic|sam|0", nickname: "  Sam  " })).toEqual({ id: "Epic|sam|0", nickname: "Sam" });
+    expect(friendNicknameParams.parse({ id: "Epic|sam|0", nickname: "   " }).nickname).toBeNull();
+    expect(friendNicknameParams.parse({ id: "Epic|sam|0" }).nickname).toBeNull();
+    expect(friendNicknameParams.parse({ id: "Epic|sam|0", nickname: "x".repeat(NICKNAME_MAX) }).nickname).toHaveLength(32);
+    expect(friendNicknameParams.safeParse({ id: "Epic|sam|0", nickname: "x".repeat(33) }).success).toBe(false);
+  });
+
+  test("an id is needed", () => {
+    expect(friendIdParams.safeParse({}).success).toBe(false);
+    expect(friendIdParams.safeParse({ id: "" }).success).toBe(false);
+    expect(friendIdParams.parse({ id: "Epic|sam|0" })).toEqual({ id: "Epic|sam|0" });
   });
 });

@@ -244,7 +244,7 @@ export const wlEnds = (buckets: readonly ViewBucket[], kind: BucketKind, locale?
 /** Where a bucket's column goes: a day's recap under the filter, or that week or month on Trends; null for an empty bucket. */
 export function bucketHref(b: ViewBucket, kind: BucketKind, state: TrendsState): string | null {
   if (b.stats.matches === 0) return null;
-  if (kind === "day") return b.session === null ? null : recapPath(b.session, state.filter);
+  if (kind === "day") return b.session === null ? null : recapPath(b.session, state.filter, "overview", state.teammate);
   return trendsPath(patchTrends(state, { spec: { kind, day: b.day }, year: null }));
 }
 
