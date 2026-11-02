@@ -118,6 +118,12 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   the Friends prototype review (`prototype/friends-page`).
 
 ## Watch list
+- [ ] **[design, Low, Standard]** Trigger: a second Dropshot match (playlist 23 or 29) flagged
+  `statfeed_matches_scoreboard`. The first one (2026-11-02, `9DF929B6…`) had no Shot statfeeds
+  for any player while the scoreboard showed 27–33 shots each, so Dropshot may count shots
+  (damage hits) without a statfeed. Then exempt Dropshot's shots from the check, or take
+  Dropshot shots from the scoreboard. Playlists 81 and 90 (2026-11-02, likely Spike Drop and a
+  points-scored LTM) stay unmapped: the user is fine with unknown casual extra modes.
 - [ ] **[design, Low, Standard]** Trigger: an `ids/unknown_platform` warn in tracker.log, or the first
   `PS5|` or `Switch|` id in my_ids. The You table maps the raw primary-id prefix to a platform name
   (`src/shared/platforms.ts`); PS5 and Switch are mapped on assumption, never seen in a capture, and
