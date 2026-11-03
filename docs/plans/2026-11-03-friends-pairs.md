@@ -1,5 +1,8 @@
 # Friends pairs: trio "with" / duo "against" — build plan (parts a and b)
 
+Status: done, deployed 2026-11-03 (part a `3dd58a3`, part b `0e66d11`). Left for the user: a
+filled pair Against zone and "Show N more" with real suggestions, which no real data reaches yet.
+
 ## Context
 BACKLOG post-v1 item: two friends both on your team ("with A and B"), or both on the other team
 ("against A and B"), on the Friends page. The prototype (branch `prototype/friends-trio`, commit
