@@ -5,10 +5,10 @@
 import { BASELINE_DAYS } from "../../shared/constants";
 import { daysBefore, dayOf, monthOf, periodRange, type PeriodRange, type PeriodSpec, type Season } from "../../shared/periods";
 import { inFilter, playlistsPresent, type PlaylistFilter } from "../../shared/playlist-filter";
-import { withTeammate, type TeammateFilter } from "../../shared/teammate-filter";
-import type { FriendCard, FriendDetail, FriendSuggestions, LatestSession, NeverSuggested, MatchDetail, MonthFolds, PeriodView, PlayedDays, SessionDetail, SessionList, SessionSummary } from "../../shared/schemas/responses";
+import { pairKey, withTeammate, type TeammateFilter } from "../../shared/teammate-filter";
+import type { FriendCard, FriendDetail, FriendPair, FriendSuggestions, LatestSession, NeverSuggested, MatchDetail, MonthFolds, PairDetail, PeriodView, PlayedDays, SessionDetail, SessionList, SessionSummary } from "../../shared/schemas/responses";
 import { aggregate, baseline, byPlaylist, type MyMatch } from "../../shared/aggregate";
-import { friendCard, friendView } from "../../shared/friend-stats";
+import { friendCard, friendView, together } from "../../shared/friend-stats";
 import type { Logger } from "../log";
 import { bucketKind, buckets, previousRange, rollingWindows, trendStats } from "../../shared/trends";
 import type { MatchResult, QueryReader } from "../query/read";
@@ -230,25 +230,57 @@ export function createPages({ reader, logger, now }: { reader: QueryReader; logg
   }
 
   const sessionsByGuid = ({ all }: Index) => new Map(all.flatMap((s) => s.guids.map((g) => [g, s.key] as const)));
+  const sessionLookup = () => {
+    const byGuid = sessionsByGuid(index());
+    return (guid: string) => byGuid.get(guid) ?? null;
+  };
 
-  /** Every friend with both records; a friend's side and records come from friendCard. */
-  function friends(): { friends: FriendCard[] } {
+  /**
+   * Every friend with both records; a friend's side and records come from friendCard. Pairs of
+   * friends appear by the suggestion rule, counting matches with both on one side together.
+   */
+  function friends(): { friends: FriendCard[]; pairs: FriendPair[] } {
     const list = reader.readFriends();
-    if (!list.length) return { friends: [] };
+    if (!list.length) return { friends: [], pairs: [] };
     const ids = list.map((f) => f.id);
     const lobbies = reader.readLobbies(ids);
     const seen = reader.readLastNames(ids);
-    return { friends: list.map((f) => ({ ...f, lastSeenName: seen.get(f.id) ?? null, ...friendCard(lobbies, f.id) })) };
+    // Sessions need the whole index, so it's read only once some pair has enough matches.
+    let sessionOf: ((guid: string) => string | null) | undefined;
+    const pairs = ids.flatMap((a, i) => ids.slice(i + 1).flatMap((b): FriendPair[] => {
+      const pair = pairKey(a, b);
+      const ms = together(lobbies, pair);
+      if (ms.length < SUGGEST_MATCHES) return [];
+      const of = (sessionOf ??= sessionLookup());
+      const sessions = new Set(ms.map((m) => of(m.guid))).size;
+      return sessions >= SUGGEST_SESSIONS ? [{ ids: pair, ...friendCard(ms, pair) }] : [];
+    }));
+    pairs.sort((x, y) => (y.lastPlayed ?? 0) - (x.lastPlayed ?? 0));
+    logger.info(C, "friend_pairs", { friends: ids.length, pairs: pairs.length });
+    return { friends: list.map((f) => ({ ...f, lastSeenName: seen.get(f.id) ?? null, ...friendCard(lobbies, [f.id]) })), pairs };
   }
 
   /** Null when the id isn't a friend. */
   function friendDetail(id: string): FriendDetail | null {
     const friend = reader.readFriends().find((f) => f.id === id);
     if (!friend) return null;
-    const sessionOf = sessionsByGuid(index());
-    const view = friendView(reader.readLobbies([id]), id, (g) => sessionOf.get(g) ?? null);
+    const view = friendView(reader.readLobbies([id]), [id], sessionLookup());
     logger.info(C, "friend_detail", { id, with: view.with.record.n, against: view.against.record.n, modes: view.with.modes.map((m) => m.mode) });
     return { friend: { ...friend, lastSeenName: reader.readLastNames([id]).get(id) ?? null }, view };
+  }
+
+  /** Null unless both are friends and differ; the friends and the view's arrays are in key order. */
+  function pairDetail(a: string, b: string): PairDetail | null {
+    if (a === b) return null;
+    const ids = pairKey(a, b);
+    const all = reader.readFriends();
+    const [x, y] = ids.map((id) => all.find((f) => f.id === id));
+    if (!x || !y) return null;
+    const view = friendView(reader.readLobbies(ids), ids, sessionLookup());
+    const seen = reader.readLastNames(ids);
+    const row = (f: typeof x) => ({ ...f, lastSeenName: seen.get(f.id) ?? null });
+    logger.info(C, "pair_detail", { ids, with: view.with.record.n, against: view.against.record.n, modes: view.with.modes.map((m) => m.mode) });
+    return { friends: [row(x), row(y)], view };
   }
 
   /** By the name they last used, else their id. */
@@ -281,6 +313,7 @@ export function createPages({ reader, logger, now }: { reader: QueryReader; logg
     friendSuggestions,
     friends,
     friendDetail,
+    pairDetail,
     neverSuggested,
     monthFolds,
     currentSummary,

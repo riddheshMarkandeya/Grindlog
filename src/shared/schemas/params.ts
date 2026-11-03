@@ -3,7 +3,7 @@
 import { z } from "zod";
 import type { PeriodSpec } from "../periods";
 import type { PlaylistFilter } from "../playlist-filter";
-import type { TeammateFilter } from "../teammate-filter";
+import { pairKey, type TeammateFilter } from "../teammate-filter";
 import { ROLLING_WINDOW } from "../trends";
 import { groupFilter, windowParam } from "./settings";
 
@@ -14,12 +14,23 @@ export const filterParam = z
   .union([groupFilter, wholeId.transform((playlist) => ({ playlist }))])
   .default("everything") satisfies z.ZodType<PlaylistFilter, string | undefined>;
 
+const friendId = z.string().max(100).regex(/^[^|,]+\|[^,]*\|[^,]*$/);
+
 /**
- * `solo` or one friend's PrimaryId (`Platform|id|split`, so at least two bars), anyone when left
- * out. An id that isn't a friend just matches nothing; the client decides what the dropdown offers.
+ * `solo`, or one or two friends' PrimaryIds (`Platform|id|split`, so at least two bars) joined by
+ * ",", anyone when left out. A pair is sorted into its key order, so either order is one value.
+ * An id that isn't a friend just matches nothing; the client decides what the dropdown offers.
  */
 export const teammateParam = z
-  .union([z.literal("solo"), z.string().max(100).regex(/^[^|,]+\|[^,]*\|[^,]*$/).transform((id) => ({ friends: [id] }))])
+  .union([
+    z.literal("solo"),
+    z
+      .string()
+      .max(201)
+      .transform((v) => v.split(","))
+      .pipe(z.union([z.tuple([friendId]), z.tuple([friendId, friendId]).refine(([a, b]) => a !== b, "the same friend twice")]))
+      .transform((ids) => ({ friends: ids.length === 2 ? pairKey(...ids) : ids })),
+  ])
   .optional()
   .transform((f): TeammateFilter => f ?? "anyone") satisfies z.ZodType<TeammateFilter, string | undefined>;
 

@@ -1,7 +1,9 @@
-// A friend's page, worked out from every match you played (one row each, with the friend's row if
-// they were in it). Records, tiles and playlist rows count every match but offline play. The
-// with/without comparison reads one "mode" at a time so like meets like: standard soccar at a team
-// size, or an even private 2v2/3v3. Extras and LTMs score differently, so they have no mode.
+// A friend's page, or a group of friends' (a pair), worked out from every match you played (one row
+// each, with each friend's row if they were in it). A match counts as "with" only when every friend
+// was on your team, "against" only when every one was on the other; a split lobby counts on neither.
+// Records, tiles and playlist rows count every match but offline play. The with/without comparison
+// reads one "mode" at a time so like meets like: standard soccar at a team size, or an even private
+// 2v2/3v3. Extras and LTMs score differently, so they have no mode.
 import { maxOrNull, streaks, sum } from "./aggregate";
 import { playlistInfo } from "./playlists";
 import type { Result } from "./result";
@@ -50,14 +52,14 @@ export type Streak = { result: Result; length: number } | null;
 export type Mode = (typeof MODE_ORDER)[number];
 export interface PlaylistRow extends WL { label: string }
 export interface PerMatch { matches: number; winPct: number | null; score: number; goals: number; assists: number; saves: number; shots: number }
-/** [you, them, the rest of your team]. */
-type Shares = [number, number, number];
+/** [you, ...each friend in order, the rest of your team]. */
+type Shares = number[];
 
 export interface ModeView {
   mode: Mode;
   matches: number;
   carry: { matches: number; score: Shares; goals: Shares; assists: Shares; saves: Shares; mvps: Shares };
-  compare: { with: PerMatch; without: PerMatch | null; them: PerMatch };
+  compare: { with: PerMatch; without: PerMatch | null; friends: PerMatch[] };
 }
 
 export interface AgainstLine {
@@ -68,8 +70,9 @@ export interface AgainstLine {
   label: string;
   result: Result | null;
   me: Omit<Line, "playerKey">;
-  them: Omit<Line, "playerKey">;
-  mvp: "me" | "them" | null;
+  friends: Omit<Line, "playerKey">[];
+  /** 0 = you, i + 1 = friend i. */
+  mvp: number | null;
 }
 
 export interface FriendView {
@@ -91,8 +94,9 @@ export interface FriendView {
     last: number | null;
     playlists: PlaylistRow[];
     streak: Streak;
-    mvps: [number, number];
-    goals: [number, number];
+    /** [you, ...each friend]. */
+    mvps: number[];
+    goals: number[];
     biggestWin: { guid: string; startedAt: number; label: string; goalDiff: number } | null;
     overtime: WL;
     matches: AgainstLine[];
@@ -148,12 +152,33 @@ function perMatch(lines: readonly Line[], results: WL | null): PerMatch {
 
 const stats = ({ score, goals, assists, saves, shots }: Line) => ({ score, goals, assists, saves, shots });
 
-export function friendView(matches: readonly LobbyMatch[], id: string, sessionOf: (guid: string) => string | null): FriendView {
+/** 0 when you were MVP, i + 1 when friend i was, else null. */
+function mvpIndex(m: LobbyMatch, fs: readonly LobbyFriend[]): number | null {
+  if (m.mvpKey === null) return null;
+  if (m.mvpKey === m.me.playerKey) return 0;
+  const i = fs.findIndex((f) => f.playerKey === m.mvpKey);
+  return i < 0 ? null : i + 1;
+}
+
+/** How many of `keys` are each person's index, over `n` people. */
+function tally(n: number, keys: readonly (number | null)[]): number[] {
+  const counts = new Array<number>(n).fill(0);
+  for (const k of keys) if (k !== null) counts[k] = (counts[k] ?? 0) + 1;
+  return counts;
+}
+
+/** Each friend's row in the match, in `ids` order, when every one of them was on `side`. */
+function rowsOn(m: LobbyMatch, ids: readonly string[], side: LobbyFriend["side"]): LobbyFriend[] | null {
+  const fs = ids.map((id) => m.friends.find((f) => f.id === id));
+  return fs.every((f): f is LobbyFriend => f?.side === side) ? fs : null;
+}
+
+/** `ids` is non-empty and distinct; every per-person array is [you, ...ids order]. */
+export function friendView(matches: readonly LobbyMatch[], ids: readonly string[], sessionOf: (guid: string) => string | null): FriendView {
   const all = [...matches].filter(counted).sort((a, b) => a.startedAt - b.startedAt);
-  const friendIn = (m: LobbyMatch) => m.friends.find((f) => f.id === id);
   const on = (side: LobbyFriend["side"]) => all.flatMap((m) => {
-    const f = friendIn(m);
-    return f?.side === side ? [{ m, f }] : [];
+    const fs = rowsOn(m, ids, side);
+    return fs ? [{ m, fs }] : [];
   });
   const withThem = on("with");
   const againstThem = on("against");
@@ -170,20 +195,15 @@ export function friendView(matches: readonly LobbyMatch[], id: string, sessionOf
   const modes = MODE_ORDER.flatMap((mode): ModeView[] => {
     const at = withThem.filter((x) => modeOf(x.m) === mode);
     if (!at.length) return [];
-    // Final-team totals don't fit a match where either of you changed team.
-    const steady = at.filter((x) => !x.f.switched && !x.m.youSwitched);
+    // Final-team totals don't fit a match where you or any friend changed team.
+    const steady = at.filter((x) => !x.m.youSwitched && !x.fs.some((f) => f.switched));
     const share = (k: keyof LobbyMatch["myTeamTotals"]): Shares => {
-      const you = sum(steady.map((x) => x.m.me[k]));
-      const them = sum(steady.map((x) => x.f[k]));
-      return [you, them, sum(steady.map((x) => x.m.myTeamTotals[k])) - you - them];
+      const people = [sum(steady.map((x) => x.m.me[k])), ...ids.map((_, i) => sum(steady.map((x) => x.fs[i]?.[k] ?? 0)))];
+      return [...people, sum(steady.map((x) => x.m.myTeamTotals[k])) - sum(people)];
     };
-    const mvpOf = (x: (typeof steady)[number]) => (x.m.mvpKey === x.m.me.playerKey ? 0 : x.m.mvpKey === x.f.playerKey ? 1 : x.m.mvpOnMyTeam ? 2 : null);
-    const mvps: Shares = [0, 0, 0];
-    for (const x of steady) {
-      const i = mvpOf(x);
-      if (i !== null) mvps[i]++;
-    }
-    const without = all.filter((m) => modeOf(m) === mode && friendIn(m)?.side !== "with");
+    const mvpOf = (x: (typeof steady)[number]) => mvpIndex(x.m, x.fs) ?? (x.m.mvpOnMyTeam ? ids.length + 1 : null);
+    const mvps = tally(ids.length + 2, steady.map(mvpOf));
+    const without = all.filter((m) => modeOf(m) === mode && !m.friends.some((f) => f.side === "with" && ids.includes(f.id)));
     const withRecord = record(at.map((x) => x.m));
     return [{
       mode,
@@ -192,7 +212,7 @@ export function friendView(matches: readonly LobbyMatch[], id: string, sessionOf
       compare: {
         with: perMatch(at.map((x) => x.m.me), withRecord),
         without: without.length ? perMatch(without.map((m) => m.me), record(without)) : null,
-        them: perMatch(at.map((x) => x.f), null),
+        friends: ids.map((_, i) => perMatch(at.flatMap((x) => x.fs[i] ?? []), null)),
       },
     }];
   });
@@ -223,12 +243,12 @@ export function friendView(matches: readonly LobbyMatch[], id: string, sessionOf
       last: againstMs.at(-1)?.startedAt ?? null,
       playlists: playlistRows(againstMs),
       streak: streaks(againstMs).endedOn,
-      mvps: [againstThem.filter((x) => x.m.mvpKey === x.m.me.playerKey).length, againstThem.filter((x) => x.m.mvpKey === x.f.playerKey).length],
-      goals: [sum(againstThem.map((x) => x.m.me.goals)), sum(againstThem.map((x) => x.f.goals))],
+      mvps: tally(ids.length + 1, againstThem.map((x) => mvpIndex(x.m, x.fs))),
+      goals: [sum(againstThem.map((x) => x.m.me.goals)), ...ids.map((_, i) => sum(againstThem.map((x) => x.fs[i]?.goals ?? 0)))],
       biggestWin: biggest && { guid: biggest.guid, startedAt: biggest.startedAt, label: playlistLabel(biggest), goalDiff: biggest.goalDiff ?? 0 },
       overtime: overtime(againstMs),
       matches: againstThem
-        .map(({ m, f }): AgainstLine => ({
+        .map(({ m, fs }): AgainstLine => ({
           guid: m.guid,
           sessionKey: sessionOf(m.guid),
           startedAt: m.startedAt,
@@ -236,18 +256,24 @@ export function friendView(matches: readonly LobbyMatch[], id: string, sessionOf
           label: playlistLabel(m),
           result: m.result,
           me: stats(m.me),
-          them: stats(f),
-          mvp: m.mvpKey === m.me.playerKey ? "me" : m.mvpKey === f.playerKey ? "them" : null,
+          friends: fs.map(stats),
+          mvp: mvpIndex(m, fs),
         }))
         .reverse(),
     },
   };
 }
 
-/** The landing card: both records and when you last played them. */
-export function friendCard(matches: readonly LobbyMatch[], id: string): { with: WL; against: WL; lastPlayed: number | null } {
+/** The counted matches with every friend on one side together: all with you, or all against you. */
+export function together(matches: readonly LobbyMatch[], ids: readonly string[]): LobbyMatch[] {
+  return matches.filter((m) => counted(m) && (rowsOn(m, ids, "with") ?? rowsOn(m, ids, "against")));
+}
+
+/** The landing card: both records and when you last played them all, on one side together. */
+export function friendCard(matches: readonly LobbyMatch[], ids: readonly string[]): { with: WL; against: WL; lastPlayed: number | null } {
   const ms = matches.filter(counted);
-  const side = (s: LobbyFriend["side"]) => ms.filter((m) => m.friends.some((f) => f.id === id && f.side === s));
-  const theirs = ms.filter((m) => m.friends.some((f) => f.id === id));
-  return { with: record(side("with")), against: record(side("against")), lastPlayed: maxOrNull(theirs.map((m) => m.startedAt)) };
+  const side = (s: LobbyFriend["side"]) => ms.filter((m) => rowsOn(m, ids, s));
+  const w = side("with");
+  const a = side("against");
+  return { with: record(w), against: record(a), lastPlayed: maxOrNull([...w, ...a].map((m) => m.startedAt)) };
 }

@@ -3,13 +3,23 @@
 import type { PlaylistFilter } from "../../shared/playlist-filter";
 import { playlistInfo } from "../../shared/playlists";
 import type { Result } from "../../shared/result";
+import type { TeammateFilter } from "../../shared/teammate-filter";
 import type { AggregateWire, SessionDetail, SessionSummary } from "../../shared/schemas/responses";
 import { filterLabel } from "./filter-options";
 import { clock, dayLabel, decimal, durationText, SPEED_LABEL, speedIn, type Units } from "./format";
 import { pct, stoodOut } from "./recap";
 
-/** The teammate filter as the card shows it: the friend by display name. */
+/** The teammate filter as the card shows it: the friends by display name, joined with " + ". */
 export type ShareTeammate = "anyone" | "solo" | { name: string };
+
+/**
+ * The filter's friends named from those in the session, in the filter's order. The recap resets a
+ * friend who isn't in the session, so each name is there; "friend" is only a fallback.
+ */
+export function shareTeammate(present: readonly { id: string; name: string }[], teammate: TeammateFilter): ShareTeammate {
+  if (typeof teammate !== "object") return teammate;
+  return { name: teammate.friends.map((id) => present.find((p) => p.id === id)?.name ?? "friend").join(" + ") };
+}
 
 export interface ShareCardInput {
   detail: Pick<SessionDetail, "day" | "startedAt" | "endedAt" | "current" | "aggregate" | "baseline">;

@@ -472,6 +472,46 @@ describe("the teammate filter", () => {
     expect(d?.view.against.matches.map((m) => [m.guid, m.sessionKey])).toEqual([["B", "B"]]);
   });
 
+  test("pairs: both on one side in 3+ matches over 2+ sessions; a split lobby and offline play don't count", () => {
+    const { play, pages } = seedWith();
+    addFriend(SAM);
+    addFriend(ALEX);
+    play("A", t(10, 10, 10), [[SAM, 0], [ALEX, 0]]);
+    play("B", t(10, 12, 10), [[SAM, 1], [ALEX, 1]], { won: false });
+    play("C", t(10, 14, 10), [[SAM, 0], [ALEX, 1]]);
+    play("D", t(10, 16, 10), [[SAM, 0], [ALEX, 0]], { playlistId: 8 });
+    expect(pages().friends().pairs).toEqual([]);
+    play("E", t(10, 18, 10), [[SAM, 0], [ALEX, 0]]);
+    expect(pages().friends().pairs).toEqual([{ ids: [ALEX, SAM], with: { w: 2, l: 0, n: 2 }, against: { w: 0, l: 1, n: 1 }, lastPlayed: t(10, 18, 10) }]);
+  });
+
+  test("pairs: not from one session; newest last played first", () => {
+    const { play, pages } = seedWith();
+    const KIM = "Epic|kim|0";
+    for (const id of [SAM, ALEX, KIM]) addFriend(id);
+    play("A1", t(10, 10, 10), [[SAM, 0], [ALEX, 0]]);
+    play("A2", t(10, 10, 10, 10), [[SAM, 0], [ALEX, 0]]);
+    play("A3", t(10, 10, 10, 20), [[SAM, 0], [ALEX, 0]]);
+    expect(pages().friends().pairs).toEqual([]);
+    play("B", t(10, 11, 10), [[SAM, 0], [KIM, 0]]);
+    play("C1", t(10, 12, 10), [[SAM, 0], [KIM, 0]]);
+    play("C2", t(10, 12, 10, 10), [[SAM, 0], [KIM, 0]]);
+    play("D", t(10, 13, 10), [[SAM, 0], [ALEX, 0]]);
+    expect(pages().friends().pairs.map((p) => p.ids)).toEqual([[ALEX, SAM], [KIM, SAM]]);
+  });
+
+  test("pair detail: null unless two different friends; the friends and view in key order", () => {
+    const { play, pages } = seedWith();
+    addFriend(SAM, "Sammy");
+    play("A", t(10, 10, 10), [[SAM, 0], [ALEX, 0, "Alex"]]);
+    expect(pages().pairDetail(SAM, ALEX)).toBeNull();
+    addFriend(ALEX);
+    expect(pages().pairDetail(SAM, SAM)).toBeNull();
+    const d = pages().pairDetail(SAM, ALEX);
+    expect(d?.friends.map((f) => [f.id, f.name, f.lastSeenName])).toEqual([[ALEX, "Alex", "Alex"], [SAM, "Sammy", SAM]]);
+    expect(d?.view.with.record).toEqual({ w: 1, l: 0, n: 1 });
+  });
+
   test("never suggested: by last name seen, then id", () => {
     const { play, pages } = seedWith();
     play("A", t(10, 10, 10), [[ALEX, 0, "zed"], [SAM, 0, "amy"]]);

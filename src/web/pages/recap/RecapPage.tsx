@@ -10,7 +10,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { PlaylistFilter } from "../../components/PlaylistFilter";
 import { TeammateFilter } from "../../components/TeammateFilter";
-import { parseFilter, parseTeammate, teammateMissing } from "../../logic/filter-options";
+import { parseFilter, parseTeammate, recapReset } from "../../logic/filter-options";
 import { recapPath, type RecapView } from "../../logic/recap";
 import { useLatestSession, useSessionDetail, useSettings } from "../../queries";
 import { Matches } from "./Matches";
@@ -118,15 +118,15 @@ export function RecapSession({ view }: { view: SessionView }) {
 
   // A friend not on your team in this session (under the playlist filter) goes back to Anyone;
   // replaced, so Back doesn't return to the empty view. Soloqueue stays, as paging lands on sessions
-  // with no friend.
-  const missing = detail.data !== undefined && teammateMissing(teammate, detail.data.friendsPresent);
+  // with no friend. A pair who never played together in it goes back too.
+  const reset = detail.data === undefined ? null : recapReset(teammate, detail.data);
   useEffect(() => {
-    if (!missing) return;
+    if (!reset) return;
     // Runs before the focus effect below, so `seen` still holds the filter before this load.
     resetByFilter.current = seen.current !== null && seen.current.filter !== shownFilter;
-    console.info("[rlt] recap/with_reset", { with: shownWith, session, reason: "not_in_session" });
+    console.info("[rlt] recap/with_reset", { with: shownWith, session, reason: reset });
     void navigate(recapPath(session, filter, here, "anyone"), { replace: true });
-  }, [missing, shownWith, shownFilter, session, filter, here, navigate]);
+  }, [reset, shownWith, shownFilter, session, filter, here, navigate]);
 
   // While a session loads, the loading state replaces the controls, so the one used loses focus to
   // the page. Once a session is on screen, focus that fell there goes to the picker, the h1 naming

@@ -33,7 +33,7 @@ const lost = (over: Partial<LobbyMatch> = {}) => match({ result: "loss", goalDif
 describe("which matches count", () => {
   test("offline play is left out of the records; extras, LTMs and unknown playlists stay in", () => {
     const ms = [won({ playlistId: 8 }), won({ playlistId: 27 }), won({ playlistId: 38 }), won({ playlistId: null }), won()];
-    expect(friendView(ms, SAM, () => null).with.record).toEqual({ w: 4, l: 0, n: 4 });
+    expect(friendView(ms, [SAM], () => null).with.record).toEqual({ w: 4, l: 0, n: 4 });
   });
 
   test("only standard soccar with a teammate and even private 2v2/3v3 have a mode", () => {
@@ -57,18 +57,18 @@ describe("which matches count", () => {
 describe("sides", () => {
   test("with, against, and neither (no friend row) are counted apart", () => {
     const ms = [won(), lost({ friends: [sam("against")] }), won({ friends: [sam("against")] }), won({ friends: [] })];
-    const v = friendView(ms, SAM, () => null);
+    const v = friendView(ms, [SAM], () => null);
     expect(v.with.record).toEqual({ w: 1, l: 0, n: 1 });
     expect(v.against.record).toEqual({ w: 1, l: 1, n: 2 });
-    expect(friendCard(ms, SAM)).toEqual({ with: { w: 1, l: 0, n: 1 }, against: { w: 1, l: 1, n: 2 }, lastPlayed: ms[2]?.startedAt });
+    expect(friendCard(ms, [SAM])).toEqual({ with: { w: 1, l: 0, n: 1 }, against: { w: 1, l: 1, n: 2 }, lastPlayed: ms[2]?.startedAt });
   });
 
   test("a match with no result counts in n but not in w or l", () => {
-    expect(friendView([won(), match({ result: null, goalDiff: null })], SAM, () => null).with.record).toEqual({ w: 1, l: 0, n: 2 });
+    expect(friendView([won(), match({ result: null, goalDiff: null })], [SAM], () => null).with.record).toEqual({ w: 1, l: 0, n: 2 });
   });
 
   test("a friend with no matches has empty records and no last played", () => {
-    expect(friendCard([won({ friends: [] })], SAM)).toEqual({ with: { w: 0, l: 0, n: 0 }, against: { w: 0, l: 0, n: 0 }, lastPlayed: null });
+    expect(friendCard([won({ friends: [] })], [SAM])).toEqual({ with: { w: 0, l: 0, n: 0 }, against: { w: 0, l: 0, n: 0 }, lastPlayed: null });
   });
 });
 
@@ -79,7 +79,7 @@ describe("playlist rows", () => {
     expect(playlistLabel(match({ playlistId: 6, sizes: { mine: 3, other: 2 } }))).toBe("Private · uneven");
     expect(playlistLabel(match({ playlistId: 6, sizes: { mine: 5, other: 5 } }))).toBe("Private · uneven");
     const ms = [won({ playlistId: 6, sizes: { mine: 3, other: 2 } }), won({ playlistId: 6 }), won({ playlistId: 13 }), lost({ playlistId: 11 }), won({ playlistId: 2 })];
-    expect(friendView(ms, SAM, () => null).with.playlists.map((r) => [r.label, r.w, r.l])).toEqual([
+    expect(friendView(ms, [SAM], () => null).with.playlists.map((r) => [r.label, r.w, r.l])).toEqual([
       ["Doubles", 1, 0],
       ["Ranked Doubles", 0, 1],
       ["Ranked Standard", 1, 0],
@@ -92,7 +92,7 @@ describe("playlist rows", () => {
 describe("with: tiles", () => {
   test("streaks skip no-result matches; time together sums durations; overtime is its own record", () => {
     const ms = [won(), won(), won(), lost(), match({ result: null, goalDiff: null }), won({ overtime: true }), lost({ overtime: true })];
-    const w = friendView(ms, SAM, () => null).with;
+    const w = friendView(ms, [SAM], () => null).with;
     expect(w.streak).toEqual({ result: "loss", length: 1 });
     expect(w.bestWinStreak).toBe(3);
     expect(w.timeMs).toBe(7 * 300_000);
@@ -101,9 +101,9 @@ describe("with: tiles", () => {
 
   test("best and worst count online playlists with 5+ decided matches, and need two of them", () => {
     const five = (playlistId: number, wins: number) => Array.from({ length: 5 }, (_, i) => (i < wins ? won({ playlistId }) : lost({ playlistId })));
-    const one = friendView([...five(11, 4), ...five(6, 5)], SAM, () => null).with;
+    const one = friendView([...five(11, 4), ...five(6, 5)], [SAM], () => null).with;
     expect(one.best).toBeNull();
-    const two = friendView([...five(11, 4), ...five(13, 1), ...five(6, 5), won({ playlistId: 2 })], SAM, () => null).with;
+    const two = friendView([...five(11, 4), ...five(13, 1), ...five(6, 5), won({ playlistId: 2 })], [SAM], () => null).with;
     expect(two.best?.label).toBe("Ranked Doubles");
     expect(two.worst?.label).toBe("Ranked Standard");
   });
@@ -112,11 +112,11 @@ describe("with: tiles", () => {
 describe("with: modes", () => {
   test("lists the modes played, the most-played online one as the default", () => {
     const ms = [won({ playlistId: 6 }), won({ playlistId: 6 }), won({ playlistId: 6 }), won({ playlistId: 13, sizes: { mine: 3, other: 3 } }), won(), won()];
-    const w = friendView(ms, SAM, () => null).with;
+    const w = friendView(ms, [SAM], () => null).with;
     expect(w.modes.map((m) => [m.mode, m.matches])).toEqual([["2", 2], ["3", 1], ["p2", 3]]);
     expect(w.defaultMode).toBe("2");
-    expect(friendView([won({ playlistId: 6 })], SAM, () => null).with.defaultMode).toBe("p2");
-    expect(friendView([won({ playlistId: 27 })], SAM, () => null).with.defaultMode).toBeNull();
+    expect(friendView([won({ playlistId: 6 })], [SAM], () => null).with.defaultMode).toBe("p2");
+    expect(friendView([won({ playlistId: 27 })], [SAM], () => null).with.defaultMode).toBeNull();
   });
 
   test("carry: you, them and the rest of the team; switched matches are left out", () => {
@@ -127,7 +127,7 @@ describe("with: modes", () => {
       won({ playlistId: 13, sizes: { mine: 3, other: 3 }, myTeamTotals: { score: 100, goals: 0, assists: 9, saves: 9 }, friends: [sam("with", 999, 9, { switched: true })] }),
       won({ playlistId: 13, sizes: { mine: 3, other: 3 }, myTeamTotals: { score: 100, goals: 0, assists: 9, saves: 9 }, youSwitched: true }),
     ];
-    const carry = friendView(ms, SAM, () => null).with.modes[0]?.carry;
+    const carry = friendView(ms, [SAM], () => null).with.modes[0]?.carry;
     expect(carry).toEqual({ matches: 3, score: [1100, 700, 1000], goals: [4, 1, 3], assists: [1, 3, 4], saves: [5, 1, 5], mvps: [1, 1, 1] });
   });
 
@@ -140,14 +140,14 @@ describe("with: modes", () => {
       lost({ me: line(999, 9), playlistId: 13, sizes: { mine: 3, other: 3 }, friends: [] }),
       lost({ me: line(999, 9), playlistId: 27, friends: [] }),
     ];
-    const c = friendView(ms, SAM, () => null).with.modes.find((m) => m.mode === "2")?.compare;
+    const c = friendView(ms, [SAM], () => null).with.modes.find((m) => m.mode === "2")?.compare;
     expect(c?.with).toEqual({ matches: 2, winPct: 0.5, score: 300, goals: 1, assists: 0, saves: 0, shots: 1 });
     expect(c?.without).toEqual({ matches: 2, winPct: 0.5, score: 200, goals: 0.5, assists: 0, saves: 0, shots: 0.5 });
-    expect(c?.them).toEqual({ matches: 2, winPct: null, score: 200, goals: 1, assists: 0, saves: 0, shots: 1 });
+    expect(c?.friends).toEqual([{ matches: 2, winPct: null, score: 200, goals: 1, assists: 0, saves: 0, shots: 1 }]);
   });
 
   test("compare without any other match at the mode is null", () => {
-    expect(friendView([won()], SAM, () => null).with.modes[0]?.compare.without).toBeNull();
+    expect(friendView([won()], [SAM], () => null).with.modes[0]?.compare.without).toBeNull();
   });
 });
 
@@ -157,18 +157,71 @@ describe("against", () => {
     const a = vs({ result: "win", goalDiff: 1, me: line(400, 2), mvpKey: "Epic|me|0", mvpOnMyTeam: true });
     const b = vs({ result: "win", goalDiff: 4, me: line(500, 4), overtime: true });
     const c = vs({ result: "loss", goalDiff: -2, me: line(100, 0), mvpKey: SAM, mvpOnMyTeam: false }, sam("against", 600, 3));
-    const v = friendView([a, b, c, won()], SAM, (g) => (g === b.guid ? "s-b" : null)).against;
+    const v = friendView([a, b, c, won()], [SAM], (g) => (g === b.guid ? "s-b" : null)).against;
     expect(v.record).toEqual({ w: 2, l: 1, n: 3 });
     expect(v.streak).toEqual({ result: "loss", length: 1 });
     expect(v.mvps).toEqual([1, 1]);
     expect(v.goals).toEqual([6, 5]);
     expect(v.biggestWin).toEqual({ guid: b.guid, startedAt: b.startedAt, label: "Private 1v1", goalDiff: 4 });
     expect(v.overtime).toEqual({ w: 1, l: 0, n: 1 });
-    expect(v.matches.map((m) => [m.guid, m.mvp, m.sessionKey])).toEqual([[c.guid, "them", null], [b.guid, null, "s-b"], [a.guid, "me", null]]);
-    expect(v.matches[0]).toMatchObject({ label: "Private 1v1", playlistId: 6, result: "loss", me: { score: 100, goals: 0 }, them: { score: 600, goals: 3 } });
+    expect(v.matches.map((m) => [m.guid, m.mvp, m.sessionKey])).toEqual([[c.guid, 1, null], [b.guid, null, "s-b"], [a.guid, 0, null]]);
+    expect(v.matches[0]).toMatchObject({ label: "Private 1v1", playlistId: 6, result: "loss", me: { score: 100, goals: 0 }, friends: [{ score: 600, goals: 3 }] });
   });
 
   test("no win means no biggest win", () => {
-    expect(friendView([lost({ friends: [sam("against")] })], SAM, () => null).against.biggestWin).toBeNull();
+    expect(friendView([lost({ friends: [sam("against")] })], [SAM], () => null).against.biggestWin).toBeNull();
+  });
+});
+
+describe("a pair", () => {
+  const ALEX = "Steam|alex|0";
+  const alex = (side: LobbyFriend["side"], score = 100, goals = 0, over: Partial<LobbyFriend> = {}): LobbyFriend => ({ ...line(score, goals, ALEX), id: ALEX, side, switched: false, ...over });
+  const quads = (over: Partial<LobbyMatch>) => won({ playlistId: 4, sizes: { mine: 4, other: 4 }, ...over });
+
+  test("with needs both on your team, against both on the other; one on each side counts on neither", () => {
+    const ms = [
+      won({ friends: [sam("with"), alex("with")] }),
+      lost({ friends: [sam("against"), alex("against")] }),
+      won({ friends: [sam("with"), alex("against")] }),
+      won({ friends: [sam("with")] }),
+    ];
+    const v = friendView(ms, [SAM, ALEX], () => null);
+    expect(v.with.record).toEqual({ w: 1, l: 0, n: 1 });
+    expect(v.against.record).toEqual({ w: 0, l: 1, n: 1 });
+    expect(friendCard(ms, [SAM, ALEX])).toEqual({ with: { w: 1, l: 0, n: 1 }, against: { w: 0, l: 1, n: 1 }, lastPlayed: ms[1]?.startedAt });
+  });
+
+  test("carry: you, each friend in order, then a non-zero rest; a match where either switched is left out", () => {
+    const ms = [
+      quads({ me: line(300, 2), myTeamTotals: { score: 1000, goals: 4, assists: 0, saves: 0 }, friends: [sam("with", 200, 1), alex("with", 100, 0)], mvpKey: ALEX, mvpOnMyTeam: true }),
+      quads({ me: line(100, 0), myTeamTotals: { score: 600, goals: 1, assists: 0, saves: 0 }, friends: [alex("with", 50, 0), sam("with", 50, 0)], mvpKey: "Epic|x|0", mvpOnMyTeam: true }),
+      quads({ myTeamTotals: { score: 9999, goals: 9, assists: 0, saves: 0 }, friends: [sam("with"), alex("with", 999, 9, { switched: true })] }),
+    ];
+    const carry = friendView(ms, [SAM, ALEX], () => null).with.modes[0]?.carry;
+    expect(carry).toMatchObject({ matches: 2, score: [400, 250, 150, 800], goals: [2, 1, 0, 2], mvps: [0, 0, 1, 1] });
+  });
+
+  test("compare: one line per friend, and without leaves out a match where only one of them was on your team", () => {
+    const ms = [
+      won({ me: line(400), friends: [sam("with", 300), alex("with", 100)] }),
+      won({ me: line(999), friends: [sam("with")] }),
+      lost({ me: line(999), friends: [alex("with"), sam("against")] }),
+      lost({ me: line(200), friends: [sam("against"), alex("against")] }),
+      won({ me: line(100), friends: [] }),
+    ];
+    const c = friendView(ms, [SAM, ALEX], () => null).with.modes[0]?.compare;
+    expect(c?.without).toMatchObject({ matches: 2, winPct: 0.5, score: 150 });
+    expect(c?.friends.map((p) => p.score)).toEqual([300, 100]);
+  });
+
+  test("against: MVPs, goals and match lines carry you then each friend", () => {
+    const ms = [
+      lost({ me: line(100, 1), friends: [sam("against", 300, 2), alex("against", 200, 3)], mvpKey: ALEX, mvpOnMyTeam: false }),
+      won({ me: line(500, 2), friends: [alex("against", 100, 0), sam("against", 100, 1)], mvpKey: "Epic|me|0", mvpOnMyTeam: true }),
+    ];
+    const a = friendView(ms, [SAM, ALEX], () => null).against;
+    expect(a.mvps).toEqual([1, 0, 1]);
+    expect(a.goals).toEqual([3, 3, 3]);
+    expect(a.matches.map((m) => [m.mvp, m.friends.map((f) => f.score)])).toEqual([[0, [100, 100]], [2, [300, 200]]]);
   });
 });

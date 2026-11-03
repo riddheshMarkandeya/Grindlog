@@ -3,7 +3,7 @@
 import { playlistInfo, type PlaylistGroup } from "../../shared/playlists";
 import { filterValue, GROUPS, type PlaylistFilter } from "../../shared/playlist-filter";
 import { filterParam, teammateParam } from "../../shared/schemas/params";
-import type { TeammateFilter } from "../../shared/teammate-filter";
+import { teammateValue, type TeammateFilter } from "../../shared/teammate-filter";
 
 export interface FilterOption {
   value: string;
@@ -36,6 +36,27 @@ export const offeredFriends = <F extends { with: { n: number } }>(friends: reado
 export function teammateMissing(value: TeammateFilter, offered: readonly { id: string }[]): boolean {
   if (value === "anyone" || value === "solo") return false;
   return !value.friends.every((id) => offered.some((f) => f.id === id));
+}
+
+/**
+ * Why a session's recap resets its teammate filter to Anyone, or null to keep it. `friendsPresent`
+ * is the union over the session, so a pair who each played but never together passes the missing
+ * check yet lists no match: no summary under the filters.
+ */
+export function recapReset(value: TeammateFilter, session: { friendsPresent: readonly { id: string }[]; summary: object | null }): "not_in_session" | "not_together" | null {
+  if (teammateMissing(value, session.friendsPresent)) return "not_in_session";
+  return typeof value === "object" && value.friends.length > 1 && session.summary === null ? "not_together" : null;
+}
+
+/**
+ * The dropdown's "A + B" entry when the filter names a pair (only a pair page links there), so the
+ * select can show it; null otherwise, or when either isn't offered (the filter then resets).
+ */
+export function pairOption(value: TeammateFilter, friends: readonly { id: string; name: string }[]): FilterOption | null {
+  if (typeof value !== "object" || value.friends.length !== 2) return null;
+  const names = value.friends.map((id) => friends.find((f) => f.id === id)?.name);
+  if (names.some((n) => n === undefined)) return null;
+  return { value: teammateValue(value) ?? "", label: names.join(" + ") };
 }
 
 // Each group's playlists are listed singly under its "All" entry. Private is one entry (its ids are

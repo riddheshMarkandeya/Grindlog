@@ -317,7 +317,8 @@ function Carry({ carry, mode, name }: { carry: WithSide["modes"][number]["carry"
 
 function Bar({ label, shares, name }: { label: string; shares: ReturnType<typeof carryShares>; name: string }) {
   if (shares === null) return <><span className={styles.muted}>{label}</span><span className={styles.muted}>none yet</span></>;
-  const [me, them, rest] = shares.pcts;
+  // This page has one friend: [you, them, rest].
+  const [me = 0, them = 0, rest = 0] = shares.pcts;
   return (
     <>
       <span className={styles.muted}>{label}</span>
@@ -337,7 +338,7 @@ type CompareView = WithSide["modes"][number]["compare"];
 const STATS = [["score", "Score"], ["goals", "Goals"], ["assists", "Assists"], ["saves", "Saves"], ["shots", "Shots"]] as const;
 
 function Compare({ compare, mode, name }: { compare: CompareView; mode: Mode; name: string }) {
-  const { with: w, without: wo, them } = compare;
+  const { with: w, without: wo, friends: [them] } = compare;
   // Win % differs in whole points; the stats in decimal()'s steps.
   const diff = (a: number, b: number | undefined, points = false) => {
     if (b === undefined) return <td className={styles.muted}>–</td>;
@@ -369,7 +370,7 @@ function Compare({ compare, mode, name }: { compare: CompareView; mode: Mode; na
                 <td>{decimal(w[k])}</td>
                 <td className={styles.muted}>{wo ? decimal(wo[k]) : "–"}</td>
                 {diff(w[k], wo?.[k])}
-                <td className={styles.sep}>{decimal(them[k])}</td>
+                <td className={styles.sep}>{them ? decimal(them[k]) : "–"}</td>
               </tr>
             ))}
           </tbody>
@@ -437,11 +438,11 @@ function Matches({ matches, name }: { matches: AgainstSide["matches"]; name: str
                   <span className={styles.muted}>{m.label}</span>
                 </td>
                 <td className={m.result === "win" ? styles.w : m.result === "loss" ? styles.l : styles.muted}>
-                  {letter(m.result)}{m.mvp === "me" && <span title="Your MVP"> ★</span>}
+                  {letter(m.result)}{m.mvp === 0 && <span title="Your MVP"> ★</span>}
                 </td>
                 {COLS.map(([k]) => <td key={`me-${k}`}>{m.me[k]}</td>)}
                 {COLS.map(([k], i) => (
-                  <td key={`them-${k}`} className={i === 0 ? styles.sep : undefined}>{m.them[k]}{i === 0 && m.mvp === "them" && <span title={`${name}'s MVP`}> ★</span>}</td>
+                  <td key={`them-${k}`} className={i === 0 ? styles.sep : undefined}>{m.friends[0]?.[k]}{i === 0 && m.mvp === 1 && <span title={`${name}'s MVP`}> ★</span>}</td>
                 ))}
               </tr>
             ))}

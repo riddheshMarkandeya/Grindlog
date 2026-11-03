@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { filterValue } from "../../shared/playlist-filter";
-import { filterLabel, filterOptions, offeredFriends, parseFilter, parseTeammate, teammateMissing } from "./filter-options";
+import { filterLabel, filterOptions, offeredFriends, pairOption, parseFilter, parseTeammate, recapReset, teammateMissing } from "./filter-options";
 
 const flat = (groups: ReturnType<typeof filterOptions>) => groups.map((g) => [g.label, g.options.map((o) => `${o.value}=${o.label}`)]);
 
@@ -46,6 +46,44 @@ describe("teammate in the URL", () => {
     expect(parseTeammate("solo")).toEqual({ teammate: "solo", bad: false });
     expect(parseTeammate("Epic|sam|0")).toEqual({ teammate: { friends: ["Epic|sam|0"] }, bad: false });
     expect(parseTeammate("anyone")).toEqual({ teammate: "anyone", bad: true });
+  });
+
+  test("a pair: two distinct friend ids, sorted into one value; three, a repeat, an empty half or a malformed id are bad", () => {
+    expect(parseTeammate("Epic|sam|0,Epic|alex|0")).toEqual({ teammate: { friends: ["Epic|alex|0", "Epic|sam|0"] }, bad: false });
+    expect(parseTeammate("Epic|alex|0,Epic|sam|0")).toEqual({ teammate: { friends: ["Epic|alex|0", "Epic|sam|0"] }, bad: false });
+    for (const v of ["Epic|a|0,Epic|b|0,Epic|c|0", "Epic|a|0,Epic|a|0", "Epic|a|0,", ",Epic|a|0", "Epic|a|0,nobars", "solo,Epic|a|0"])
+      expect(parseTeammate(v), v).toEqual({ teammate: "anyone", bad: true });
+    expect(parseTeammate(`${"x|".repeat(51)},Epic|a|0`).bad).toBe(true);
+  });
+});
+
+describe("pairOption", () => {
+  const friends = [{ id: "Epic|alex|0", name: "Alex" }, { id: "Epic|sam|0", name: "Sam" }];
+  test("only a two-friend value gets one, named A + B in the value's order", () => {
+    expect(pairOption({ friends: ["Epic|alex|0", "Epic|sam|0"] }, friends)).toEqual({ value: "Epic|alex|0,Epic|sam|0", label: "Alex + Sam" });
+    expect(pairOption({ friends: ["Epic|sam|0"] }, friends)).toBeNull();
+    expect(pairOption("solo", friends)).toBeNull();
+    expect(pairOption("anyone", friends)).toBeNull();
+  });
+
+  test("none when either friend isn't offered: the filter resets to Anyone instead", () => {
+    expect(pairOption({ friends: ["Epic|alex|0", "Epic|kim|0"] }, friends)).toBeNull();
+  });
+});
+
+describe("recapReset", () => {
+  const both = [{ id: "Epic|alex|0" }, { id: "Epic|sam|0" }];
+  const pair = { friends: ["Epic|alex|0", "Epic|sam|0"] };
+  test("a pair who both played in the session but never together resets, as one missing does", () => {
+    expect(recapReset(pair, { friendsPresent: both, summary: null })).toBe("not_together");
+    expect(recapReset(pair, { friendsPresent: both, summary: {} })).toBeNull();
+    expect(recapReset(pair, { friendsPresent: both.slice(1), summary: null })).toBe("not_in_session");
+  });
+
+  test("a single friend or soloqueue resets only when missing", () => {
+    expect(recapReset({ friends: ["Epic|sam|0"] }, { friendsPresent: both, summary: {} })).toBeNull();
+    expect(recapReset({ friends: ["Epic|kim|0"] }, { friendsPresent: both, summary: null })).toBe("not_in_session");
+    expect(recapReset("solo", { friendsPresent: [], summary: null })).toBeNull();
   });
 });
 

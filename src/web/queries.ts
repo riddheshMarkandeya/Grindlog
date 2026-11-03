@@ -2,17 +2,18 @@
 // detail, the heavy one, is "session"; one match with every player is "match"; a session's headline
 // lines are "remarks"; the Trends page reads "period", "played-days" and "seasons"; every page reads
 // "settings"; the Settings page also reads "ids"; the teammate filters and the Friends page read
-// "friends", and that page also reads "friend" (one friend's page), "friend-suggestions" and
-// "never-suggest". Page queries take the teammate filter last in their key.
+// "friends", and that page also reads "friend" (one friend's page), "friend-pair" (a pair's),
+// "friend-suggestions" and "never-suggest". Page queries take the teammate filter last in their key.
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { REQUEST_HEADER } from "../shared/constants";
 import { filterValue, type PlaylistFilter } from "../shared/playlist-filter";
 import type { PeriodSpec } from "../shared/periods";
-import { teammateValue, type TeammateFilter } from "../shared/teammate-filter";
+import { pairKey, teammateValue, type TeammateFilter } from "../shared/teammate-filter";
 import {
   currentResponse,
   friendDetailResponse,
   friendsResponse,
+  pairDetailResponse,
   neverSuggestResponse,
   suggestionsResponse,
   type FriendSuggestions,
@@ -151,14 +152,27 @@ const NEVER_KEY = ["never-suggest"] as const;
 // A PrimaryId has bars, so it's encoded; no nickname clears it.
 const friendQuery = (id: string, nickname?: string | null) => new URLSearchParams(nickname ? { id, nickname } : { id }).toString();
 
+const friendsQuery = { queryKey: FRIENDS_KEY, queryFn: () => getJson("/api/friends", friendsResponse) };
+
 /** Every friend, by display name, with both records: the Friends page's cards and the Trends teammate filter. */
 export function useFriends() {
-  return useQuery({ queryKey: FRIENDS_KEY, queryFn: () => getJson("/api/friends", friendsResponse), select: (data) => data.friends });
+  return useQuery({ ...friendsQuery, select: (data) => data.friends });
+}
+
+/** The Friends page's pairs, from the same answer as `useFriends` so a friend write keeps them fresh. */
+export function useFriendPairs() {
+  return useQuery({ ...friendsQuery, select: (data) => data.pairs });
 }
 
 /** One friend's page; a 404 error when the id isn't a friend (removed, or a stale link). */
 export function useFriendDetail(id: string) {
   return useQuery({ queryKey: ["friend", id], queryFn: () => getJson(`/api/friends/detail?${friendQuery(id)}`, friendDetailResponse) });
+}
+
+/** A pair's page, the ids in either order (sorted here, so the pair has one cache entry); a 404 error unless both are friends. */
+export function usePairDetail(x: string, y: string) {
+  const [a, b] = pairKey(x, y);
+  return useQuery({ queryKey: ["friend-pair", a, b], queryFn: () => getJson(`/api/friends/pair?${new URLSearchParams({ a, b }).toString()}`, pairDetailResponse) });
 }
 
 export function useSuggestions() {

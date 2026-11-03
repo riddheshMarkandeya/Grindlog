@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { AggregateWire } from "../../shared/schemas/responses";
 import { clock, dayLabel } from "./format";
-import { formLine, shareCard, shareFilename, type ShareCardInput } from "./share-card";
+import { formLine, shareCard, shareFilename, shareTeammate, type ShareCardInput } from "./share-card";
 
 const agg = (over: Partial<AggregateWire>): AggregateWire => ({
   matches: 4, wins: 3, losses: 1, noResult: 0, winPct: 0.75, leftEarly: 0, mvps: 2,
@@ -151,5 +151,15 @@ describe("shareFilename", () => {
     expect(shareFilename(at, "ranked", { name: "Sam the Man!" })).toBe("rl-session-2026-10-07-0905-ranked-with-sam-the-man.png");
     expect(shareFilename(at, "everything", "solo")).toBe("rl-session-2026-10-07-0905-all-solo.png");
     expect(shareFilename(at, "everything", { name: "ゆき" })).toBe("rl-session-2026-10-07-0905-all-with-friend.png");
+  });
+});
+
+describe("shareTeammate", () => {
+  const present = [{ id: "Epic|alex|0", name: "Alex" }, { id: "Epic|kim|0", name: "Kim" }, { id: "Epic|sam|0", name: "Sam" }];
+  test("names every filtered friend, in the filter's order, joined with +", () => {
+    expect(shareTeammate(present, { friends: ["Epic|sam|0"] })).toEqual({ name: "Sam" });
+    expect(shareTeammate(present, { friends: ["Epic|alex|0", "Epic|sam|0"] })).toEqual({ name: "Alex + Sam" });
+    expect(shareTeammate(present, "solo")).toBe("solo");
+    expect(shareTeammate(present, "anyone")).toBe("anyone");
   });
 });

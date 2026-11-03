@@ -8,6 +8,7 @@ import {
   breakResponse,
   currentResponse,
   friendDetailResponse,
+  pairDetailResponse,
   friendsResponse,
   neverSuggestResponse,
   idsResponse,
@@ -26,7 +27,7 @@ import {
   type Status,
 } from "../../shared/schemas/responses";
 import { settingsPatch, settingsSchema } from "../../shared/schemas/settings";
-import { friendIdParams, friendNicknameParams, idStatusParams, seasonIdParams, seasonInput } from "../../shared/schemas/tables";
+import { friendIdParams, friendNicknameParams, idStatusParams, pairParams, seasonIdParams, seasonInput } from "../../shared/schemas/tables";
 import type { Db } from "../db/sqlite";
 import { createFriends, type FriendWrite } from "../friends";
 import { createIds } from "../ids";
@@ -220,6 +221,14 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
     { method: "GET", path: "/api/friends", handler: cards },
     { method: "GET", path: "/api/friends/suggestions", handler: () => ok(suggestionsResponse, pages.friendSuggestions()) },
     { method: "GET", path: "/api/friends/detail", handler: ({ query }) => orNotFound(friendDetailResponse, pages.friendDetail(parse(friendIdParams, query).id)) },
+    {
+      method: "GET",
+      path: "/api/friends/pair",
+      handler: ({ query }) => {
+        const p = parse(pairParams, query);
+        return orNotFound(pairDetailResponse, pages.pairDetail(p.a, p.b));
+      },
+    },
     { method: "GET", path: "/api/friends/never-suggest", handler: () => ok(neverSuggestResponse, pages.neverSuggested()) },
     // The id rides in the query string like the other writes; a PrimaryId's bars are encoded.
     {

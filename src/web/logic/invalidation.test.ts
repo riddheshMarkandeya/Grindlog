@@ -67,4 +67,6 @@ test("after an ids or seasons save, everything but settings and the two tables i
   expect(staleAfterTables(q(["session", "A", "everything"], { key: "A", next: "B", day: "2026-01-01", nextMonth: "N" }))).toBe(true);
   expect(staleAfterTables(q(["period", "last7", "ranked"], {}))).toBe(true);
   expect(staleAfterTables(q(["something-new"]))).toBe(true);
+  // A friend write can move a pair's page, which isn't listed anywhere here.
+  expect(staleAfterTables(q(["friend-pair", "Epic|a|0", "Epic|b|0"], {}))).toBe(true);
 });

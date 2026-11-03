@@ -42,6 +42,7 @@ describe("carry", () => {
     expect(carryShares([300, 200, 500], "3")).toEqual({ pcts: [30, 20, 50], even: 100 / 3 });
     expect(carryShares([1, 1, 0], "p2")).toEqual({ pcts: [50, 50, 0], even: 50 });
     expect(carryShares([0, 0, 0], "2")).toBeNull();
+    expect(carryShares([400, 300, 200, 100], "4")).toEqual({ pcts: [40, 30, 20, 10], even: 25 });
   });
 });
 

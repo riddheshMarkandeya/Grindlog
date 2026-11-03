@@ -11,6 +11,7 @@ import {
   currentResponse,
   friendDetailResponse,
   friendsResponse,
+  pairDetailResponse,
   neverSuggestResponse,
   idsResponse,
   latestResponse,
@@ -376,10 +377,10 @@ describe("friends", () => {
     const card = { lastSeenName: "Sam", with: { w: 1, l: 0, n: 1 }, against: { w: 0, l: 0, n: 0 }, lastPlayed: T0 + 30 * MIN };
     let res = await post(`/api/friends?${q(SAM)}&nickname=Sammy`);
     expect(res.status).toBe(200);
-    expect(friendsResponse.parse(await res.json())).toEqual({ friends: [{ id: SAM, nickname: "Sammy", name: "Sammy", ...card }] });
+    expect(friendsResponse.parse(await res.json())).toEqual({ friends: [{ id: SAM, nickname: "Sammy", name: "Sammy", ...card }], pairs: [] });
     res = await post(`/api/friends/nickname?${q(SAM)}`);
     expect(friendsResponse.parse(await res.json()).friends).toEqual([{ id: SAM, nickname: null, name: "Sam", ...card }]);
-    expect(await get(friendsResponse, "/api/friends")).toEqual({ friends: [{ id: SAM, nickname: null, name: "Sam", ...card }] });
+    expect(await get(friendsResponse, "/api/friends")).toEqual({ friends: [{ id: SAM, nickname: null, name: "Sam", ...card }], pairs: [] });
     res = await post(`/api/friends/remove?${q(SAM)}`);
     expect(friendsResponse.parse(await res.json()).friends).toEqual([]);
     res = await post(`/api/friends/never-suggest?${q(THEM)}`);
@@ -429,6 +430,20 @@ describe("friends", () => {
     expect(d.view.with.record).toEqual({ w: 1, l: 0, n: 1 });
     expect(d.view.with.modes.map((m) => m.mode)).toEqual(["3"]);
     expect((await fetch(url("/api/friends/detail"))).status).toBe(400);
+  });
+
+  test("pair: two friends' page, 404 unless both are friends, 400 without both ids", async () => {
+    const ALEX = "Epic|alex|0";
+    const writer = createRecordWriter({ tracker: storage.tracker, logger: memoryLogger(), now: () => 1 });
+    writer.save(record("C", T0 + 30 * MIN, { players: [player(ME, 0), player(SAM, 0, { name: "Sam" }), player(ALEX, 0, { name: "Alex" }), player(THEM, 1)] }, { endedAt: T0 + 35 * MIN }));
+    const pair = `/api/friends/pair?a=${encodeURIComponent(SAM)}&b=${encodeURIComponent(ALEX)}`;
+    await post(`/api/friends?${q(SAM)}`);
+    expect((await fetch(url(pair))).status).toBe(404);
+    await post(`/api/friends?${q(ALEX)}`);
+    const d = await get(pairDetailResponse, pair);
+    expect(d.friends.map((f) => f.id)).toEqual([ALEX, SAM]);
+    expect(d.view.with.record).toEqual({ w: 1, l: 0, n: 1 });
+    expect((await fetch(url(`/api/friends/pair?a=${encodeURIComponent(SAM)}`))).status).toBe(400);
   });
 
   test("never-suggest list and suggest again: 404 when not on it, 403 without the header", async () => {

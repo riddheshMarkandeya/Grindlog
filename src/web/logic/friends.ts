@@ -1,6 +1,7 @@
 // The Friends page's display logic: the head-to-head pager, the team size × Online/Private switch
 // over the modes a friend has, carry bars, and records as text.
 import type { FriendDetail } from "../../shared/schemas/responses";
+import { sum } from "../../shared/aggregate";
 import { pct } from "./recap";
 
 export type Mode = NonNullable<FriendDetail["view"]["with"]["defaultMode"]>;
@@ -46,11 +47,11 @@ export function pickKind(modes: readonly Mode[], current: Mode, kind: Kind): Mod
   return modes.includes(next) ? next : current;
 }
 
-/** [you, them, rest] as whole percents of the team's total, and the even share at that team size. */
-export function carryShares(shares: readonly [number, number, number], mode: Mode): { pcts: [number, number, number]; even: number } | null {
-  const total = shares[0] + shares[1] + shares[2];
+/** [you, ...friends, rest] as whole percents of the team's total, and the even share at that team size. */
+export function carryShares(shares: readonly number[], mode: Mode): { pcts: number[]; even: number } | null {
+  const total = sum(shares);
   if (total === 0) return null;
-  return { pcts: [pct(shares[0] / total), pct(shares[1] / total), pct(shares[2] / total)], even: 100 / Number(sizeOf(mode)) };
+  return { pcts: shares.map((s) => pct(s / total)), even: 100 / Number(sizeOf(mode)) };
 }
 
 export const recordText = ({ w, l }: { w: number; l: number }): string => `${String(w)}–${String(l)}`;

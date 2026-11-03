@@ -8,7 +8,7 @@ import { teammateValue, type TeammateFilter } from "../../../shared/teammate-fil
 import type { SessionDetail, SessionSummary } from "../../../shared/schemas/responses";
 import { cx } from "../../components/cx";
 import { plural } from "../../logic/format";
-import { formLine, LINE_MIN, PAD, shareCard, shareFilename, type ShareCardView, type ShareTeammate } from "../../logic/share-card";
+import { formLine, LINE_MIN, PAD, shareCard, shareFilename, shareTeammate, type ShareCardView } from "../../logic/share-card";
 import { useMatchDetail, useRemarks, useSettings } from "../../queries";
 import styles from "./ShareCard.module.css";
 
@@ -46,9 +46,7 @@ const FAILED = { render: "Couldn't make the image", clipboard: "Couldn't copy, t
 
 function ShareDialog({ detail, summary, filter, teammate, titleId, onClose }: Props & { titleId: string; onClose: () => void }) {
   const f = filterValue(filter);
-  // The recap resets a friend who isn't in the session, so the name is always there.
-  const onCard: ShareTeammate =
-    typeof teammate === "object" ? { name: detail.friendsPresent.find((p) => teammate.friends.includes(p.id))?.name ?? "friend" } : teammate;
+  const onCard = shareTeammate(detail.friendsPresent, teammate);
   // Picked at opening: a match landing while the card is open would refetch, and blank it, for the
   // same name.
   const [guid] = useState(() => detail.matches.findLast((m) => m.me !== null)?.guid ?? "");
