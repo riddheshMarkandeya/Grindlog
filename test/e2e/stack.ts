@@ -84,7 +84,8 @@ const HAT_TRICK: Parameters<typeof record>[2] = {
  * (lost) and 2 Private 2v2 (won, lost), so together they're 5–4 and their modes are 2v2, 3v3 and
  * Private 2v2; against you in 12 Private 1v1 (won, lost in turn; the first an overtime win, the
  * second their MVP), so head-to-head is 7–6 over two pages. OPAL is a friend only ever on the other
- * team; KIM and LEE are teammates in 3 matches over 2 sessions, so both are suggested.
+ * team; KIM, LEE and MAX are teammates in 3 Casual Quads matches over 2 sessions, so all three are
+ * suggested, and any two added are a pair.
  * `share`: the share card's worst case. The current session is 48 matches of mixed results, one
  * left early, under a 32-character name; your saves stand out against three days ago, and you
  * hit no woodwork but had aerial touches, so the 8th tile is the two-line "Aerial touches".
@@ -138,7 +139,8 @@ function seed(dir: string, mode: Seed): void {
       }
       writer.save(match("e2e-opal", day(1, 20), 10 * HOUR, true, {}, { players: [player(ME, 0), player(OPAL, 1, { name: "Opal" })] }));
       const pair = [player(ME, 0), player(KIM, 0, { name: "Kim" }), player(LEE, 0, { name: "Lee" }), player(MAX, 0, { name: "Max" }), player(THEM, 1)];
-      for (const [i, [d, at]] of ([[24, 0], [24, 10], [26, 0]] as const).entries()) writer.save(match(`e2e-pair-${String(i)}`, day(1, d), 10 * HOUR + at * MIN, true, {}, { players: pair }));
+      // Casual Quads: four on your team, so a pair of them leaves a fourth in the carry bars' rest.
+      for (const [i, [d, at]] of ([[24, 0], [24, 10], [26, 0]] as const).entries()) writer.save(match(`e2e-pair-${String(i)}`, day(1, d), 10 * HOUR + at * MIN, true, { playlistId: 4 }, { players: pair }));
       storage.tracker.run("INSERT INTO friends (primary_id, nickname, added_at) VALUES (?, ?, ?)", FRIEND, FRIEND_NICK, now);
       storage.tracker.run("INSERT INTO friends (primary_id, nickname, added_at) VALUES (?, NULL, ?)", OPAL, now + 1);
       return;

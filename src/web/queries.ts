@@ -30,6 +30,7 @@ import {
 import { DEFAULT_SETTINGS, settingsSchema, type Settings, type SettingsPatch } from "../shared/schemas/settings";
 import type { IdAnswer, SeasonInput } from "../shared/schemas/tables";
 import { getJson, postJson } from "./api";
+import { namedPairs } from "./logic/friends";
 import { staleAfterTables, type CachedQuery } from "./logic/invalidation";
 import { patchQuery } from "./logic/settings";
 import { periodQuery } from "./logic/trends";
@@ -159,9 +160,9 @@ export function useFriends() {
   return useQuery({ ...friendsQuery, select: (data) => data.friends });
 }
 
-/** The Friends page's pairs, from the same answer as `useFriends` so a friend write keeps them fresh. */
+/** The Friends page's pairs with both names, from the same answer as `useFriends` so a friend write keeps them fresh. */
 export function useFriendPairs() {
-  return useQuery({ ...friendsQuery, select: (data) => data.pairs });
+  return useQuery({ ...friendsQuery, select: namedPairs });
 }
 
 /** One friend's page; a 404 error when the id isn't a friend (removed, or a stale link). */
@@ -262,13 +263,16 @@ export function useSetNickname() {
   );
 }
 
-/** The removed friend's page is dropped, not refetched: it's being left, and would answer 404. */
+/** The removed friend's page and every pair page with them are dropped, not refetched: they'd answer 404. */
 export function useRemoveFriend() {
   return useWholeWrite(
     FRIENDS_KEY,
     ({ id }: { id: string }) => postJson(`/api/friends/remove?${friendQuery(id)}`, WRITE, friendsResponse),
     staleAfterTables,
-    (queryClient, { id }) => { queryClient.removeQueries({ queryKey: ["friend", id] }); },
+    (queryClient, { id }) => {
+      queryClient.removeQueries({ queryKey: ["friend", id] });
+      queryClient.removeQueries({ predicate: (q) => q.queryKey[0] === "friend-pair" && q.queryKey.includes(id) });
+    },
   );
 }
 

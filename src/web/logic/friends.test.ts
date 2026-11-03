@@ -1,5 +1,5 @@
-import { describe, expect, test } from "vitest";
-import { carryShares, modeSwitch, pageOf, pickKind, pickMode, pickSize, recordText, winPctText } from "./friends";
+import { describe, expect, test, vi } from "vitest";
+import { carryRest, carryShares, modeSwitch, namedPairs, pageOf, pickKind, pickMode, pickSize, recordText, sideCopy, winPctText } from "./friends";
 
 describe("pager", () => {
   test("ten a page, clamped to the pages there are", () => {
@@ -44,6 +44,60 @@ describe("carry", () => {
     expect(carryShares([0, 0, 0], "2")).toBeNull();
     expect(carryShares([400, 300, 200, 100], "4")).toEqual({ pcts: [40, 30, 20, 10], even: 25 });
   });
+
+  test("the rest is named only when a teammate besides you and the friends can be in it", () => {
+    expect(carryRest("2", 1)).toBeNull();
+    expect(carryRest("3", 1)).toBe("the third teammate");
+    expect(carryRest("p3", 1)).toBe("the third teammate");
+    expect(carryRest("4", 1)).toBe("the other teammates");
+    expect(carryRest("3", 2)).toBeNull();
+    expect(carryRest("4", 2)).toBe("the fourth teammate");
+    expect(carryRest("2", 0)).toBe("the second teammate");
+  });
+});
+
+describe("copy", () => {
+  test("one friend keeps the single-friend words", () => {
+    const { compareNote, ...words } = sideCopy(["Sammy"]);
+    expect(compareNote("3v3", 4, 9)).toBe("Your 3v3 matches with them (4) against your other 3v3 matches (9), including ones where they were an opponent.");
+    expect(words).toEqual({
+      who: "Sammy",
+      title: "Sammy",
+      withHeading: "On your team",
+      againstHeading: "On the other team",
+      againstLabel: "head-to-head",
+      withNote: "together",
+      againstNote: "against them",
+      versus: "you – Sammy",
+      withEmpty: "You haven't teamed up with Sammy yet.",
+      againstEmpty: "You haven't played against Sammy yet.",
+      withColumn: "With Sammy",
+      together: "together",
+      anyOfYou: "either",
+      theirColumns: "Their column is their scoreboard only.",
+    });
+  });
+
+  test("a pair is \"A and B\", both on a side, and three numbers against", () => {
+    const { compareNote, ...words } = sideCopy(["Kim", "Lee"]);
+    expect(compareNote("4v4", 3, 0)).toBe("Your 4v4 matches with both on your team (3) against your 4v4 matches where neither was (0).");
+    expect(words).toEqual({
+      who: "Kim and Lee",
+      title: "Kim + Lee",
+      withHeading: "Both on your team",
+      againstHeading: "Both on the other team",
+      againstLabel: "against both",
+      withNote: "all three",
+      againstNote: "against both",
+      versus: "you – Kim – Lee",
+      withEmpty: "You haven't had Kim and Lee on your team together yet.",
+      againstEmpty: "You haven't played against Kim and Lee on the same team yet.",
+      withColumn: "With both",
+      together: "with both",
+      anyOfYou: "any",
+      theirColumns: "Their columns are their scoreboard only.",
+    });
+  });
 });
 
 describe("records", () => {
@@ -51,5 +105,18 @@ describe("records", () => {
     expect(recordText({ w: 12, l: 9 })).toBe("12–9");
     expect(winPctText({ w: 2, l: 1 })).toBe("67%");
     expect(winPctText({ w: 0, l: 0 })).toBe("–");
+  });
+});
+
+describe("pairs", () => {
+  test("each pair gets both names; a pair naming someone not in the list is warned about and skipped", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const friends = [{ id: "k", name: "Kim" }, { id: "l", name: "Lee" }];
+    const kl = { ids: ["k", "l"] as const, n: 3 };
+    const kx = { ids: ["k", "x"] as const, n: 4 };
+    expect(namedPairs({ friends, pairs: [kl, kx] })).toEqual([{ pair: kl, a: "Kim", b: "Lee" }]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith("[rlt] friends/pair_unnamed", { ids: ["k", "x"] });
+    warn.mockRestore();
   });
 });

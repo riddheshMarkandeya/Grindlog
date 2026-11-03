@@ -275,3 +275,109 @@ Passes: `/code-review low`, arch-reviewer (sonnet), security-reviewer.
 - arch q: `index()` isn't memoized. [Verified, no fix needed] each request builds it at most once,
   as before.
 No new findings and no `/simplify` edits, so the review is done: 2 rounds, 9 fixed, 0 deferred.
+
+### Part b, implementation notes
+- b3 focus: a throwaway Playwright repro (4 suggestions; top-3 acted on with "Show more" closed,
+  the last row once open) never put focus in a closed `<details>`: the acted-on index is a
+  visible one, and the re-slice keeps `min(acted, len-1)` in the top 3 or in an open disclosure.
+  Doesn't reproduce, so no guard; the index rule stays. Deleted after.
+- `pairPath` lives in `PairPage.tsx` beside the route that reads it, not next to `friendPath`;
+  no import cycle (PairPage doesn't import FriendsPage).
+- The friends e2e seed's Kim/Lee/Max matches moved to Casual Quads (4v4) so a pair leaves a real
+  fourth teammate; the carry bar reads out a non-zero rest even where `carryRest` says no one can
+  fill it (an odd lobby), and its grey moved from `--muted` to `--ink2` (axe contrast). Empty
+  segments drop their padding.
+- N=1 changes, all deliberate: ★ sits on the MVP's score cell; the bar's label drops "the rest
+  0%" in 2v2; the MVPs/Goals notes wrap to two lines instead of cutting off.
+- b4 on a copy of real data (3 friends, 0 suggestions, port 49111): the Together card for the one
+  qualifying pair, its page (focused h1, scorebug, tiles, carry swatches with no rest in 3v3,
+  compare columns, Against empty state), the Recap and Trends links landing filtered with the
+  With select reading the pair, the share card's "WITH A + B", and no sideways scroll at 375px on
+  the landing, pair and single-friend pages (single-friend page unchanged by eye).
+- **For the user to check by hand** (no real data reaches them): a filled pair Against zone (its
+  two-line tile captions), and "Show N more" with real suggestions.
+- Seen, not this change: the share card's highlight read "039% above your 30-day average", and
+  thin carry segments clip their "You 17%" label at narrow widths. Both pre-existing.
+
+### Part b, round 1
+Passes: `/code-review high`, arch-reviewer (opus), security-reviewer, `/simplify`, the UI
+usability review. Snapshot `ab23db6`.
+- security: no findings.
+- code-review bug: removing one friend left a cached pair page showing its old stats (a failed
+  404 refetch keeps the cached data, so a3's "the refetch shows the 404" didn't hold). [Fixed]
+  `useRemoveFriend` also drops every `friend-pair` query naming the id; e2e regression test
+  (red first).
+- code-review: `max-width` on a `<th>` is ignored, so long names never cut. [Fixed] names sit in
+  an inline-block `Cap` span; this also covers arch's duplicate cut-off CSS nit.
+- code-review: one-vs-pair wording still inline beside `sideCopy`. [Fixed] moved into `sideCopy`
+  (empty states, With column, carry words, Compare note), with literal tests.
+- code-review + arch: a pair with a missing name rendered nothing and could leave an empty
+  Together section. [Fixed] filtered first, logged `friends/pair_unnamed`, section only when any
+  remain.
+- code-review + arch: an empty record read "none yet" then "not yet". [Fixed] the visible line is
+  `aria-hidden`.
+- code-review: `carryRest`'s cast hid "the undefined teammate" for (2v2, 0 friends). [Fixed]
+  lookup keyed by team size, no cast; test added.
+- code-review: the first heading jumped down when an error line showed above it. [Fixed] the
+  selector also matches `.error`.
+- arch nit: stale "banner" comment. [Fixed]
+- arch q: `pairPath` placement. [Verified, no fix needed] recorded above.
+- arch nit: `SHADES` has two entries. [Verified, no fix needed] the API only builds pairs.
+- `/simplify` edits: Compare's `diff()` takes an undefined first value; the With zone tests its
+  count once; PairPage renders the back link once around a `Body`. Skipped: a shared detail
+  shell for FriendPage and PairPage (different states and copy, ~15 lines); Tile notes always
+  two lines (changes Recap's tiles); a friend-query key helper (one caller); the one-friend carry
+  legend as swatches (a wording change).
+- usability: states (loading, 404, error with Retry, empty zones), focus on load, links as real
+  links and the native `<details>` all consistent with the single-friend page; no new finding.
+After the fixes: `bun run check` 89 files, 1138 tests, typecheck and lint clean; e2e 79 passed.
+
+### Part b, round 2 (delta `git diff ab23db6`)
+Passes: `/code-review high` (the first run reviewed the snapshot's own range by mistake and
+re-found round 1's nine, all already fixed; re-run on the delta), arch-reviewer (sonnet),
+security-reviewer.
+- security: no findings.
+- code-review (2nd finding on the stale-page topic, now with a clean general fix): a friend
+  removed anywhere but this tab's Remove (another tab) left the cached page showing after its
+  refetch 404'd. [Fixed] on both `FriendPage` and `PairPage` a 404 wins over cached data; e2e
+  "…removed elsewhere" (Remove via the API, then Suggest again in the tab to mark it stale; red
+  with the old condition). `removeQueries` stays, so this tab's Remove doesn't flash old data.
+  Reverted in round 3 (the user's call), see below.
+- code-review + arch nit: the `pair_unnamed` warn ran on every render. [Fixed] the name join
+  moved into `useFriendPairs`'s module-level `select`, which runs once per answer.
+- code-review: `useRemoveFriend`'s JSDoc didn't mention pair pages. [Fixed]
+- code-review: the pushState snippet three times in the spec. [Fixed] `goInApp` helper.
+- code-review: the error-state h1 is never focused. [Deferred → BACKLOG Watch list] the same as
+  the single-friend page, outside the focus contract, and keyboard access is unaffected.
+- code-review: `LAST["2"]` covers an input callers don't send. [Verified, no fix needed] it is
+  what lets `LAST[size]` type-check with no cast.
+- code-review: the pair key layout isn't shared with the `removeQueries` predicate.
+  [Verified, no fix needed] one caller, two lines apart in the same file.
+After the fixes: `bun run check` 89 files, 1138 tests, clean; e2e 80 passed. Snapshot `4647fbd`.
+
+### Part b, round 3 (delta of round 2's fixes against `ab23db6`)
+Passes: `/code-review high`, arch-reviewer (sonnet), security-reviewer.
+- security: no findings. arch: two nits, both already dispositioned (error-state focus on the
+  Watch list; the pair key layout).
+- code-review, the third finding on the stale-page topic: "404 wins" lost focus when the page
+  swapped, and wrongly showed "aren't both friends" while a re-added friend's page refetched;
+  it also left round 1's `removeQueries` untested (the 404 branch covered for it). Stop rule:
+  taken to the user with a simpler design among the options. **User's decision (2026-11-03):
+  keep round 1 only.** [Fixed] "404 wins" reverted on both pages and its e2e test removed; round
+  1's test is red again without the pair `removeQueries` (checked). A removal made in another tab
+  shows old stats until a reload or the next live event, as the single-friend page always did.
+  [Deferred → BACKLOG Watch list]
+- code-review: `namedPairs` is untested pure logic in queries.ts. [Fixed] moved to
+  `logic/friends.ts` with a unit test (red first).
+- code-review: `path ?? ""` hides a missing href. [Fixed] asserted non-null first.
+- code-review: the inline comment in `useRemoveFriend` repeated the JSDoc. [Fixed] dropped.
+- code-review: the shared 404 helper, and FriendPage's three BackLinks. [Verified, no fix needed]
+  the helper went with the revert; FriendPage is otherwise untouched by part b.
+- code-review: the spec hard-codes the request header. [Verified, no fix needed] `pairUp` is now
+  its one use; the other e2e specs do the same.
+After the fixes: `bun run check` 89 files, 1139 tests, clean; e2e 79 passed.
+
+### Part b, round 4 (delta `git diff 4647fbd`)
+Passes: `/code-review low`, security-reviewer. No findings, and no `/simplify` edits, so the
+review is done: 4 rounds, 15 fixed (round 2's 404 fix later reverted), 2 deferred to the
+Watch list (error-state focus; a removal in another tab).

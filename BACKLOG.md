@@ -100,13 +100,20 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   (`--blue`/`--orange`, `--win`/`--loss` in `src/web/styles/tokens.css`), so it's a setting that
   overrides them on `<html>`, plus a check that each pair stays readable on every theme. Do it after
   the colour-roles part of the drift item above, so each token has one meaning first.
-- [ ] **[feature, Low, TBD]** After v1: trio "with" (two friends on your team) and duo "against"
-  (two friends on the other team) on the Friends page. WP9's UI is single-friend, but its friend
-  API takes a list of friend ids (user, 2026-10-28), so this is mostly a picker plus a column
-  group per extra member. Raised 2026-10-28 in
-  the Friends prototype review (`prototype/friends-page`).
 
 ## Watch list
+- [ ] **[bug (accepted), Low, Standard]** Trigger: a friend or pair page showing old stats for
+  someone already removed, after the removal was made in another tab. React Query keeps the
+  cached page (staleTime Infinity) and a failed 404 refetch keeps its data; this tab's Remove
+  drops the cached pages, but another tab's doesn't, until a reload or the next live event. A
+  "404 wins over cached data" fix was tried and reverted (it lost focus on the swap and misfired
+  after a re-add); the user chose to accept this. Record: `docs/plans/2026-11-03-friends-pairs.md`
+  (part b, round 3).
+- [ ] **[a11y, Low, Standard]** Trigger: a report that the friend or pair page's error state
+  ("Not a friend", "Not both friends", or the Retry state) leaves focus on the page body. Focus
+  moves to the h1 only once data loads (`FriendPage`/`PairPage` key the effect on `loaded`);
+  outside part b's focus contract ("focus like Friend"), and Tab still reaches everything. Fix
+  both pages together. Record: `docs/plans/2026-11-03-friends-pairs.md` (part b, round 2).
 - [ ] **[design, Low, Standard]** Trigger: a `query/friend_switched_team` warn in tracker.log (a
   friend's `teams_seen` is 3, or yours with `you: true`). No captured match shows a mid-match team
   switch; a switched friend counts as "with you", and your own switch is judged by your final team.

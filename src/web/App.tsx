@@ -6,6 +6,7 @@ import { useLiveEvents } from "./events/useLiveEvents";
 import { rememberTheme } from "./logic/settings";
 import { FriendPage } from "./pages/friends/FriendPage";
 import { FriendsPage } from "./pages/friends/FriendsPage";
+import { PairPage } from "./pages/friends/PairPage";
 import { NotFoundPage } from "./pages/Placeholders";
 import { RecapIndex, RecapSession } from "./pages/recap/RecapPage";
 import { SettingsPage } from "./pages/settings/SettingsPage";
@@ -50,6 +51,7 @@ export function App() {
             <Route path="/trends" element={<TrendsPage />} />
             <Route path="/friends" element={<FriendsPage />} />
             <Route path="/friends/:id" element={<FriendPage />} />
+            <Route path="/friends/:a/:b" element={<PairPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

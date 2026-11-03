@@ -1,29 +1,39 @@
-// The Friends landing: a banner per suggestion (Add friend · Never suggest), a pair card per friend
-// with both records, and the players you said never to suggest. Friends come only from suggestions.
-// After Add or Never suggest, focus goes to the next banner's Add (after the last, the one before),
-// else the h1; after Suggest again, to the list's summary, else the h1.
+// The Friends landing: the Suggested panel (a row per suggestion with Add friend · Never suggest,
+// the top few shown, the rest behind "Show N more"), a card per friend with both records, a card
+// per pair of friends seen together often enough, and the players you said never to suggest.
+// Friends come only from suggestions; pairs come from the server. After Add or Never suggest, focus
+// goes to the next suggestion's Add (after the last, the one before), else the h1; after Suggest
+// again, to the list's summary, else the h1.
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { dayOf } from "../../../shared/periods";
 import { platformOf } from "../../../shared/platforms";
-import type { FriendCard } from "../../../shared/schemas/responses";
+import type { FriendCard, FriendPair, FriendSuggestions } from "../../../shared/schemas/responses";
 import { cx } from "../../components/cx";
 import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { dateLabel, plural } from "../../logic/format";
 import { recordText } from "../../logic/friends";
-import { useAddFriend, useFriends, useNeverSuggest, useNeverSuggested, useSuggestAgain, useSuggestions } from "../../queries";
+import { useAddFriend, useFriendPairs, useFriends, useNeverSuggest, useNeverSuggested, useSuggestAgain, useSuggestions } from "../../queries";
 import styles from "./Friends.module.css";
+import { pairPath } from "./PairPage";
 import { focusTo, recordLabel, warnFailed, WlBar } from "./parts";
 
 export const friendPath = (id: string) => `/friends/${encodeURIComponent(id)}`;
 
 const RULE = "Anyone on your team in 3 or more matches over 2 or more sessions is suggested here.";
+const PAIR_RULE = "Two friends both on your team, or both on the other team, in 3 or more matches over 2 or more sessions.";
+// Suggestions shown before "Show N more".
+const SHOWN = 3;
+const lastPlayed = (at: number | null) => `Last played ${at === null ? "–" : dateLabel(dayOf(at))}`;
+
+type Suggestion = FriendSuggestions["suggestions"][number];
 
 type Pending = "suggestions" | "never" | null;
 
 export function FriendsPage() {
   const friends = useFriends();
+  const pairs = useFriendPairs();
   const suggestions = useSuggestions();
   const never = useNeverSuggested();
   const add = useAddFriend();
@@ -42,7 +52,7 @@ export function FriendsPage() {
   const page = useRef<HTMLDivElement>(null);
   const summary = useRef<HTMLElement>(null);
   const pending = useRef<Pending>(null);
-  // The banner acted on: the one after it now sits at the same place. None left: the h1.
+  // The suggestion acted on: the one after it now sits at the same place. None left: the h1.
   const actedAt = useRef(0);
 
   // Focus that falls to the page (a card or link used to get here unmounted) goes to the h1.
@@ -113,31 +123,51 @@ export function FriendsPage() {
   };
   const busy = add.isPending || neverSuggest.isPending;
   const nothing = friends.data.length === 0 && suggestions.data.length === 0;
+  const pairCards = pairs.data ?? [];
+  const row = (s: Suggestion) => (
+    <SuggestionRow key={s.id} s={s} busy={busy} onAdd={() => { write(add, "add", s); }} onNever={() => { write(neverSuggest, "never", s); }} />
+  );
 
   return (
     <div ref={page}>
       <h1 ref={h1} tabIndex={-1} className={styles.h1}>Friends</h1>
       <p className={styles.status} role="status">{status}</p>
       {failed && <p className={styles.error} role="alert">{failed}</p>}
-      {suggestions.data.map((s) => (
-        <div key={s.id} className={styles.banner}>
-          <p>
-            You've teamed up with <b title={s.name}>{s.name}</b> in {plural(s.matches, "match", "matches")} over {plural(s.sessions, "session")}. Add them as a friend?
-          </p>
-          <span className={styles.acts}>
-            <button type="button" data-add className={cx(styles.button, styles.primary)} aria-disabled={busy} onClick={() => { if (!busy) write(add, "add", s); }}>Add friend</button>
-            <button type="button" className={styles.button} aria-disabled={busy} onClick={() => { if (!busy) write(neverSuggest, "never", s); }}>Never suggest</button>
-          </span>
-        </div>
-      ))}
+      {suggestions.data.length > 0 && (
+        <section aria-labelledby="suggested-heading">
+          <h2 id="suggested-heading" className={styles.h2}>Suggested</h2>
+          <p>Often on your team, not friends yet. Add them to see your record together.</p>
+          <ul className={styles.sugg}>{suggestions.data.slice(0, SHOWN).map(row)}</ul>
+          {suggestions.data.length > SHOWN && (
+            <details className={styles.more}>
+              <summary>Show {suggestions.data.length - SHOWN} more</summary>
+              <ul className={styles.sugg}>{suggestions.data.slice(SHOWN).map(row)}</ul>
+            </details>
+          )}
+        </section>
+      )}
       {nothing ? (
         <EmptyState title="No friends yet.">{RULE}</EmptyState>
-      ) : friends.data.length === 0 ? (
-        <p className={styles.muted}>No friends yet. {RULE}</p>
       ) : (
-        <ul className={styles.cards}>
-          {friends.data.map((f) => <li key={f.id}><Card f={f} /></li>)}
-        </ul>
+        <>
+          <h2 className={styles.h2}>Your friends</h2>
+          {friends.data.length === 0 ? (
+            <p className={styles.muted}>No friends yet. {RULE}</p>
+          ) : (
+            <ul className={styles.cards}>
+              {friends.data.map((f) => <li key={f.id}><Card f={f} /></li>)}
+            </ul>
+          )}
+        </>
+      )}
+      {pairCards.length > 0 && (
+        <section aria-labelledby="together-heading">
+          <h2 id="together-heading" className={styles.h2}>Together</h2>
+          <p>{PAIR_RULE}</p>
+          <ul className={styles.cards}>
+            {pairCards.map(({ pair, a, b }) => <li key={pair.ids.join(",")}><PairCard pair={pair} a={a} b={b} /></li>)}
+          </ul>
+        </section>
       )}
       {never.isError && !never.data && (
         <p className={cx(styles.error, styles.never)}>
@@ -161,24 +191,56 @@ export function FriendsPage() {
   );
 }
 
-function Card({ f }: { f: FriendCard }) {
-  const seen = f.nickname !== null && f.lastSeenName !== null ? `${f.lastSeenName} · ` : "";
+function SuggestionRow({ s, busy, onAdd, onNever }: { s: Suggestion; busy: boolean; onAdd: () => void; onNever: () => void }) {
+  return (
+    <li>
+      <b className={styles.trunc} title={s.name}>{s.name}</b>
+      <span className={cx(styles.muted, "num")}>{plural(s.matches, "match", "matches")} · {plural(s.sessions, "session")}</span>
+      <span className={styles.acts}>
+        <button type="button" data-add className={cx(styles.button, styles.primary)} aria-disabled={busy} onClick={() => { if (!busy) onAdd(); }}>Add friend</button>
+        <button type="button" className={styles.button} aria-disabled={busy} onClick={() => { if (!busy) onNever(); }}>Never suggest</button>
+      </span>
+    </li>
+  );
+}
+
+/** Together and Against side by side; no match yet is a dash, read as "none yet". */
+function Records({ w, a }: { w: FriendCard["with"]; a: FriendCard["with"] }) {
   const side = (label: string, r: FriendCard["with"]) => (
     <div>
       <div className={styles.rk}>{label}</div>
-      <div className={cx(styles.rv, "num")}><span aria-hidden="true">{recordText(r)}</span><span className="visually-hidden">{recordLabel(r)}</span></div>
-      {r.n > 0 ? <WlBar w={r.w} l={r.l} /> : <div className={cx(styles.muted, styles.small)}>not yet</div>}
+      <div className={cx(styles.rv, "num")}><span aria-hidden="true">{r.n > 0 ? recordText(r) : "–"}</span><span className="visually-hidden">{r.n > 0 ? recordLabel(r) : "none yet"}</span></div>
+      {/* Read once, as the hidden "none yet" above. */}
+      {r.n > 0 ? <WlBar w={r.w} l={r.l} /> : <div className={cx(styles.muted, styles.small)} aria-hidden="true">not yet</div>}
     </div>
   );
+  return (
+    <div className={styles.recs}>
+      {side("Together", w)}
+      {side("Against", a)}
+    </div>
+  );
+}
+
+function Card({ f }: { f: FriendCard }) {
+  const seen = f.nickname !== null && f.lastSeenName !== null ? `${f.lastSeenName} · ` : "";
   return (
     <Link to={friendPath(f.id)} className={styles.card}>
       <span className={cx(styles.name, styles.trunc)} title={f.name}>{f.name}</span>
       <span className={cx(styles.muted, styles.small, styles.trunc)} title={seen + platformOf(f.id).name}>{seen}{platformOf(f.id).name}</span>
-      <div className={styles.recs}>
-        {side("Together", f.with)}
-        {side("Against", f.against)}
-      </div>
-      <span className={cx(styles.muted, styles.small)}>Last played {f.lastPlayed === null ? "–" : dateLabel(dayOf(f.lastPlayed))}</span>
+      <Records w={f.with} a={f.against} />
+      <span className={cx(styles.muted, styles.small)}>{lastPlayed(f.lastPlayed)}</span>
+    </Link>
+  );
+}
+
+function PairCard({ pair, a, b }: { pair: FriendPair; a: string; b: string }) {
+  return (
+    <Link to={pairPath(...pair.ids)} className={styles.card}>
+      <span className={cx(styles.name, styles.trunc)} title={a}>{a}</span>
+      <span className={cx(styles.second, styles.trunc)} title={b}><i>+</i> {b}</span>
+      <Records w={pair.with} a={pair.against} />
+      <span className={cx(styles.muted, styles.small)}>{lastPlayed(pair.lastPlayed)}</span>
     </Link>
   );
 }

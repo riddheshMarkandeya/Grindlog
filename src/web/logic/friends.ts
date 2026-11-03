@@ -1,5 +1,6 @@
-// The Friends page's display logic: the head-to-head pager, the team size × Online/Private switch
-// over the modes a friend has, carry bars, and records as text.
+// The Friends pages' display logic: the head-to-head pager, the team size × Online/Private switch
+// over the modes a friend has, carry bars, records as text, and the words that change between one
+// friend's page and a pair's.
 import type { FriendDetail } from "../../shared/schemas/responses";
 import { sum } from "../../shared/aggregate";
 import { pct } from "./recap";
@@ -54,6 +55,59 @@ export function carryShares(shares: readonly number[], mode: Mode): { pcts: numb
   return { pcts: shares.map((s) => pct(s / total)), even: 100 / Number(sizeOf(mode)) };
 }
 
+// By team size: with one teammate left over, they're the last one on the team.
+const LAST = { "2": "second", "3": "third", "4": "fourth" } as const;
+
+/** Who fills the grey end of a carry bar with `friends` friends on your team; null when no one can. */
+export function carryRest(mode: Mode, friends: number): string | null {
+  const size = sizeOf(mode);
+  const others = Number(size) - friends - 1;
+  if (others <= 0) return null;
+  return others > 1 ? "the other teammates" : `the ${LAST[size]} teammate`;
+}
+
+/** The words a friend page uses, for one friend or for a pair ("A and B", "all three"). */
+export function sideCopy(names: readonly string[]) {
+  const one = names.length === 1;
+  const who = names.join(" and ");
+  return {
+    who,
+    title: names.join(" + "),
+    withHeading: one ? "On your team" : "Both on your team",
+    againstHeading: one ? "On the other team" : "Both on the other team",
+    againstLabel: one ? "head-to-head" : "against both",
+    withNote: one ? "together" : "all three",
+    againstNote: one ? "against them" : "against both",
+    versus: ["you", ...names].join(" – "),
+    withEmpty: one ? `You haven't teamed up with ${who} yet.` : `You haven't had ${who} on your team together yet.`,
+    againstEmpty: one ? `You haven't played against ${who} yet.` : `You haven't played against ${who} on the same team yet.`,
+    withColumn: one ? `With ${who}` : "With both",
+    together: one ? "together" : "with both",
+    anyOfYou: one ? "either" : "any",
+    theirColumns: one ? "Their column is their scoreboard only." : "Their columns are their scoreboard only.",
+    /** What the Compare table weighs, for `label` matches (e.g. "3v3"): `w` with, `wo` without. */
+    compareNote: (label: string, w: number, wo: number) =>
+      one
+        ? `Your ${label} matches with them (${String(w)}) against your other ${label} matches (${String(wo)}), including ones where they were an opponent.`
+        : `Your ${label} matches with both on your team (${String(w)}) against your ${label} matches where neither was (${String(wo)}).`,
+  };
+}
+export type SideCopy = ReturnType<typeof sideCopy>;
+
 export const recordText = ({ w, l }: { w: number; l: number }): string => `${String(w)}–${String(l)}`;
 
 export const winPctText = ({ w, l }: { w: number; l: number }): string => (w + l === 0 ? "–" : `${String(pct(w / (w + l)))}%`);
+
+/**
+ * Each pair with both friends' names. Pairs and friends come in one answer, so a missing name is a
+ * server bug: logged, and the pair skipped. Used as a query `select`, so it runs once per answer.
+ */
+export function namedPairs<P extends { ids: readonly string[] }>(data: { friends: readonly { id: string; name: string }[]; pairs: readonly P[] }) {
+  const names = new Map(data.friends.map((f) => [f.id, f.name]));
+  return data.pairs.flatMap((pair) => {
+    const [a, b] = pair.ids.map((id) => names.get(id));
+    if (a !== undefined && b !== undefined) return [{ pair, a, b }];
+    console.warn("[rlt] friends/pair_unnamed", { ids: pair.ids });
+    return [];
+  });
+}

@@ -42,6 +42,11 @@ describe("theme tokens", () => {
     expect([...block(":root").keys()]).toEqual(expect.arrayContaining(["blue", "orange", "win", "loss", "up", "down", "flag", "r", "s1", "s6"]));
   });
 
+  test("the carry bars' friend shades keep their dark text at 4.5:1", () => {
+    const root = block(":root");
+    for (const k of ["friend-a", "friend-b"]) expect(contrast(root.get(k) ?? "", "#0c1a2b"), k).toBeGreaterThanOrEqual(4.5);
+  });
+
   describe.each(THEMES)("%s contrast", (theme) => {
     const t = block(`[data-theme=${theme}]`);
     const get = (k: string) => t.get(k) ?? "";

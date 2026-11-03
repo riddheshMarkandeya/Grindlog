@@ -5,6 +5,9 @@
   color-scheme: dark;
   --blue: #3987e5;
   --orange: #d95926;
+  /* The friends' segments in a carry bar, after your team blue; dark text sits on them. */
+  --friend-a: #8fc0f5;
+  --friend-b: #5fc4c4;
   --win: #2ca57a;
   --loss: #b84a63;
   --up: #4cc38a;
