@@ -3,21 +3,10 @@
 Tags: `[type, priority, effort]` — type bug/refactor/feature/performance/test-coverage/design/misc;
 priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
 
-- [ ] **[feature, High, Substantial]** v1 roadmap: `docs/plans/2026-10-16-v1-roadmap.md`. Next:
-  WP8 (Settings), split 2026-10-28: WP8a and WP8b (the You and Seasons tables, the section list)
-  deployed 2026-10-28 and checked by the user (phone width, the pending guess answered); left: add
-  S25 when it starts (`docs/plans/2026-10-28-wp8a-settings.md`,
-  `docs/plans/2026-10-28-wp8b-settings-tables.md`). WP7 (Trends) is deployed: WP7b (the big chart,
-  rolling 20, the W/L chart with click-through, `docs/plans/2026-10-28-wp7b-trends-charts.md`) and
-  WP7a (Trends page, controls and tiles, `docs/plans/2026-10-27-wp7a-trends-page.md`). WP6c (share card, `docs/plans/2026-10-27-wp6c-share-card.md`) is deployed. WP6b (remarks, `docs/plans/2026-10-27-wp6b-remarks.md`) is deployed. WP6a
-  (recap pages) is deployed: WP6a-c (match page, Matches & numbers, links,
-  `docs/plans/2026-10-27-wp6a-c-matches-and-match-page.md`), WP6a-b (Overview sections 5–8,
-  `docs/plans/2026-10-27-wp6a-b-overview-sections.md`) and WP6a-a (recap navigation,
-  `docs/plans/2026-10-26-wp6a-a-recap-navigation.md`). WP5b (web shell; WP5b-b harness and install,
-  `docs/plans/2026-10-21-wp5b-b-harness-install.md`) is deployed. WP5a-a and WP5a-b (API, `docs/plans/2026-10-21-wp5a-b-api.md`) are deployed. WP4c-a (rule registry, `rules-diff`) and WP4c-b (retention split,
-  `docs/plans/2026-10-20-wp4c-b-retention-split.md`) are deployed. WP4b's open flag `mvp_count` is
-  closed: a podium with no award is normal, so the check flags only more than one award (`mvp` v2,
-  commit 87881b5); after the 2026-10-26 recompute no stored match has it.
+- [ ] **[misc, Med, Trivial]** v1 roadmap (`docs/plans/2026-10-16-v1-roadmap.md`): every work package
+  is deployed (WP9, the last, on 2026-11-02). Left: add S25 in Settings › Seasons when it starts; check
+  the Friends page by eye on real data (its look, the duo remark line on ↻, the share card's "· with
+  <nick>", the HEAD-TO-HEAD label wrapping beside a long name). Open items from the work packages:
   - **[design, Low, Trivial]** Add back the themes midnight, dusk, steel and daylight (values in the
     `prototype/settings-layout` tokens; each needs a `tokens.css` block, and the token test covers
     it). Daylight has the real cost: every chart gets checked in light mode, and so does the WP6c
@@ -111,6 +100,16 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   (`--blue`/`--orange`, `--win`/`--loss` in `src/web/styles/tokens.css`), so it's a setting that
   overrides them on `<html>`, plus a check that each pair stays readable on every theme. Do it after
   the colour-roles part of the drift item above, so each token has one meaning first.
+- [ ] **[feature, Med, Standard]** Friends page, Who carries: add Assists and Saves bars beside
+  Score, Goals and MVPs (user, 2026-11-02). `readLobbies`' `myTeamTotals` sums only score and goals
+  by final team, so it gains assists and saves; then `friendView`'s `share()`, the
+  `friendDetailResponse` schema and the `Carry` rows in `FriendPage.tsx`. The compare table already
+  has both. Record: `docs/plans/2026-11-02-wp9b-friends-page.md`.
+- [ ] **[design, Med, Standard]** Share card: with a playlist and a friend picked, the filter pill
+  ("Ranked Doubles · with <nick>") is cut off with an ellipsis. Let it wrap to two lines instead
+  (user, 2026-11-02). `.pill` in `ShareCard.module.css` is `white-space: nowrap` at
+  `max-width: 45%`; check the PNG export at both card sizes and with a 32-char nickname. Record:
+  `docs/plans/2026-10-27-wp6c-share-card.md`, `docs/plans/2026-11-02-wp9a-friends-data.md`.
 - [ ] **[feature, Low, TBD]** After v1: trio "with" (two friends on your team) and duo "against"
   (two friends on the other team) on the Friends page. WP9's UI is single-friend, but its friend
   API takes a list of friend ids (user, 2026-10-28), so this is mostly a picker plus a column
