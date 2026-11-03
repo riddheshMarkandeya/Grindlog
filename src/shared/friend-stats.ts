@@ -37,7 +37,7 @@ export interface LobbyMatch {
   sizes: { mine: number; other: number };
   me: Line;
   /** Your final team's sums. */
-  myTeamTotals: { score: number; goals: number };
+  myTeamTotals: { score: number; goals: number; assists: number; saves: number };
   mvpKey: string | null;
   /** Whether the MVP was on your final team; null with no MVP. */
   mvpOnMyTeam: boolean | null;
@@ -56,7 +56,7 @@ type Shares = [number, number, number];
 export interface ModeView {
   mode: Mode;
   matches: number;
-  carry: { matches: number; score: Shares; goals: Shares; mvps: Shares };
+  carry: { matches: number; score: Shares; goals: Shares; assists: Shares; saves: Shares; mvps: Shares };
   compare: { with: PerMatch; without: PerMatch | null; them: PerMatch };
 }
 
@@ -172,7 +172,7 @@ export function friendView(matches: readonly LobbyMatch[], id: string, sessionOf
     if (!at.length) return [];
     // Final-team totals don't fit a match where either of you changed team.
     const steady = at.filter((x) => !x.f.switched && !x.m.youSwitched);
-    const share = (k: "score" | "goals"): Shares => {
+    const share = (k: keyof LobbyMatch["myTeamTotals"]): Shares => {
       const you = sum(steady.map((x) => x.m.me[k]));
       const them = sum(steady.map((x) => x.f[k]));
       return [you, them, sum(steady.map((x) => x.m.myTeamTotals[k])) - you - them];
@@ -188,7 +188,7 @@ export function friendView(matches: readonly LobbyMatch[], id: string, sessionOf
     return [{
       mode,
       matches: at.length,
-      carry: { matches: steady.length, score: share("score"), goals: share("goals"), mvps },
+      carry: { matches: steady.length, score: share("score"), goals: share("goals"), assists: share("assists"), saves: share("saves"), mvps },
       compare: {
         with: perMatch(at.map((x) => x.m.me), withRecord),
         without: without.length ? perMatch(without.map((m) => m.me), record(without)) : null,

@@ -354,7 +354,7 @@ describe("friends on your team", () => {
       record(
         "G1",
         1000,
-        { players: [player(ME, 0, { score: 300, goals: 2 }), player(SAM, 0, { score: 200, goals: 1, name: "Sam" }), player(BOT, 0, { isBot: true, score: 50, goals: 0 }), player(ALEX, 1), player(THEM, 1)] },
+        { players: [player(ME, 0, { score: 300, goals: 2, assists: 1, saves: 2 }), player(SAM, 0, { score: 200, goals: 1, assists: 2, saves: 3, name: "Sam" }), player(BOT, 0, { isBot: true, score: 50, goals: 0, assists: 4, saves: 1 }), player(ALEX, 1), player(THEM, 1, { assists: 7, saves: 7 })] },
         { scoreTeam0: 3, scoreTeam1: 1, mvpKey: SAM, overtime: true },
       ),
     );
@@ -372,15 +372,15 @@ describe("friends on your team", () => {
       result: "win",
       goalDiff: 2,
       sizes: { mine: 3, other: 2 },
-      me: { playerKey: ME, score: 300, goals: 2, assists: 0, saves: 0, shots: 2 },
-      myTeamTotals: { score: 550, goals: 3 },
+      me: { playerKey: ME, score: 300, goals: 2, assists: 1, saves: 2, shots: 2 },
+      myTeamTotals: { score: 550, goals: 3, assists: 7, saves: 6 },
       mvpKey: SAM,
       mvpOnMyTeam: true,
       youSwitched: false,
     });
     expect(g1?.friends).toEqual([
       { id: ALEX, playerKey: ALEX, side: "against", switched: false, score: 100, goals: 1, assists: 0, saves: 0, shots: 2 },
-      { id: SAM, playerKey: SAM, side: "with", switched: false, score: 200, goals: 1, assists: 0, saves: 0, shots: 2 },
+      { id: SAM, playerKey: SAM, side: "with", switched: false, score: 200, goals: 1, assists: 2, saves: 3, shots: 2 },
     ]);
     // You switched and ended on team 1: Sam, seen on both, is with you; Alex, only on team 0, is against.
     expect(g2).toMatchObject({ result: "win", goalDiff: 2, youSwitched: true, mvpOnMyTeam: false, sizes: { mine: 1, other: 2 } });

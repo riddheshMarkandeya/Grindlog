@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { measureCard, openCard, shareButton, shareDialog } from "./share-card";
+import { measureCard, openCard, pillLines, shareButton, shareDialog } from "./share-card";
 
 const THEMES = ["carbon", "slate", "oled"] as const;
 // The one 404 a test brings about on purpose; only that test lets it through.
@@ -61,6 +61,8 @@ test("the card opens on the session with its name, record and tiles, fits, and p
 test("Download saves a 1080×1440 PNG named for the session's start and filter", async ({ page }) => {
   await page.goto("/recap/e2e-seed-won?filter=13");
   await openCard(page);
+  // A short pill stays on one line.
+  expect(await pillLines(page)).toBe(1);
   const [download] = await Promise.all([page.waitForEvent("download"), shareDialog(page).getByRole("button", { name: "Download PNG" }).click()]);
   expect(download.suggestedFilename()).toMatch(/^rl-session-\d{4}-\d{2}-\d{2}-\d{4}-ranked-standard\.png$/);
   const png = readFileSync(await download.path());

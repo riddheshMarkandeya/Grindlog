@@ -67,6 +67,10 @@ test("a friend: scorebug, both zones, the mode switch, the pager and a match lin
   // 3v3 is the most-played online mode; it has no private matches, so Private is off there.
   const note = page.getByText(/^Your .* matches with them/);
   await expect(note).toContainText("Your 3v3 matches with them (4)");
+  const bars = page.getByRole("img", { name: /^\w+: you \d+%/ });
+  await expect(bars).toHaveCount(5);
+  const labels = await Promise.all((await bars.all()).map((b) => b.getAttribute("aria-label")));
+  expect(labels.map((l) => l?.split(":")[0])).toEqual(["Score", "Goals", "Assists", "Saves", "MVPs"]);
   const priv = page.getByRole("button", { name: "Private" });
   await expect(priv).toHaveAttribute("aria-disabled", "true");
   await page.getByRole("button", { name: "2v2" }).click();

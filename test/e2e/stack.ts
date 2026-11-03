@@ -124,7 +124,7 @@ function seed(dir: string, mode: Seed): void {
     }
     if (mode === "friends") {
       for (let i = 0; i < 22; i++) {
-        const players = i < 4 ? [player(ME, 0), player(FRIEND, 0, { name: "SamInGame" }), player(THEM, 1)] : i === 4 ? [player(ME, 0), player(FRIEND, 1, { name: "SamInGame" })] : [player(ME, 0), player(THEM, 1)];
+        const players = i < 4 ? [player(ME, 0, { assists: 1, saves: 2 }), player(FRIEND, 0, { name: "SamInGame", assists: 1, saves: 1 }), player(THEM, 1)] : i === 4 ? [player(ME, 0), player(FRIEND, 1, { name: "SamInGame" })] : [player(ME, 0), player(THEM, 1)];
         writer.save(match(`e2e-fr-${String(i).padStart(2, "0")}`, day(1, 5), 10 * HOUR + i * 6 * MIN, i % 3 !== 0, i === 21 ? { playlistId: 11 } : {}, { players }));
       }
       writer.save(match("e2e-nofr-a", day(1, 12), 8 * HOUR, true));

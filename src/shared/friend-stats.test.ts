@@ -19,7 +19,7 @@ const match = (over: Partial<LobbyMatch> = {}): LobbyMatch => {
     goalDiff: 2,
     sizes: { mine: 2, other: 2 },
     me: line(300, 1),
-    myTeamTotals: { score: 500, goals: 1 },
+    myTeamTotals: { score: 500, goals: 1, assists: 0, saves: 0 },
     mvpKey: null,
     mvpOnMyTeam: null,
     youSwitched: false,
@@ -121,14 +121,14 @@ describe("with: modes", () => {
 
   test("carry: you, them and the rest of the team; switched matches are left out", () => {
     const ms = [
-      won({ playlistId: 13, sizes: { mine: 3, other: 3 }, me: line(300, 2), myTeamTotals: { score: 900, goals: 3 }, friends: [sam("with", 400, 1)], mvpKey: SAM, mvpOnMyTeam: true }),
-      won({ playlistId: 13, sizes: { mine: 3, other: 3 }, me: line(500, 1), myTeamTotals: { score: 1000, goals: 2 }, friends: [sam("with", 100, 0)], mvpKey: "Epic|me|0", mvpOnMyTeam: true }),
-      won({ playlistId: 13, sizes: { mine: 3, other: 3 }, myTeamTotals: { score: 900, goals: 3 }, mvpKey: "Epic|x|0", mvpOnMyTeam: true }),
-      won({ playlistId: 13, sizes: { mine: 3, other: 3 }, myTeamTotals: { score: 100, goals: 0 }, friends: [sam("with", 999, 9, { switched: true })] }),
-      won({ playlistId: 13, sizes: { mine: 3, other: 3 }, myTeamTotals: { score: 100, goals: 0 }, youSwitched: true }),
+      won({ playlistId: 13, sizes: { mine: 3, other: 3 }, me: { ...line(300, 2), assists: 1, saves: 3 }, myTeamTotals: { score: 900, goals: 3, assists: 5, saves: 6 }, friends: [sam("with", 400, 1, { assists: 2, saves: 1 })], mvpKey: SAM, mvpOnMyTeam: true }),
+      won({ playlistId: 13, sizes: { mine: 3, other: 3 }, me: { ...line(500, 1), saves: 2 }, myTeamTotals: { score: 1000, goals: 2, assists: 2, saves: 4 }, friends: [sam("with", 100, 0, { assists: 1 })], mvpKey: "Epic|me|0", mvpOnMyTeam: true }),
+      won({ playlistId: 13, sizes: { mine: 3, other: 3 }, myTeamTotals: { score: 900, goals: 3, assists: 1, saves: 1 }, mvpKey: "Epic|x|0", mvpOnMyTeam: true }),
+      won({ playlistId: 13, sizes: { mine: 3, other: 3 }, myTeamTotals: { score: 100, goals: 0, assists: 9, saves: 9 }, friends: [sam("with", 999, 9, { switched: true })] }),
+      won({ playlistId: 13, sizes: { mine: 3, other: 3 }, myTeamTotals: { score: 100, goals: 0, assists: 9, saves: 9 }, youSwitched: true }),
     ];
     const carry = friendView(ms, SAM, () => null).with.modes[0]?.carry;
-    expect(carry).toEqual({ matches: 3, score: [1100, 700, 1000], goals: [4, 1, 3], mvps: [1, 1, 1] });
+    expect(carry).toEqual({ matches: 3, score: [1100, 700, 1000], goals: [4, 1, 3], assists: [1, 3, 4], saves: [5, 1, 5], mvps: [1, 1, 1] });
   });
 
   test("compare: per match with them, without them at the same mode (as an opponent too), and theirs", () => {

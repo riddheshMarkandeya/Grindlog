@@ -266,7 +266,7 @@ export const friendDetailResponse = z.object({
         z.object({
           mode: z.enum(MODE_ORDER),
           matches: z.number(),
-          carry: z.object({ matches: z.number(), score: shares, goals: shares, mvps: shares }),
+          carry: z.object({ matches: z.number(), score: shares, goals: shares, assists: shares, saves: shares, mvps: shares }),
           compare: z.object({ with: perMatch, without: perMatch.nullable(), them: perMatch }),
         }),
       ),

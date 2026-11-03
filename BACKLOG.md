@@ -100,16 +100,6 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   (`--blue`/`--orange`, `--win`/`--loss` in `src/web/styles/tokens.css`), so it's a setting that
   overrides them on `<html>`, plus a check that each pair stays readable on every theme. Do it after
   the colour-roles part of the drift item above, so each token has one meaning first.
-- [ ] **[feature, Med, Standard]** Friends page, Who carries: add Assists and Saves bars beside
-  Score, Goals and MVPs (user, 2026-11-02). `readLobbies`' `myTeamTotals` sums only score and goals
-  by final team, so it gains assists and saves; then `friendView`'s `share()`, the
-  `friendDetailResponse` schema and the `Carry` rows in `FriendPage.tsx`. The compare table already
-  has both. Record: `docs/plans/2026-11-02-wp9b-friends-page.md`.
-- [ ] **[design, Med, Standard]** Share card: with a playlist and a friend picked, the filter pill
-  ("Ranked Doubles · with <nick>") is cut off with an ellipsis. Let it wrap to two lines instead
-  (user, 2026-11-02). `.pill` in `ShareCard.module.css` is `white-space: nowrap` at
-  `max-width: 45%`; check the PNG export at both card sizes and with a 32-char nickname. Record:
-  `docs/plans/2026-10-27-wp6c-share-card.md`, `docs/plans/2026-11-02-wp9a-friends-data.md`.
 - [ ] **[feature, Low, TBD]** After v1: trio "with" (two friends on your team) and duo "against"
   (two friends on the other team) on the Friends page. WP9's UI is single-friend, but its friend
   API takes a list of friend ids (user, 2026-10-28), so this is mostly a picker plus a column

@@ -295,7 +295,7 @@ function Modes({ side, defaultMode, name }: { side: WithSide; defaultMode: Mode;
 }
 
 function Carry({ carry, mode, name }: { carry: WithSide["modes"][number]["carry"]; mode: Mode; name: string }) {
-  const rows = [["Score", carry.score], ["Goals", carry.goals], ["MVPs", carry.mvps]] as const;
+  const rows = [["Score", carry.score], ["Goals", carry.goals], ["Assists", carry.assists], ["Saves", carry.saves], ["MVPs", carry.mvps]] as const;
   const size = Number(sizeOf(mode));
   const rest = size > 3 ? "the other teammates" : "the third teammate";
   if (carry.matches === 0) return <div className={styles.panel}><p className={styles.muted}>Every {MODE_LABEL[mode]} match together had a team switch, so there's no share to show.</p></div>;

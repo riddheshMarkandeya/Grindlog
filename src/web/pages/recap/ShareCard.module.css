@@ -34,8 +34,8 @@
 .meta b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-weight: 600; }
 .live { white-space: nowrap; color: var(--accent); font-weight: 600; }
 .pill {
-  display: block; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  padding: 2px 8px; border-radius: 99px; background: var(--surf2); color: var(--ink); font-size: 11px; font-weight: 600;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; max-width: 45%; overflow: hidden; overflow-wrap: anywhere;
+  padding: 2px 8px; border-radius: 10px; background: var(--surf2); color: var(--ink); font-size: 11px; font-weight: 600;
 }
 .hero { display: flex; align-items: flex-end; justify-content: space-between; margin-top: 14px; }
 .rec { font-size: 64px; font-weight: 800; line-height: 1; letter-spacing: -.02em; }

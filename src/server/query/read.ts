@@ -422,6 +422,7 @@ export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Lo
         const team = me.team_num;
         const players = playersOf.get(m.guid) ?? [];
         const onMine = players.filter((p) => team !== null && p.team_num === team);
+        const total = (k: keyof LobbyMatch["myTeamTotals"]) => onMine.reduce((n, p) => n + p[k], 0);
         const scores = team === null || m.score_team0 === null || m.score_team1 === null ? null : [m.score_team0, m.score_team1];
         const mvp = m.mvp_key === null ? undefined : players.find((p) => p.player_key === m.mvp_key);
         const friends = players.flatMap((p): LobbyFriend[] => {
@@ -439,7 +440,7 @@ export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Lo
           goalDiff: scores === null || team === null ? null : (scores[team] ?? 0) - (scores[1 - team] ?? 0),
           sizes: { mine: onMine.length, other: players.filter((p) => team !== null && p.team_num === 1 - team).length },
           me: lineOf(me),
-          myTeamTotals: { score: onMine.reduce((n, p) => n + p.score, 0), goals: onMine.reduce((n, p) => n + p.goals, 0) },
+          myTeamTotals: { score: total("score"), goals: total("goals"), assists: total("assists"), saves: total("saves") },
           mvpKey: m.mvp_key,
           mvpOnMyTeam: mvp === undefined ? null : mvp.team_num === team,
           youSwitched: me.teams_seen === 3,
