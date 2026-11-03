@@ -33,9 +33,9 @@
 .meta { flex: 1; min-width: 0; font-size: 12px; color: var(--ink2); }
 .meta b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-weight: 600; }
 .live { white-space: nowrap; color: var(--accent); font-weight: 600; }
-.pill {
+.filter {
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; max-width: 45%; overflow: hidden; overflow-wrap: anywhere;
-  padding: 2px 8px; border-radius: 10px; background: var(--surf2); color: var(--ink); font-size: 11px; font-weight: 600;
+  text-align: right; color: var(--muted); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
 }
 .hero { display: flex; align-items: flex-end; justify-content: space-between; margin-top: 14px; }
 .rec { font-size: 64px; font-weight: 800; line-height: 1; letter-spacing: -.02em; }

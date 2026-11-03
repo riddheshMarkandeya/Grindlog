@@ -1,5 +1,6 @@
 // Picks a session's headline: a mood line for its band and at most one quip from the rarest tier
-// that fired. Pure: the caller hands in the stored pick, the recent history and the RNG.
+// that fired, unless a pinned trigger fired: then the quip comes from the pinned ones. Pure: the
+// caller hands in the stored pick, the recent history and the RNG.
 import { MOOD_LINES, TIERS, TRIGGERS, type Band, type Line, type Tier, type TriggerId } from "./copy";
 import type { Fired } from "./triggers";
 
@@ -64,29 +65,32 @@ function keptMood({ stored, mood, refit }: PickInput): Band | null {
 
 /**
  * The stored quip if it's still kept ("none" for a kept empty quip), else null. A finished
- * session keeps it while its trigger still fires, whatever the tier now; its numbers come from
- * the trigger, so one that stopped firing (a recompute) can't be shown.
+ * session keeps it while its trigger still fires in the pool, whatever the tier now; its numbers
+ * come from the trigger, so one that stopped firing (a recompute) can't be shown. A pinned
+ * trigger displaces anything outside it.
  */
-function keptQuip({ stored, refit }: PickInput, active: readonly Fired[], tier: Tier | null, candidates: readonly Candidate[]): Candidate | "none" | null {
+function keptQuip({ stored, refit }: PickInput, pool: readonly Fired[], tier: Tier | null, candidates: readonly Candidate[]): Candidate | "none" | null {
   if (stored === null) return null;
-  if (stored.quipTrigger === null) return !refit || tier === null ? "none" : null;
+  if (stored.quipTrigger === null) return (!refit && !pool.some((f) => f.pinned)) || tier === null ? "none" : null;
   const quip = stored.quipLine === null ? undefined : QUIP_OF.get(stored.quipLine);
   if (quip?.trigger !== stored.quipTrigger) return null;
-  const stillFits = refit ? candidates.some((c) => c.line.id === quip.line.id) : active.some((f) => f.id === quip.trigger && fits(quip.line, f));
+  const stillFits = refit ? candidates.some((c) => c.line.id === quip.line.id) : pool.some((f) => f.id === quip.trigger && fits(quip.line, f));
   return stillFits ? quip : null;
 }
 
 export function pick(input: PickInput): Pick {
   const { mood, fired, stored, reroll } = input;
   const active = fired.filter((f) => TRIGGERS[f.id].inert === undefined);
-  const tier = TIERS.find((t) => active.some((f) => TRIGGERS[f.id].tier === t)) ?? null;
-  const candidates: Candidate[] = active
+  const pinned = active.filter((f) => f.pinned);
+  const pool = pinned.length ? pinned : active;
+  const tier = TIERS.find((t) => pool.some((f) => TRIGGERS[f.id].tier === t)) ?? null;
+  const candidates: Candidate[] = pool
     .filter((f) => TRIGGERS[f.id].tier === tier)
     .flatMap((f) => TRIGGERS[f.id].lines.filter((line) => fits(line, f)).map((line) => ({ trigger: f.id, line })));
 
   const moodBand = reroll ? null : keptMood(input);
   const moodPick = moodBand === null ? choose(MOOD_LINES[mood], (l) => l.id, input, stored?.moodLine ?? null) : null;
-  const quipKept = reroll ? null : keptQuip(input, active, tier, candidates);
+  const quipKept = reroll ? null : keptQuip(input, pool, tier, candidates);
   const quipPick = quipKept === null ? choose(candidates, (c) => c.line.id, input, stored?.quipLine ?? null) : null;
   const quip = quipKept === "none" ? null : (quipKept ?? quipPick?.chosen ?? null);
 

@@ -171,7 +171,7 @@ function Card({ view, cardRef }: { view: ShareCardView; cardRef: RefObject<HTMLD
           {view.when}
           {view.live && <> <span className={styles.live}>● live</span></>}
         </div>
-        {view.label !== null && <span className={styles.pill} data-part="pill">{view.label}</span>}
+        {view.label !== null && <span className={styles.filter} data-part="filter">{view.label}</span>}
       </div>
       <div className={cx(styles.hero, view.smallRecord && styles.small)}>
         <div className={cx(styles.rec, "num")}>

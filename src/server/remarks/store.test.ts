@@ -6,7 +6,7 @@ import { createPages } from "../api/pages";
 import { createQueryReader } from "../query/read";
 import { createRecordWriter } from "../records/save";
 import { openStorage, type Storage } from "../storage";
-import { memoryLogger, ME, record } from "../testing";
+import { memoryLogger, ME, player, record, THEM } from "../testing";
 import { createRemarks } from "./store";
 
 // Late night reads the local hour; UTC keeps the instants readable and every session midday.
@@ -45,9 +45,11 @@ const cycling = () => {
 
 function setup() {
   const writer = createRecordWriter({ tracker: storage.tracker, logger: memoryLogger(), now: () => 1 });
-  const play = (guid: string, at: number, { won = true, events = {} }: { won?: boolean; events?: Record<string, number> } = {}) => {
+  /** `mate`: a player on your team beside you. */
+  const play = (guid: string, at: number, { won = true, events = {}, mate }: { won?: boolean; events?: Record<string, number>; mate?: string } = {}) => {
     const statfeed = Object.entries({ Goal: 1, ...events }).map(([eventName, count]) => ({ playerKey: ME, eventName, count }));
-    writer.save(record(guid, at, { statfeed }, { endedAt: at + 5 * MIN, winnerTeamNum: won ? 0 : 1 }));
+    const players = [player(ME, 0), player(THEM, 1), ...(mate === undefined ? [] : [player(mate, 0)])];
+    writer.save(record(guid, at, { statfeed, players }, { endedAt: at + 5 * MIN, winnerTeamNum: won ? 0 : 1 }));
   };
   const logger = memoryLogger();
   const remarks = (now: number, rng = cycling()) => {
@@ -175,5 +177,22 @@ describe("remarks store", () => {
     expect(after?.mood).toEqual(before?.mood);
     expect(after?.quip).toEqual({ ...before?.quip, values: { n: 4 } });
     expect(picked()).toHaveLength(1);
+  });
+
+  test("a finished session's stored quip yields to the duo under a With filter naming the friend, not under anyone", () => {
+    const { play, remarks, picked } = setup();
+    const SAM = "Epic|sam|0";
+    storage.tracker.run("INSERT INTO friends (primary_id, nickname, added_at) VALUES (?, 'Sammy', 1)", SAM);
+    for (let i = 0; i < 4; i++) play(`M${String(i)}`, slot(i), { mate: SAM, events: i === 0 ? { Savior: 1 } : {} });
+    const later = T0 + DAY;
+    const seedSavior = (filter: string) =>
+      storage.tracker.run("INSERT INTO remark_picks (session_key, filter, mood_band, mood_line, quip_trigger, quip_line, picked_at) VALUES ('M0', ?, 'great', 'great-1', 'savior', 'savior-2', ?)", filter, later);
+    seedSavior(`everything|with:${SAM}`);
+    seedSavior("everything");
+    const r = remarks(later);
+    expect(r.get("M0", "everything", { friends: [SAM] })?.quip).toMatchObject({ trigger: "duo_good", values: { friend: "Sammy", w: 4, l: 0 } });
+    expect(r.get("M0", "everything")?.quip?.trigger).toBe("savior");
+    expect(picked()).toHaveLength(1);
+    expect(picked()[0]).toMatchObject({ filter: `everything|with:${SAM}`, reason: "kept_changed", pinned: ["duo_good"], trigger: "duo_good" });
   });
 });

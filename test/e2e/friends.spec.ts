@@ -69,7 +69,19 @@ test("a playlist without the friend resets With, and focus stays on the playlist
 test("the share card's label names the friend by nickname", async ({ page }) => {
   await page.goto(`/recap/e2e-fr-00?filter=everything&with=${SAM}`);
   await openCard(page);
-  await expect(shareDialog(page).locator("[data-part=pill]")).toHaveText("with Sammy");
+  await expect(shareDialog(page).locator("[data-part=filter]")).toHaveText("with Sammy");
+});
+
+test("under With the duo line takes the quip, and ↻ gives another duo line", async ({ page }) => {
+  await page.goto(`/recap/e2e-fr-00?filter=everything&with=${SAM}`);
+  const again = page.getByRole("button", { name: "Another remark" });
+  // The quip alone: the mood line, which holds ↻, changes on a reroll too.
+  const quip = page.locator("p").filter({ has: again }).locator("xpath=following-sibling::p");
+  await expect(quip).toContainText("Sammy");
+  const first = await quip.innerText();
+  await again.click();
+  await expect(quip).not.toHaveText(first);
+  await expect(quip).toContainText("Sammy");
 });
 
 test("Trends lists only friends ever on your team (not Opal); picking one goes in the URL, and an id that isn't one goes back to Anyone", async ({ page }) => {

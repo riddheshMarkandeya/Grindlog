@@ -68,12 +68,15 @@ export function createRemarks({ tracker, pages, logger, now = Date.now, rng = Ma
         logger.info(C, "remark_picked", {
           sessionKey: key,
           filter: f,
-          reason: stored === null ? "first" : reroll ? "reroll" : "refit",
+          // A finished session changes only when a stored part stopped being kept: a line or trigger
+          // gone, or a pinned trigger displacing the quip (`pinned` says which).
+          reason: stored === null ? "first" : reroll ? "reroll" : refit ? "refit" : "kept_changed",
           band: p.moodBand,
           computedBand: mood.band,
           z: mood.z,
           n: mood.n,
           fired: fired.map((t) => t.id),
+          pinned: fired.filter((t) => t.pinned).map((t) => t.id),
           tier: p.tier,
           trigger: p.quipTrigger,
           moodLine: p.moodLine,

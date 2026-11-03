@@ -236,6 +236,14 @@ describe("friend triggers", () => {
     expect(firedOne(facts(tie, { ...present, teammate: { friends: [SAM] } }), "duo_good")?.values.friend).toBe("Sammy");
   });
 
+  test("the duo is pinned only when the teammate filter names its friend", () => {
+    const three = [withSam(), withSam(), loss({ friends: [SAM] })];
+    expect(firedOne(facts(three, { teammate: { friends: [SAM] } }), "duo_good")).toEqual({ id: "duo_good", values: { w: 2, l: 1, friend: "Sammy" }, pinned: true });
+    expect(firedOne(facts(three), "duo_good")?.pinned).toBeUndefined();
+    expect(firedOne(facts(three, { teammate: { friends: [ALEX] } }), "duo_good")?.pinned).toBeUndefined();
+    for (const f of triggersFor(facts(three, { teammate: { friends: [SAM] } }))) if (f.id !== "duo_good") expect(f.pinned).toBeUndefined();
+  });
+
   test("soloqueue night: no friend on your team all session and at least 4 matches", () => {
     const four = [match(), match(), loss(), match()];
     expect(fired(facts(four, { friendsPresent: [] }))).toContain("soloqueue");

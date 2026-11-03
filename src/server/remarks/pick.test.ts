@@ -109,6 +109,38 @@ describe("pick: a stored pick", () => {
   });
 });
 
+describe("pick: a pinned trigger", () => {
+  const duo = on("duo_good", { pinned: true });
+
+  test("takes the quip slot over any tier", () => {
+    for (const r of [0, 0.5, 0.99]) {
+      const p = pick(input({ fired: [on("savior"), on("hat_trick"), duo], rng: () => r }));
+      expect(p).toMatchObject({ quipTrigger: "duo_good", tier: "common" });
+    }
+  });
+
+  test("a finished session's stored quip yields to it, but not to the same trigger unpinned", () => {
+    const s = stored({ quipTrigger: "savior", quipLine: "savior-2" });
+    expect(pick(input({ fired: [on("savior"), duo], stored: s }))).toMatchObject({ moodLine: "usual-3", quipTrigger: "duo_good", quipLine: "duo-good-1" });
+    expect(pick(input({ fired: [on("savior"), on("duo_good")], stored: s }))).toMatchObject({ quipTrigger: "savior", quipLine: "savior-2" });
+  });
+
+  test("a finished session's stored empty quip yields to it", () => {
+    expect(pick(input({ fired: [duo], stored: stored() })).quipTrigger).toBe("duo_good");
+  });
+
+  test("a stored quip of the pinned trigger is kept", () => {
+    const s = stored({ quipTrigger: "duo_good", quipLine: "duo-good-3" });
+    expect(pick(input({ fired: [on("savior"), duo], stored: s }))).toMatchObject(s);
+  });
+
+  test("reroll stays inside its lines and avoids the one shown", () => {
+    const s = stored({ quipTrigger: "duo_good", quipLine: "duo-good-1" });
+    const seen = new Set([0, 0.4, 0.7, 0.99].map((r) => pick(input({ reroll: true, fired: [on("savior"), duo], stored: s, rng: () => r })).quipLine));
+    expect(seen).toEqual(new Set(["duo-good-2", "duo-good-3", "duo-good-4"]));
+  });
+});
+
 describe("pick: reroll", () => {
   test("never returns the same lines when others exist", () => {
     const s = stored({ moodLine: "usual-1", quipTrigger: "marathon", quipLine: "marathon-1" });

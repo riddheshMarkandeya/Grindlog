@@ -22,8 +22,8 @@ export interface CardFit {
   /** null without a name line. */
   nameCut: boolean | null;
   nameInside: boolean | null;
-  /** null without a filter pill. */
-  pillInside: boolean | null;
+  /** null without a filter label. */
+  filterInside: boolean | null;
 }
 
 // A string expression: the root tsconfig has no DOM lib for a page-side function.
@@ -33,7 +33,7 @@ const MEASURE = `(() => {
   const pad = parseFloat(getComputedStyle(card).paddingBottom);
   const part = (p) => card.querySelector("[data-part=" + p + "]");
   const name = part("name");
-  const pill = part("pill");
+  const filter = part("filter");
   const inside = (r) => r.left >= box.left + pad - 0.5 && r.right <= box.right - pad + 0.5 && r.top >= box.top + pad - 0.5;
   return {
     overflow: card.scrollHeight - card.clientHeight,
@@ -41,7 +41,7 @@ const MEASURE = `(() => {
     lineHeight: part("line").getBoundingClientRect().height,
     nameCut: name ? name.scrollWidth > name.clientWidth : null,
     nameInside: name ? name.getBoundingClientRect().right <= box.right - pad + 0.5 : null,
-    pillInside: pill ? inside(pill.getBoundingClientRect()) : null,
+    filterInside: filter ? inside(filter.getBoundingClientRect()) : null,
   };
 })()`;
 
@@ -54,10 +54,10 @@ export const labelLines = (page: Page, tile: string) =>
     return Math.round(k.getBoundingClientRect().height / parseFloat(getComputedStyle(k).lineHeight));
   })()`);
 
-/** Lines of text in the filter pill. Dividing by the computed line-height only works while it's a
- * length, so no rule may set the pill's line-height to normal. */
-export const pillLines = (page: Page) =>
+/** Lines of text in the filter label. Dividing by the computed line-height only works while it's a
+ * length, so no rule may set the label's line-height to normal. */
+export const filterLines = (page: Page) =>
   page.evaluate<number>(`(() => {
-    const p = document.querySelector("dialog[open] [data-part=pill]");
+    const p = document.querySelector("dialog[open] [data-part=filter]");
     return Math.round(p.getBoundingClientRect().height / parseFloat(getComputedStyle(p).lineHeight));
   })()`);

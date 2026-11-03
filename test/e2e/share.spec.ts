@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { measureCard, openCard, pillLines, shareButton, shareDialog } from "./share-card";
+import { filterLines, measureCard, openCard, shareButton, shareDialog } from "./share-card";
 
 const THEMES = ["carbon", "slate", "oled"] as const;
 // The one 404 a test brings about on purpose; only that test lets it through.
@@ -38,8 +38,8 @@ test("the card opens on the session with its name, record and tiles, fits, and p
   const dialog = shareDialog(page);
   await expect(dialog.getByRole("img", { name: "1 win, 0 losses" })).toBeVisible();
   await expect(dialog.locator("[data-part=name]")).toHaveText("Epic|me|0");
-  // The default filter gets no pill.
-  await expect(dialog.locator("[data-part=pill]")).toHaveCount(0);
+  // The default filter gets no label.
+  await expect(dialog.locator("[data-part=filter]")).toHaveCount(0);
   // The seed's player hit the woodwork and scored no aerial goal: crossbar hits fill the 8th tile.
   await expect(dialog.locator("[data-tile]")).toHaveCount(8);
   await expect(dialog.locator("[data-tile=woodwork]")).toContainText("Crossbar hits");
@@ -61,8 +61,13 @@ test("the card opens on the session with its name, record and tiles, fits, and p
 test("Download saves a 1080×1440 PNG named for the session's start and filter", async ({ page }) => {
   await page.goto("/recap/e2e-seed-won?filter=13");
   await openCard(page);
-  // A short pill stays on one line.
-  expect(await pillLines(page)).toBe(1);
+  // A short label stays on one line.
+  expect(await filterLines(page)).toBe(1);
+  // No fill: small caps from CSS while the text stays as written.
+  const label = shareDialog(page).locator("[data-part=filter]");
+  await expect(label).toHaveText("Ranked Standard");
+  await expect(label).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(label).toHaveCSS("text-transform", "uppercase");
   const [download] = await Promise.all([page.waitForEvent("download"), shareDialog(page).getByRole("button", { name: "Download PNG" }).click()]);
   expect(download.suggestedFilename()).toMatch(/^rl-session-\d{4}-\d{2}-\d{2}-\d{4}-ranked-standard\.png$/);
   const png = readFileSync(await download.path());
@@ -118,17 +123,17 @@ test("without the remarks the card still opens, leaves the mood out, and warns",
   await expect.poll(() => warned.length).toBe(1);
 });
 
-test("the pill follows the filter; Escape or the backdrop closes the card, and focus returns to Share", async ({ page }) => {
+test("the label follows the filter; Escape or the backdrop closes the card, and focus returns to Share", async ({ page }) => {
   await page.goto("/recap/e2e-seed-won?filter=ranked");
   await openCard(page);
-  await expect(shareDialog(page).locator("[data-part=pill]")).toHaveText("All ranked");
+  await expect(shareDialog(page).locator("[data-part=filter]")).toHaveText("All ranked");
   await page.keyboard.press("Escape");
   await expect(shareDialog(page)).toBeHidden();
   await expect(shareButton(page)).toBeFocused();
 
   await page.goto("/recap/e2e-seed-won?filter=13");
   await openCard(page);
-  await expect(shareDialog(page).locator("[data-part=pill]")).toHaveText("Ranked Standard");
+  await expect(shareDialog(page).locator("[data-part=filter]")).toHaveText("Ranked Standard");
   await page.mouse.click(5, 5);
   await expect(shareDialog(page)).toBeHidden();
 });

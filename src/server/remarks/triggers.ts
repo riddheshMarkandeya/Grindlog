@@ -53,6 +53,8 @@ export interface Fired {
   values: RemarkValues;
   /** Aerial-or-long only: which kinds of goal happened. */
   kinds?: GoalKind[];
+  /** Named by the With filter: takes the quip slot over any tier. */
+  pinned?: true;
 }
 
 /** The whole session's span (time at the PC), and your matches under the filters with their aggregate. */
@@ -67,10 +69,11 @@ export interface SessionFacts {
 }
 
 /**
- * The friend you played most with (at least the minimum), with your record together. A tie goes to
- * the friend the teammate filter names, then to the lower name, so the pick is stable.
+ * The friend you played most with (at least the minimum), with your record together, pinned when
+ * the teammate filter names that friend. A tie goes to the filtered friend, then to the lower
+ * name, so the pick is stable.
  */
-function duo({ matches, friendsPresent, teammate }: SessionFacts): { friend: string; w: number; l: number } | null {
+function duo({ matches, friendsPresent, teammate }: SessionFacts): { values: { friend: string; w: number; l: number }; pinned: boolean } | null {
   const filtered = typeof teammate === "object" ? teammate.friends : [];
   const ranked = friendsPresent
     .map((f) => {
@@ -82,7 +85,7 @@ function duo({ matches, friendsPresent, teammate }: SessionFacts): { friend: str
     .filter((d) => d.n >= THRESHOLDS.duoMatches)
     .sort((a, b) => b.n - a.n || Number(filtered.includes(b.f.id)) - Number(filtered.includes(a.f.id)) || a.f.name.localeCompare(b.f.name));
   const [top] = ranked;
-  return top ? { friend: top.f.name, w: top.w, l: top.l } : null;
+  return top ? { values: { friend: top.f.name, w: top.w, l: top.l }, pinned: filtered.includes(top.f.id) } : null;
 }
 
 /** Your team scored nothing; a match without your team or the score can't say. */
@@ -134,7 +137,7 @@ export function triggersFor(facts: SessionFacts): Fired[] {
   add(endHour >= THRESHOLDS.lateNightFromHour && endHour < THRESHOLDS.lateNightToHour, "late_night", { time: endedAt });
 
   const d = duo(facts);
-  add(d !== null, d !== null && d.w < d.l ? "duo_bad" : "duo_good", d ?? {});
+  if (d) out.push({ id: d.values.w < d.values.l ? "duo_bad" : "duo_good", values: d.values, ...(d.pinned ? { pinned: true as const } : {}) });
   add(facts.friendsPresent.length === 0 && count(() => true) >= THRESHOLDS.soloqueueMatches, "soloqueue");
   return out;
 }
