@@ -110,6 +110,8 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
       footnote, and the friends' Win % cells are always "–" (`pages/friends/zones.tsx:239`).
     - Recap: three different "aerial" counts on one page (`components/GoalMap.tsx:125`,
       `logic/recap.ts:141`, the highlights' aerial goals) and two "long" goal rules.
+    - Compare Diff for Score shows two decimals ("+25.08") beside the whole Score values in the same
+      row (`logic/friends.ts:112`, `decimal()` when `points` is false).
   - Small samples: win % and deltas show with no match count; a previous period of one match still
     gives "▲ 40 pts" (`logic/trends.ts:258`); a playlist row of one match shows 100%.
   - Charts: the sparkline's min–max scale makes 50→51% fill the tile (`logic/trends.ts:272`); the
@@ -121,6 +123,11 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   and Trends `.picks button` against the match page's `.chip`. One shared set, as the display-drift
   work did for panels and tables. On the way, `PeriodControls.tsx:45` uses `styles.controls`,
   which no CSS defines. Record: `docs/plans/2026-11-03-display-drift.md`.
+- [ ] **[ui, Low, Standard]** Narrow-width wraps, seen in the display-drift browser pass (2026-11-04),
+  the same at c181ae7: the Overview By playlist "W–L" header wraps at 320 and 768px, and at 320 its
+  cells do too ("0–" over "1") (`pages/recap/Overview.tsx:235`). At 320px the friend and pair
+  scorebug's middle label ("MECHLESS MADNESS + S…") is cut at both edges with no ellipsis
+  (`components/Scorebug.module.css:13,26`). Record: `docs/plans/2026-11-03-display-drift.md`.
 - [ ] **[design, Low, Standard]** Trends data line: the line, dots and sparklines use `--accent`,
   which the colour rule in `src/web/styles/tokens.css` now keeps for selection and focus; on oled
   the accent is white, the same as the text. Choose a data colour (a new token, checked on every

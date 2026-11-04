@@ -549,3 +549,34 @@ Passes: `/code-review high`, `security-reviewer`. Arch's round-2 finding was a m
   - Tile checks `vs.dir === "same"` twice. [Verified, no fix needed] This was dispositioned in WP-B round 2.
   - A `dir` value doubling as a class name is enforced only by a comment. [Verified, no fix needed] This was dispositioned in round 2.
 The review is done: no new finding needed a code change. The only edit was a comment.
+
+## Real-browser verification (2026-11-04)
+
+Claude in Chrome, against two scratch servers, each on its own copy of `.dev-data`: c181ae7 (before) on
+49121 and 2fa1994 (after) on 49112. Before and after were shown side by side in fixed-width iframes, so
+320 and 768px didn't depend on the window size. Three friends were added in both copies to get a friend
+page and a pair page with data. The theme was switched through each copy's settings.
+
+- Every page, before against after: Recap overview, Matches, a match, Trends, Friends landing, a
+  friend, a pair and Settings at 320, 768 and 1440px on carbon. Overview, the friend page, the pair,
+  Friends landing and Trends also on slate and oled. Each differs only as the as-built notes list:
+  - The display face is on the StatCards, the Trends record and tiles, and the match score.
+  - Section headings sit above their panels, with sentence-case zone headings on a coloured rule.
+  - The Friends landing h1 is hidden, and the Suggested edge is neutral.
+  - Table row labels are weight 400.
+  - The W/L hint is out of the heading.
+  - Thousands separators show (Score "15,013 total", Matches Total "15,013", a "1,370" row).
+  - The two Who carries panels have their gap.
+- Console: no errors or warnings on any of the nine pages, only the app's own `[rlt]` info and debug
+  lines.
+- Keyboard pass on the Trends cards: Shift+Tab reaches them. Space and Enter each select a card,
+  `aria-pressed` moves to it, the focus ring shows, and the chart heading and URL follow.
+- Share card: Download PNG wrote `rl-session-2026-11-01-2118-all.png` (1080x1440). The condensed
+  italic record face, the `color-mix` green/red and the neutral glow all came through html-to-image.
+- Not seen with real data: the unknown-side "Blue team" heading, since no dev match lacks the "me"
+  player. The e2e fixture covers it.
+- Issues that predate this work, the same in before and after, added to BACKLOG:
+  - At 320 and 768px the Overview By playlist "W–L" header wraps, and at 320 so do its cells
+    ("0–" over "1").
+  - At 320px the friend and pair scorebug's middle label is cut at both edges with no ellipsis.
+  - The Compare Diff for Score shows two decimals ("+25.08") beside whole Score values.
