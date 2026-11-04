@@ -13,7 +13,8 @@
    - Decoration uses neutrals (--ink, --line, and the black --scrim/--shadow) only.
 
    Big numbers use the global .display rule: --display, condensed, italic 800. Sizes, largest first:
-   96 a scorebug count (64 a record) · 36 the Trends period title · 30 a Tile and the match score ·
+   96 a scorebug count (64 a record; 88 on the wide Friends bug, whose middle is 40) ·
+   36 the Trends period title · 30 a Tile and the match score ·
    28 a StatCard · 26 an inline record (Trends, a Friends card) · 24 a match card (18 dense).
    The share card keeps its own scale: it's an image, sized for its 360px frame. */
 :root {

@@ -75,7 +75,6 @@ export function sideCopy(names: readonly string[]) {
   const who = names.join(" and ");
   return {
     who,
-    title: names.join(" + "),
     withHeading: one ? "On your team" : "Both on your team",
     againstHeading: one ? "On the other team" : "Both on the other team",
     againstLabel: one ? "head-to-head" : "against both",
@@ -101,8 +100,11 @@ export const recordText = ({ w, l }: { w: number; l: number }): string => `${who
 
 export const winPctText = ({ w, l }: { w: number; l: number }): string => (w + l === 0 ? "–" : `${String(pct(w / (w + l)))}%`);
 
+/** The matches a page counts: the record's total, so a count beside "18–14" says 32, not the 33 played (n). */
+export const decided = ({ w, l }: { w: number; l: number }): number => w + l;
+
 /** "50% of 4": the count is the decided matches the % is taken over, not every overtime match. */
-export const overtimeNote = (ot: { w: number; l: number }): string => `${winPctText(ot)} of ${whole(ot.w + ot.l)}`;
+export const overtimeNote = (ot: { w: number; l: number }): string => `${winPctText(ot)} of ${whole(decided(ot))}`;
 
 /**
  * A with-minus-without difference: whole points for win %, decimal()'s steps for a stat. The sign and

@@ -18,6 +18,14 @@
 .mid b { font-size: 32px; font-style: italic; font-weight: 800; letter-spacing: .04em; line-height: 1.1; }
 /* A record ("22–17") is three times a count's width, and must not break at its dash. */
 .records .side b { font-size: 64px; white-space: nowrap; }
+/* Wide (the Friends page): bigger records and a two-number middle, only where 960px fits them.
+   Below that the shared sizes hold, and the middle may wrap rather than squeeze the records. */
+@media (min-width: 1024px) {
+  .wide { max-width: 960px; }
+  .wide.records .side b { font-size: 88px; }
+  .wide .mid { padding: var(--s3) var(--s5); }
+  .wide .mid b { font-size: 40px; white-space: nowrap; }
+}
 
 @media (max-width: 640px) {
   .side { padding: 0 var(--s3); gap: var(--s2); }

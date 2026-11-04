@@ -13,7 +13,7 @@ import { Scorebug } from "../../components/Scorebug";
 import { Section } from "../../components/Section";
 import { Tile, Tiles } from "../../components/Tile";
 import { dateLabel, decimal, durationText, plural, whole } from "../../logic/format";
-import { carryRest, carryShares, diffText, modeSwitch, OTHERS, overtimeNote, PAGE_SIZE, pageOf, pickKind, pickMode, pickSize, recordText, sideCopy, sizeOf, winPctText, type Mode, type SideCopy } from "../../logic/friends";
+import { carryRest, carryShares, decided, diffText, modeSwitch, OTHERS, overtimeNote, PAGE_SIZE, pageOf, pickKind, pickMode, pickSize, recordText, sideCopy, sizeOf, winPctText, type Mode, type SideCopy } from "../../logic/friends";
 import { letter, pct, recapPath } from "../../logic/recap";
 import styles from "./Friends.module.css";
 import { recordLabel, WlBar } from "./parts";
@@ -36,16 +36,18 @@ export function Bug({ friends, view }: { friends: readonly Who[]; view: View }) 
   const copy = sideCopy(friends.map((f) => f.name));
   const w = view.with.record;
   const a = view.against.record;
+  // The h1 names who; the middle holds only the two win %.
+  const spoken = (r: typeof w) => (decided(r) === 0 ? recordLabel(r) : `${recordLabel(r)}, ${winPctText(r)} won`);
   return (
     <>
       <Scorebug
         records
-        label={`Together ${recordLabel(w)}; ${copy.againstLabel} ${recordLabel(a)}`}
+        wide
+        label={`Together ${spoken(w)}; ${copy.againstLabel} ${spoken(a)}`}
         left={{ label: "TOGETHER", value: recordText(w) }}
         right={{ label: copy.againstLabel.toUpperCase(), value: recordText(a) }}
         mid={
           <>
-            <span className={styles.mid} title={copy.title}>{copy.title.toUpperCase()}</span>
             <b className="num">{winPctText(w)} · {winPctText(a)}</b>
             <span>WITH · AGAINST</span>
           </>
@@ -103,8 +105,11 @@ function Playlists({ rows }: { rows: readonly Row[] }) {
   );
 }
 
-const playlistNote = (r: Row) => `${r.label} · ${recordText(r)}`;
-const overtimeTile = (ot: WithSide["overtime"]) => ot.w + ot.l > 0 && <Tile label="Overtime" value={recordText(ot)} note={overtimeNote(ot)} />;
+// Each zone always shows its six tiles, so the two rows keep their shape; a missing value is "–".
+// Best and worst need two playlists with enough decided matches, so many matches can still have none.
+const playlistTile = (label: string, r: Row | null) => <Tile label={label} value={r ? winPctText(r) : "–"} note={r ? `${r.label} · ${recordText(r)}` : "not enough yet"} />;
+const overtimeTile = (ot: WithSide["overtime"]) =>
+  decided(ot) > 0 ? <Tile label="Overtime" value={recordText(ot)} note={overtimeNote(ot)} /> : <Tile label="Overtime" value="–" note="none yet" />;
 
 function WithZone({ side, friends, copy }: { side: WithSide; friends: readonly Who[]; copy: SideCopy }) {
   return (
@@ -112,9 +117,9 @@ function WithZone({ side, friends, copy }: { side: WithSide; friends: readonly W
       <Tiles className={styles.zoneTiles}>
         <Tile label="Current streak" value={streakText(side.streak)} note={copy.withNote} />
         <Tile label="Best win streak" value={String(side.bestWinStreak)} note={copy.withNote} />
-        {side.best && <Tile label="Best playlist" value={winPctText(side.best)} note={playlistNote(side.best)} />}
-        {side.worst && <Tile label="Worst playlist" value={winPctText(side.worst)} note={playlistNote(side.worst)} />}
-        <Tile label="Time together" value={durationText(side.timeMs)} note={`over ${plural(side.record.n, "match", "matches")}`} />
+        {playlistTile("Best playlist", side.best)}
+        {playlistTile("Worst playlist", side.worst)}
+        <Tile label="Time together" value={durationText(side.timeMs)} note={`over ${plural(decided(side.record), "match", "matches")}`} />
         {overtimeTile(side.overtime)}
       </Tiles>
       <Section level={3} region={false} title="By playlist"><Playlists rows={side.playlists} /></Section>
@@ -279,8 +284,9 @@ function AgainstZone({ side, friends, copy }: { side: AgainstSide; friends: read
         <Tile label="Current streak" value={streakText(side.streak)} note={copy.againstNote} />
         <Tile label="MVPs" value={side.mvps.join("–")} note={copy.versus} noteLines={2} />
         <Tile label="Goals" value={side.goals.join("–")} note={copy.versus} noteLines={2} />
-        {side.biggestWin && <Tile label="Biggest win" value={`+${String(side.biggestWin.goalDiff)}`} note={`${day(side.biggestWin.startedAt)} · ${side.biggestWin.label}`} />}
+        <Tile label="Biggest win" value={side.biggestWin ? `+${String(side.biggestWin.goalDiff)}` : "–"} note={side.biggestWin ? `${day(side.biggestWin.startedAt)} · ${side.biggestWin.label}` : side.record.w > 0 ? "no score kept" : "no wins yet"} />
         {overtimeTile(side.overtime)}
+        <Tile label="Matches" value={whole(decided(side.record))} note={copy.againstNote} />
       </Tiles>
       <Section level={3} region={false} title="By playlist"><Playlists rows={side.playlists} /></Section>
       <Section level={3} region={false} title="Match by match"><Matches matches={side.matches} friends={friends} /></Section>

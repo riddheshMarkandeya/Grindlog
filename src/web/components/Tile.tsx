@@ -1,6 +1,7 @@
 // The big condensed stat tile: a value, an optional icon and an optional ▲/▼ against something,
-// over an uppercase label, with an optional small note under it (one line, or two for a long one);
-// the caller writes the comparison's and the note's text. The recap's headline tiles and the Friends page's.
+// over an uppercase label, with an optional small note under it (one line, or two for a long one),
+// all centred; the caller writes the comparison's and the note's text. The recap's headline tiles
+// and the Friends page's.
 import type { ReactNode } from "react";
 import { cx } from "./cx";
 import { DirArrow } from "./DirArrow";
@@ -8,7 +9,7 @@ import styles from "./Tile.module.css";
 
 export interface TileVs { dir: "up" | "down" | "same"; text: string }
 
-/** `className` is a page's variant of the row (the Friends zones start theirs at the left edge). */
+/** `className` is a page's variant of the row (the Friends zones drop its top margin). */
 export function Tiles({ className, children }: { className?: string; children: ReactNode }) {
   return <ul className={cx(styles.tiles, className)}>{children}</ul>;
 }

@@ -57,7 +57,6 @@
 .private { margin: var(--s1) 0 var(--s5); }
 /* A pair's h1 holds two names: a long one without spaces still wraps. */
 .pairH1 { overflow-wrap: anywhere; }
-.mid { display: block; max-width: 12em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* The zones */
 .zones { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
@@ -65,7 +64,7 @@
 .zone + .zone { padding: 0 0 0 var(--s5); border-left: 1px solid var(--line); }
 .with { --zc: var(--blue); }
 .against { --zc: var(--orange); }
-.zoneTiles { justify-content: flex-start; margin: 0; }
+.zoneTiles { margin: 0; }
 .zone :global(.panel) { border-left: 2px solid color-mix(in srgb, var(--zc) 55%, var(--line)); }
 /* Stacked panels in a zone, as in Who carries (the share bars, then the comparison). */
 .zone :global(.panel) + :global(.panel) { margin-top: var(--s4); }

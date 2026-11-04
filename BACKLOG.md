@@ -87,8 +87,6 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
       (`pages/recap/Matches.tsx:33`).
     - Trends: the period average is on the tile, on the "avg" line and in the legend
       (`pages/trends/TrendChart.tsx:90`); the chart heading repeats the selected tile's name.
-    - Friend page: the scorebug's middle repeats the h1's names and a win % that the two records
-      beside it give (`pages/friends/zones.tsx:46`).
     - Friends By playlist: the bar repeats the win % beside it (`pages/friends/zones.tsx:98`).
     - Best/Worst playlist tiles are the top and bottom rows of the list just below
       (`pages/friends/zones.tsx:115-116`).
@@ -125,9 +123,8 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   which no CSS defines. Record: `docs/plans/2026-11-03-display-drift.md`.
 - [ ] **[ui, Low, Standard]** Narrow-width wraps, seen in the display-drift browser pass (2026-11-04),
   the same at c181ae7: the Overview By playlist "W–L" header wraps at 320 and 768px, and at 320 its
-  cells do too ("0–" over "1") (`pages/recap/Overview.tsx:235`). At 320px the friend and pair
-  scorebug's middle label ("MECHLESS MADNESS + S…") is cut at both edges with no ellipsis
-  (`components/Scorebug.module.css:13,26`). Record: `docs/plans/2026-11-03-display-drift.md`.
+  cells do too ("0–" over "1") (`pages/recap/Overview.tsx:235`). Record:
+  `docs/plans/2026-11-03-display-drift.md`.
 - [ ] **[design, Low, Standard]** Trends data line: the line, dots and sparklines use `--accent`,
   which the colour rule in `src/web/styles/tokens.css` now keeps for selection and focus; on oled
   the accent is white, the same as the text. Choose a data colour (a new token, checked on every

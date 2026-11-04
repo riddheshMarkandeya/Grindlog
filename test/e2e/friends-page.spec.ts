@@ -90,7 +90,7 @@ test("a friend: scorebug, both zones, the mode switch, the pager and a match lin
   await expect(page).toHaveURL(new RegExp(`${SAM}$`));
   await expect(h1(page)).toHaveText("Sammy");
   await expect(h1(page)).toBeFocused();
-  await expect(page.getByRole("img", { name: "Together 5 won, 4 lost; head-to-head 7 won, 6 lost" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Together 5 won, 4 lost, 56% won; head-to-head 7 won, 6 lost, 54% won" })).toBeVisible();
   await expect(page.getByText("seen as SamInGame")).toBeVisible();
 
   // One friend opens on 2v2 though 3v3 has more matches; the legend names only you and them.
@@ -131,6 +131,35 @@ test("a friend: scorebug, both zones, the mode switch, the pager and a match lin
   await expect(page).toHaveURL(/\/recap\/e2e-h2h-00\/match\/e2e-h2h-11\?filter=6$/);
 });
 
+test("a friend at 1440px: a wide scorebug with both win % in the middle, and six centred tiles per zone", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(SAM);
+  const bug = page.getByRole("img", { name: /^Together / });
+  // Wider than the recap's 780px cap.
+  expect((await bug.boundingBox())?.width ?? 0).toBeGreaterThan(780);
+  await expect(bug).toContainText("56% · 54%");
+  await expect(bug).toContainText("WITH · AGAINST");
+  // The h1 has the name; the middle doesn't repeat it.
+  await expect(bug).not.toContainText(/sammy/i);
+
+  const zones = [
+    ["On your team", ["Current streak", "Best win streak", "Best playlist", "Worst playlist", "Time together", "Overtime"]],
+    ["On the other team", ["Current streak", "MVPs", "Goals", "Biggest win", "Overtime", "Matches"]],
+  ] as const;
+  for (const [name, labels] of zones) {
+    const row = page.getByRole("region", { name }).getByRole("list").first();
+    await expect(row.locator(":scope > li > span")).toHaveText([...labels]);
+    // Centred against the row itself: the zone's padding is lopsided.
+    const box = await row.boundingBox();
+    const tiles = await Promise.all((await row.getByRole("listitem").all()).map((t) => t.boundingBox()));
+    const left = Math.min(...tiles.map((t) => t?.x ?? NaN)) - (box?.x ?? NaN);
+    const right = (box?.x ?? NaN) + (box?.width ?? NaN) - Math.max(...tiles.map((t) => (t?.x ?? NaN) + (t?.width ?? NaN)));
+    expect(Math.abs(left - right), name).toBeLessThanOrEqual(2);
+    // Every line of a tile is centred, the label as well as the value and the note.
+    for (const line of await row.locator(":scope > li > span, :scope > li > small").all()) await expect(line).toHaveCSS("text-align", "center");
+  }
+});
+
 test("a pair: the Together card, both zones, the four-way carry and the links to Recap and Trends", async ({ page, request }) => {
   await pairUp(request);
   await page.goto("/friends");
@@ -139,7 +168,8 @@ test("a pair: the Together card, both zones, the four-way carry and the links to
   await expect(page).toHaveURL(new RegExp(`${PAIR}$`));
   await expect(h1(page)).toHaveText("Kim + Lee");
   await expect(h1(page)).toBeFocused();
-  await expect(page.getByRole("img", { name: "Together 3 won, 0 lost; against both 0 won, 0 lost" })).toBeVisible();
+  // No decided match against both, so no win % for that side.
+  await expect(page.getByRole("img", { name: "Together 3 won, 0 lost, 100% won; against both 0 won, 0 lost" })).toBeVisible();
 
   // Max was on your team too: the grey rest. No 3v3 together, so it opens on 4v4.
   const zone = page.getByRole("region", { name: "Both on your team" });

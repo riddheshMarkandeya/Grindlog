@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { carryRest, carryShares, diffText, modeSwitch, namedPairs, overtimeNote, pageOf, pickKind, pickMode, pickSize, recordText, sideCopy, winPctText } from "./friends";
+import { carryRest, carryShares, decided, diffText, modeSwitch, namedPairs, overtimeNote, pageOf, pickKind, pickMode, pickSize, recordText, sideCopy, winPctText } from "./friends";
 
 describe("pager", () => {
   test("ten a page, clamped to the pages there are", () => {
@@ -62,7 +62,6 @@ describe("copy", () => {
     expect(compareNote("3v3", 4, 9)).toBe("Your 3v3 matches with them (4) against your other 3v3 matches (9), including ones where they were an opponent.");
     expect(words).toEqual({
       who: "Sammy",
-      title: "Sammy",
       withHeading: "On your team",
       againstHeading: "On the other team",
       againstLabel: "head-to-head",
@@ -83,7 +82,6 @@ describe("copy", () => {
     expect(compareNote("4v4", 3, 0)).toBe("Your 4v4 matches with both on your team (3) against your 4v4 matches where neither was (0).");
     expect(words).toEqual({
       who: "Kim and Lee",
-      title: "Kim + Lee",
       withHeading: "Both on your team",
       againstHeading: "Both on the other team",
       againstLabel: "against both",
@@ -105,6 +103,11 @@ describe("records", () => {
     expect(recordText({ w: 12, l: 9 })).toBe("12–9");
     expect(winPctText({ w: 2, l: 1 })).toBe("67%");
     expect(winPctText({ w: 0, l: 0 })).toBe("–");
+  });
+  test("a match count is the record's total: a match with no result (n counts it) isn't one", () => {
+    // A record as the server sends it, n and all.
+    const records = [{ w: 18, l: 14, n: 33 }, { w: 0, l: 0, n: 1 }];
+    expect(records.map(decided)).toEqual([32, 0]);
   });
 });
 
