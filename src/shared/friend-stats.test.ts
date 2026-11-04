@@ -110,11 +110,18 @@ describe("with: tiles", () => {
 });
 
 describe("with: modes", () => {
-  test("lists the modes played, the most-played online one as the default", () => {
-    const ms = [won({ playlistId: 6 }), won({ playlistId: 6 }), won({ playlistId: 6 }), won({ playlistId: 13, sizes: { mine: 3, other: 3 } }), won(), won()];
+  test("lists the modes played; one friend defaults to 2v2 when played, even behind 3v3 and Private", () => {
+    const threes = () => won({ playlistId: 13, sizes: { mine: 3, other: 3 } });
+    const ms = [won({ playlistId: 6 }), won({ playlistId: 6 }), won({ playlistId: 6 }), threes(), threes(), threes(), won()];
     const w = friendView(ms, [SAM], () => null).with;
-    expect(w.modes.map((m) => [m.mode, m.matches])).toEqual([["2", 2], ["3", 1], ["p2", 3]]);
+    expect(w.modes.map((m) => [m.mode, m.matches])).toEqual([["2", 1], ["3", 3], ["p2", 3]]);
     expect(w.defaultMode).toBe("2");
+  });
+
+  test("no 2v2 with one friend falls back to the most-played online mode, else Private, else none", () => {
+    const fours = () => won({ playlistId: 4, sizes: { mine: 4, other: 4 } });
+    const ms = [won({ playlistId: 13, sizes: { mine: 3, other: 3 } }), won({ playlistId: 13, sizes: { mine: 3, other: 3 } }), fours(), won({ playlistId: 6 }), won({ playlistId: 6 }), won({ playlistId: 6 })];
+    expect(friendView(ms, [SAM], () => null).with.defaultMode).toBe("3");
     expect(friendView([won({ playlistId: 6 })], [SAM], () => null).with.defaultMode).toBe("p2");
     expect(friendView([won({ playlistId: 27 })], [SAM], () => null).with.defaultMode).toBeNull();
   });
@@ -177,6 +184,13 @@ describe("a pair", () => {
   const ALEX = "Steam|alex|0";
   const alex = (side: LobbyFriend["side"], score = 100, goals = 0, over: Partial<LobbyFriend> = {}): LobbyFriend => ({ ...line(score, goals, ALEX), id: ALEX, side, switched: false, ...over });
   const quads = (over: Partial<LobbyMatch>) => won({ playlistId: 4, sizes: { mine: 4, other: 4 }, ...over });
+
+  test("defaults to 3v3 when played, even behind 4v4; otherwise the most-played online mode", () => {
+    const threes = () => won({ playlistId: 13, sizes: { mine: 3, other: 3 }, friends: [sam("with"), alex("with")] });
+    const fours = () => quads({ friends: [sam("with"), alex("with")] });
+    expect(friendView([threes(), fours(), fours()], [SAM, ALEX], () => null).with.defaultMode).toBe("3");
+    expect(friendView([fours(), fours(), won({ friends: [sam("with"), alex("with")] })], [SAM, ALEX], () => null).with.defaultMode).toBe("4");
+  });
 
   test("with needs both on your team, against both on the other; one on each side counts on neither", () => {
     const ms = [

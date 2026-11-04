@@ -102,10 +102,16 @@
 .split .me { background: var(--blue); color: #0c1a2b; }
 .split .them { background: var(--friend-a); color: #0c1a2b; }
 .split .b { background: var(--friend-b); color: #0c1a2b; }
-/* The legend's swatches in the note under the bars. */
-.key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 3px; }
+/* The legend over the bars: a swatch and a name per colour. */
+.legend { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); margin: 0 0 var(--s3); padding: 0; list-style: none; font-size: 12px; color: var(--muted); }
+.legend li { display: flex; align-items: center; min-width: 0; }
+/* border-box: the grey key's edge stays inside the 10px. */
+.key { flex: none; box-sizing: border-box; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; }
+.key.me { background: var(--blue); }
 .key.them { background: var(--friend-a); }
 .key.b { background: var(--friend-b); }
+/* The bar's grey is surf2, near-invisible on the panel's surf without an edge. */
+.key.rest { background: var(--surf2); border: 1px solid var(--ink2); }
 /* ink2, not muted: muted misses AA on surf2 at this size. */
 .split .rest { flex: 1; color: var(--ink2); }
 .tick { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); opacity: .8; border-radius: 1px; }

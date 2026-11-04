@@ -47,12 +47,12 @@ describe("carry", () => {
 
   test("the rest is named only when a teammate besides you and the friends can be in it", () => {
     expect(carryRest("2", 1)).toBeNull();
-    expect(carryRest("3", 1)).toBe("the third teammate");
-    expect(carryRest("p3", 1)).toBe("the third teammate");
-    expect(carryRest("4", 1)).toBe("the other teammates");
+    expect(carryRest("3", 1)).toBe("3rd teammate");
+    expect(carryRest("p3", 1)).toBe("3rd teammate");
+    expect(carryRest("4", 1)).toBe("Others");
     expect(carryRest("3", 2)).toBeNull();
-    expect(carryRest("4", 2)).toBe("the fourth teammate");
-    expect(carryRest("2", 0)).toBe("the second teammate");
+    expect(carryRest("4", 2)).toBe("4th teammate");
+    expect(carryRest("2", 0)).toBe("2nd teammate");
   });
 });
 

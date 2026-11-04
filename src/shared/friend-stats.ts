@@ -216,9 +216,12 @@ export function friendView(matches: readonly LobbyMatch[], ids: readonly string[
       },
     }];
   });
+  // Open on the smallest online team that fits everyone (2v2 for one friend, 3v3 for two) if
+  // played together; otherwise the most-played online mode, so it never opens on an empty one.
+  const fit = modes.find((m) => m.mode === String(ids.length + 1));
   const online = modes.filter((m) => !m.mode.startsWith("p"));
   const pick = online.length ? online : modes;
-  const defaultMode = pick.reduce<ModeView | null>((a, b) => (a === null || b.matches > a.matches ? b : a), null)?.mode ?? null;
+  const defaultMode = fit?.mode ?? pick.reduce<ModeView | null>((a, b) => (a === null || b.matches > a.matches ? b : a), null)?.mode ?? null;
 
   const wins = againstMs.filter((m) => m.result === "win" && m.goalDiff !== null);
   const biggest = wins.reduce<LobbyMatch | null>((a, b) => (a === null || (b.goalDiff ?? 0) > (a.goalDiff ?? 0) ? b : a), null);

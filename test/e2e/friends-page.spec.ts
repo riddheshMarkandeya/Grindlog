@@ -92,14 +92,20 @@ test("a friend: scorebug, both zones, the mode switch, the pager and a match lin
   await expect(page.getByRole("img", { name: "Together 5 won, 4 lost; head-to-head 7 won, 6 lost" })).toBeVisible();
   await expect(page.getByText("seen as SamInGame")).toBeVisible();
 
-  // 3v3 is the most-played online mode; it has no private matches, so Private is off there.
+  // One friend opens on 2v2 though 3v3 has more matches; the legend names only you and them.
   const note = page.getByText(/^Your .* matches with them/);
+  await expect(note).toContainText("Your 2v2 matches with them (3)");
+  const legend = page.getByRole("region", { name: "On your team" }).getByRole("list", { name: "Bar colours" }).getByRole("listitem");
+  await expect(legend).toHaveText(["You", "Sammy"]);
+  // 3v3 has no private matches, so Private is off there; its third teammate gets a key.
+  const priv = page.getByRole("button", { name: "Private" });
+  await page.getByRole("button", { name: "3v3" }).click();
   await expect(note).toContainText("Your 3v3 matches with them (4)");
+  await expect(legend).toHaveText(["You", "Sammy", "3rd teammate"]);
   const bars = page.getByRole("img", { name: /^\w+: you \d+%/ });
   await expect(bars).toHaveCount(5);
   const labels = await Promise.all((await bars.all()).map((b) => b.getAttribute("aria-label")));
   expect(labels.map((l) => l?.split(":")[0])).toEqual(["Score", "Goals", "Assists", "Saves", "MVPs"]);
-  const priv = page.getByRole("button", { name: "Private" });
   await expect(priv).toHaveAttribute("aria-disabled", "true");
   await page.getByRole("button", { name: "2v2" }).click();
   await expect(note).toContainText("Your 2v2 matches with them (3)");
@@ -134,10 +140,11 @@ test("a pair: the Together card, both zones, the four-way carry and the links to
   await expect(h1(page)).toBeFocused();
   await expect(page.getByRole("img", { name: "Together 3 won, 0 lost; against both 0 won, 0 lost" })).toBeVisible();
 
-  // Max was on your team too: the grey rest.
+  // Max was on your team too: the grey rest. No 3v3 together, so it opens on 4v4.
   const zone = page.getByRole("region", { name: "Both on your team" });
+  await expect(zone.getByRole("list", { name: "Bar colours" }).getByRole("listitem")).toHaveText(["You", "Kim", "Lee", "4th teammate"]);
   const bars = zone.getByRole("img", { name: /^\w+: you \d+%/ });
-  await expect(bars.first()).toHaveAttribute("aria-label", /^Score: you \d+%, Kim \d+%, Lee \d+%, the rest \d+%$/);
+  await expect(bars.first()).toHaveAttribute("aria-label", /^Score: you \d+%, Kim \d+%, Lee \d+%, 4th teammate \d+%$/);
   await expect(zone.getByRole("columnheader")).toHaveText(["Per match", "With both", "Without", "Diff", "Kim", "Lee"]);
   await expect(zone.getByText(/with both on your team \(3\) against your .* matches where neither was/)).toBeVisible();
   await expect(page.getByRole("region", { name: "Both on the other team" })).toContainText("You haven't played against Kim and Lee on the same team yet.");

@@ -12,7 +12,7 @@ import { cx } from "../../components/cx";
 import { Scorebug } from "../../components/Scorebug";
 import { Tile, Tiles } from "../../components/Tile";
 import { dateLabel, decimal, durationText, plural } from "../../logic/format";
-import { carryRest, carryShares, modeSwitch, PAGE_SIZE, pageOf, pickKind, pickMode, pickSize, recordText, sideCopy, sizeOf, winPctText, type Mode, type SideCopy } from "../../logic/friends";
+import { carryRest, carryShares, modeSwitch, OTHERS, PAGE_SIZE, pageOf, pickKind, pickMode, pickSize, recordText, sideCopy, sizeOf, winPctText, type Mode, type SideCopy } from "../../logic/friends";
 import { letter, pct, recapPath } from "../../logic/recap";
 import styles from "./Friends.module.css";
 import { recordLabel, WlBar } from "./parts";
@@ -166,31 +166,35 @@ function ModeSwitch({ modes, mode, pick }: { modes: readonly Mode[]; mode: Mode;
 }
 
 function Carry({ carry, mode, friends, copy }: { carry: WithSide["modes"][number]["carry"]; mode: Mode; friends: readonly Who[]; copy: SideCopy }) {
-  const rows = [["Score", carry.score], ["Goals", carry.goals], ["Assists", carry.assists], ["Saves", carry.saves], ["MVPs", carry.mvps]] as const;
+  const rows = ([["Score", carry.score], ["Goals", carry.goals], ["Assists", carry.assists], ["Saves", carry.saves], ["MVPs", carry.mvps]] as const).map(([label, s]) => [label, carryShares(s, mode)] as const);
   const rest = carryRest(mode, friends.length);
+  // The grey end is named (key and bar labels) whenever a bar draws it, even one the mode says can't happen.
+  const restKey = rest ?? (rows.some(([, s]) => (s?.pcts[friends.length + 1] ?? 0) > 0) ? OTHERS : null);
   if (carry.matches === 0) return <div className={styles.panel}><p className={styles.muted}>Every {MODE_LABEL[mode]} match {copy.together} had a team switch, so there's no share to show.</p></div>;
   return (
     <div className={styles.panel}>
+      <ul className={styles.legend} aria-label="Bar colours">
+        <li><i className={cx(styles.key, styles.me)} />You</li>
+        {friends.map((f, i) => <li key={f.id}><i className={cx(styles.key, SHADES[i])} /><Cap name={f.name} /></li>)}
+        {restKey !== null && <li><i className={cx(styles.key, styles.rest)} />{restKey}</li>}
+      </ul>
       <div className={styles.carry}>
-        {rows.map(([label, shares]) => <Bar key={label} label={label} shares={carryShares(shares, mode)} friends={friends} rest={rest !== null} />)}
+        {rows.map(([label, shares]) => <Bar key={label} label={label} shares={shares} friends={friends} rest={restKey} />)}
       </div>
       <p className={styles.note}>
-        Your share of the team's total over {plural(carry.matches, `${MODE_LABEL[mode]} match`, `${MODE_LABEL[mode]} matches`)} {copy.together};{" "}
-        {friends.length === 1 ? `light blue is ${copy.who}` : friends.map((f, i) => <span key={f.id}>{i > 0 && ", "}<i className={cx(styles.key, SHADES[i])} />{f.name}</span>)}
-        {rest !== null && `, grey ${rest}`}. The tick is an even share ({String(Math.round(100 / Number(sizeOf(mode))))}%). Matches where {copy.anyOfYou} of you switched teams are left out.
+        Your share of the team's total over {plural(carry.matches, `${MODE_LABEL[mode]} match`, `${MODE_LABEL[mode]} matches`)} {copy.together}. The tick is an even share ({String(Math.round(100 / Number(sizeOf(mode))))}%). Matches where {copy.anyOfYou} of you switched teams are left out.
       </p>
     </div>
   );
 }
 
-function Bar({ label, shares, friends, rest }: { label: string; shares: ReturnType<typeof carryShares>; friends: readonly Who[]; rest: boolean }) {
+function Bar({ label, shares, friends, rest }: { label: string; shares: ReturnType<typeof carryShares>; friends: readonly Who[]; rest: string | null }) {
   if (shares === null) return <><span className={styles.muted}>{label}</span><span className={styles.muted}>none yet</span></>;
   // [you, ...friends, rest]
   const [me = 0, ...after] = shares.pcts;
   const restPct = after[friends.length] ?? 0;
   const parts = friends.map((f, i) => `${f.name} ${String(after[i] ?? 0)}%`);
-  // A rest the mode says can't happen (more teammates than its size) is still read out.
-  if (rest || restPct > 0) parts.push(`the rest ${String(restPct)}%`);
+  if (rest !== null) parts.push(`${rest} ${String(restPct)}%`);
   return (
     <>
       <span className={styles.muted}>{label}</span>

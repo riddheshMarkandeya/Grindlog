@@ -56,14 +56,16 @@ export function carryShares(shares: readonly number[], mode: Mode): { pcts: numb
 }
 
 // By team size: with one teammate left over, they're the last one on the team.
-const LAST = { "2": "second", "3": "third", "4": "fourth" } as const;
+const LAST = { "2": "2nd", "3": "3rd", "4": "4th" } as const;
+/** The grey end's label when more than one teammate can be in it. */
+export const OTHERS = "Others";
 
-/** Who fills the grey end of a carry bar with `friends` friends on your team; null when no one can. */
+/** The legend label for the grey end of a carry bar with `friends` friends on your team; null when no one can be in it. */
 export function carryRest(mode: Mode, friends: number): string | null {
   const size = sizeOf(mode);
   const others = Number(size) - friends - 1;
   if (others <= 0) return null;
-  return others > 1 ? "the other teammates" : `the ${LAST[size]} teammate`;
+  return others > 1 ? OTHERS : `${LAST[size]} teammate`;
 }
 
 /** The words a friend page uses, for one friend or for a pair ("A and B", "all three"). */
