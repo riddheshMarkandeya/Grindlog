@@ -3,7 +3,8 @@
    data-theme too, so a Settings swatch draws its own theme inside the page's.
 
    Colour roles, one meaning each:
-   - blue/orange: your side / the other side. Never a game team colour, never decoration.
+   - blue/orange: your side / the other side. Never a game team colour, and never decoration except
+     the share card's two corner glows, which are the image's look.
    - --friend-a/--friend-b: a friend on your side, in friend order.
    - green/red (--win/--loss, and the lighter text step --up/--down): good/bad. A result, a delta,
      success/failure and errors.
