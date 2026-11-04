@@ -1,18 +1,32 @@
 /* Theme tokens. The shared colours, spacing and radius live on :root; each theme sets its surfaces,
    text and accent in full. The theme is <html data-theme>; carbon is the default. Any element can carry
-   data-theme too, so a Settings swatch draws its own theme inside the page's. */
+   data-theme too, so a Settings swatch draws its own theme inside the page's.
+
+   Colour roles, one meaning each:
+   - blue/orange: your side / the other side. Never a game team colour, never decoration.
+   - --friend-a/--friend-b: a friend on your side, in friend order.
+   - green/red (--win/--loss, and the lighter text step --up/--down): good/bad. A result, a delta,
+     success/failure and errors.
+   - --flag: a warning or a flagged match.
+   - --accent: selection, focus and the current page. Never data, never decoration.
+   - Decoration uses neutrals (--ink, --line, and the black --scrim/--shadow) only. */
 :root {
   color-scheme: dark;
   --blue: #3987e5;
   --orange: #d95926;
-  /* The friends' segments in a carry bar, after your team blue; dark text sits on them. */
+  /* The friends' segments in a carry bar, after your team blue; --page text sits on them. */
   --friend-a: #8fc0f5;
   --friend-b: #5fc4c4;
   --win: #2ca57a;
   --loss: #b84a63;
-  --up: #4cc38a;
-  --down: #e88394;
+  /* Mixed from the base pair, so overriding --win/--loss here on :root moves the text step too
+     (an override on a nested element doesn't: --up inherits already computed). */
+  --up: color-mix(in srgb, var(--win) 75%, white);
+  --down: color-mix(in srgb, var(--loss) 75%, white);
   --flag: #e0a63a;
+  /* Black at any theme: the dimmed page behind a dialog, and a popover's drop shadow. */
+  --scrim: rgb(0 0 0 / .67);
+  --shadow: rgb(0 0 0 / .4);
   --r: 6px;
   --s1: 4px;
   --s2: 8px;

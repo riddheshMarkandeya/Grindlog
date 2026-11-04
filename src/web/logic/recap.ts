@@ -6,7 +6,7 @@ import type { FlagReason } from "../../shared/flags";
 import type { AggregateWire, MatchDetail, MyMatchWire, SessionDetail } from "../../shared/schemas/responses";
 import { filterValue } from "../../shared/playlist-filter";
 import { teammateValue, type TeammateFilter } from "../../shared/teammate-filter";
-import { clock, decimal, SPEED_LABEL, speedIn, type Units } from "./format";
+import { clock, decimal, SPEED_LABEL, speedIn, type Units, whole } from "./format";
 
 /** A share as whole percent. */
 export const pct = (share: number) => Math.round(share * 100);
@@ -134,11 +134,11 @@ export function extrasCards(a: AggregateWire, matches: readonly MyMatchWire[], u
     a.fastestGoalKmh === null
       ? null
       : { id: "fastest", label: "Fastest goal", value: speed(a.fastestGoalKmh), unit, sub: matchOf((m) => m.goals.some((g) => !g.ownGoal && g.speedKmh === a.fastestGoalKmh)) },
-    a.woodworkHits === null ? null : { id: "woodwork", label: "Crossbar hits", value: String(a.woodworkHits), unit: null, sub: null },
+    a.woodworkHits === null ? null : { id: "woodwork", label: "Crossbar hits", value: whole(a.woodworkHits), unit: null, sub: null },
     a.boostAvg === null ? null : { id: "boost", label: "Avg boost", value: String(Math.round(a.boostAvg)), unit: null, sub: "your car" },
     a.supersonicShare === null ? null : { id: "supersonic", label: "Supersonic", value: String(pct(a.supersonicShare)), unit: "%", sub: "of time played" },
     a.emptyBoostShare === null ? null : { id: "empty", label: "Empty tank", value: String(pct(a.emptyBoostShare)), unit: "%", sub: "time on 0 boost" },
-    a.aerialTouches === null ? null : { id: "aerial", label: "Aerial touches", value: String(a.aerialTouches), unit: null, sub: "yours, in the air" },
+    a.aerialTouches === null ? null : { id: "aerial", label: "Aerial touches", value: whole(a.aerialTouches), unit: null, sub: "yours, in the air" },
   ];
   return cards.filter((c) => c !== null);
 }

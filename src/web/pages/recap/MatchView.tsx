@@ -12,7 +12,7 @@ import mvpIcon from "../../assets/icons/MVP.png";
 import { cx } from "../../components/cx";
 import { GoalMap } from "../../components/GoalMap";
 import { filterValue } from "../../../shared/playlist-filter";
-import { clock } from "../../logic/format";
+import { clock, whole } from "../../logic/format";
 import { flagLines, flagShort, isMyMvp, letter, matchLabel, recapPath, resultWord, scoreboardTeams, scoreFor, type ScoreTeam } from "../../logic/recap";
 import { useMatchDetail, useSettings } from "../../queries";
 import { ExtrasSection } from "./Overview";
@@ -125,8 +125,9 @@ function Match({ detail, m, n }: { detail: SessionDetail; m: MyMatchWire; n: num
   );
 }
 
-const TEAM_LABEL: Record<ScoreTeam["side"], string> = { yours: "Your team", opponents: "Opponents", blue: "Blue", orange: "Orange", unknown: "Unknown team" };
-const TEAM_TONE: Record<ScoreTeam["side"], string | undefined> = { yours: styles.blue, opponents: styles.orange, blue: styles.blue, orange: styles.orange, unknown: undefined };
+const TEAM_LABEL: Record<ScoreTeam["side"], string> = { yours: "Your team", opponents: "Opponents", blue: "Blue team", orange: "Orange team", unknown: "Unknown team" };
+// Blue/orange mean your side and the other side, so the game's teams get no tone when yours is unknown.
+const TEAM_TONE: Partial<Record<ScoreTeam["side"], string>> = { yours: styles.blue, opponents: styles.orange };
 
 function Scoreboard({ guid }: { guid: string }) {
   const full = useMatchDetail(guid);
@@ -177,7 +178,7 @@ function PlayerRow({ p }: { p: MatchDetail["players"][number] }) {
   return (
     <tr className={cx(p.isMe && styles.me)}>
       <th scope="row">{p.name}{p.isMe && " (you)"}{p.isBot && <span className={styles.meta}> bot</span>}</th>
-      <td>{p.score}</td><td>{p.goals}</td><td>{p.assists}</td><td>{p.saves}</td><td>{p.shots}</td>
+      <td>{whole(p.score)}</td><td>{p.goals}</td><td>{p.assists}</td><td>{p.saves}</td><td>{p.shots}</td>
     </tr>
   );
 }

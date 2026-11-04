@@ -17,7 +17,7 @@ import { cx } from "../../components/cx";
 import { GoalMap } from "../../components/GoalMap";
 import { Scorebug } from "../../components/Scorebug";
 import { Tile, Tiles } from "../../components/Tile";
-import { clock, dayLabel, decimal, durationText, plural } from "../../logic/format";
+import { clock, dayLabel, decimal, durationText, plural, whole } from "../../logic/format";
 import {
   extrasCards,
   highlights,
@@ -200,7 +200,7 @@ function PerGame({ detail }: { detail: SessionDetail }) {
             <span className={styles.lbl}>{c.icon && <img className={styles.sIco} src={ICONS[c.icon]} alt="" />}{c.label}</span>
             <b className="num">{decimal(c.perGame)}<small> /game</small></b>
             {c.vs && <span className={styles.vs}><VsText vs={c.vs} />{c.vs.dir !== "same" && <span className={styles.muted}> vs 30-day avg</span>}</span>}
-            <span className={cx(styles.muted, styles.small, "num")}>{c.total} total</span>
+            <span className={cx(styles.muted, styles.small, "num")}>{whole(c.total)} total</span>
           </li>
         ))}
       </ul>

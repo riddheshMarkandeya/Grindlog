@@ -53,8 +53,15 @@ export const monthLabel = (month: string, locale?: string): string => utcDate(mo
 /** "Sep 2026" for a `YYYY-MM` month. */
 export const shortMonthLabel = (month: string, locale?: string): string => utcDate(month, locale, { month: "short", year: "numeric" });
 
-/** "1 win", "2 wins"; `many` for a plural that isn't one plus "s". */
-export const plural = (n: number, one: string, many = `${one}s`): string => `${String(n)} ${n === 1 ? one : many}`;
+// Fixed to en-GB, not the reader's locale: decimal() writes its fractions with ".", so a "," group
+// separator is the only one that can't be misread next to it.
+const WHOLE = new Intl.NumberFormat("en-GB");
 
-/** Whole from 100, else up to 2 decimals with trailing zeros dropped: "413", "1.04", "1.5". */
-export const decimal = (v: number): string => (v >= 100 ? String(Math.round(v)) : String(Math.round(v * 100) / 100));
+/** Rounded, with thousands grouped: "12,345". A rounded negative zero prints "0". */
+export const whole = (n: number): string => WHOLE.format(Math.round(n) || 0);
+
+/** "1 win", "2 wins"; `many` for a plural that isn't one plus "s". */
+export const plural = (n: number, one: string, many = `${one}s`): string => `${whole(n)} ${n === 1 ? one : many}`;
+
+/** Whole from 100, else up to 2 decimals with trailing zeros dropped: "12,345", "413", "1.04", "1.5". */
+export const decimal = (v: number): string => (v >= 100 ? whole(v) : String(Math.round(v * 100) / 100));

@@ -7,7 +7,7 @@ import { playlistInfo } from "../../../shared/playlists";
 import type { SessionDetail } from "../../../shared/schemas/responses";
 import mvpIcon from "../../assets/icons/MVP.png";
 import { cx } from "../../components/cx";
-import { clock, plural } from "../../logic/format";
+import { clock, plural, whole } from "../../logic/format";
 import { flagShort, isMyMvp, letter, matchLabel, recapPath, scoreFor } from "../../logic/recap";
 import { useSettings } from "../../queries";
 import styles from "./Matches.module.css";
@@ -22,7 +22,7 @@ const COLS: readonly (readonly ["score" | "goals" | "assists" | "saves" | "shots
   ["demos", "Dm", "Demolitions"],
 ];
 
-const shown = (v: number | null | undefined) => (v == null ? "–" : String(v));
+const shown = (v: number | null | undefined) => (v == null ? "–" : whole(v));
 
 export function Matches({ detail, filter, teammate }: { detail: SessionDetail; filter: PlaylistFilter; teammate: TeammateFilter }) {
   const { matches, aggregate: a } = detail;

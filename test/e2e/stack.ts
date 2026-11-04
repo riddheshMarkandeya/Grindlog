@@ -121,6 +121,8 @@ function seed(dir: string, mode: Seed): void {
       // Under the Trends page's 20 matches: its "not enough data yet" note.
       writer.save(match("e2e-few-a", day(1, 5), 10 * HOUR, true));
       writer.save(match("e2e-few-b", day(1, 5), 10 * HOUR + 10 * MIN, false));
+      // ME with no team: the match page can't say whose team is whose, so it names the game's teams.
+      writer.save(match("e2e-few-noteam", day(1, 5), 10 * HOUR + 20 * MIN, true, {}, { players: [player(ME, 0, { teamNum: null, teamsSeen: 0 }), player(THEM, 0), player(OTHER, 1)] }));
       return;
     }
     if (mode === "friends") {

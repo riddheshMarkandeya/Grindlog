@@ -1,4 +1,4 @@
-// Trends with 2 matches in all: its own worker and stack, seeded `few`.
+// Trends with only a few matches (under 20): its own worker and stack, seeded `few`.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "./fixtures";
 

@@ -13,15 +13,32 @@ function block(selector: string): Map<string, string> {
   return tokens;
 }
 
-function luminance(hex: string): number {
+/** The 0–255 channels of a 3- or 6-digit hex colour. */
+function channels(hex: string): number[] {
   const h = hex.replace("#", "");
   const full = h.length === 3 ? h.replace(/./g, "$&$&") : h;
-  const [r, g, b] = [0, 2, 4].map((i) => {
-    const c = parseInt(full.slice(i, i + 2), 16) / 255;
+  return [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16));
+}
+
+function luminance(hex: string): number {
+  const [r, g, b] = channels(hex).map((v) => {
+    const c = v / 255;
     return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
   }) as [number, number, number];
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
+
+// The text step's color-mix(in srgb, var(--x) N%, white), blended channel by channel as srgb mixing does.
+function resolve(root: Map<string, string>, value: string): string {
+  const mix = /^color-mix\(in srgb, var\(--([\w-]+)\) (\d+(?:\.\d+)?)%, white\)$/.exec(value);
+  if (!mix) return value;
+  const p = Number(mix[2]) / 100;
+  const ch = channels(root.get(mix[1] ?? "") ?? "").map((v) => Math.round(v * p + 255 * (1 - p)));
+  return `#${ch.map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+}
+
+// Hex, the colour functions and the two named colours a neutral is likeliest to be written as.
+const LITERAL_COLOUR = /#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(|(?<![\w-])(?:white|black)(?![\w-])/g;
 
 function contrast(a: string, b: string): number {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
@@ -39,12 +56,27 @@ describe("theme tokens", () => {
   });
 
   test("the shared tokens live on :root", () => {
-    expect([...block(":root").keys()]).toEqual(expect.arrayContaining(["blue", "orange", "win", "loss", "up", "down", "flag", "r", "s1", "s6"]));
+    expect([...block(":root").keys()]).toEqual(expect.arrayContaining(["blue", "orange", "win", "loss", "up", "down", "flag", "scrim", "shadow", "r", "s1", "s6"]));
   });
 
-  test("the carry bars' friend shades keep their dark text at 4.5:1", () => {
+  test("the text step --up/--down is mixed from --win/--loss, so a :root colour override moves both", () => {
     const root = block(":root");
-    for (const k of ["friend-a", "friend-b"]) expect(contrast(root.get(k) ?? "", "#0c1a2b"), k).toBeGreaterThanOrEqual(4.5);
+    expect(root.get("up")).toMatch(/^color-mix\(in srgb, var\(--win\) \d+%, white\)$/);
+    expect(root.get("down")).toMatch(/^color-mix\(in srgb, var\(--loss\) \d+%, white\)$/);
+  });
+
+  test("the colour-mix resolver blends channels in srgb", () => {
+    expect(resolve(new Map([["x", "#000000"]]), "color-mix(in srgb, var(--x) 50%, white)")).toBe("#808080");
+    expect(resolve(new Map([["x", "#000"]]), "color-mix(in srgb, var(--x) 50%, white)")).toBe("#808080");
+  });
+
+  test("no literal colours in CSS outside tokens.css", () => {
+    const files = import.meta.glob<string>("../**/*.css", { query: "?raw", import: "default", eager: true });
+    expect(Object.keys(files).length).toBeGreaterThan(5);
+    const hits = Object.entries(files)
+      .filter(([path]) => path !== "./tokens.css")
+      .flatMap(([path, text]) => [...text.matchAll(LITERAL_COLOUR)].map((m) => `${path}: ${m[0]}`));
+    expect(hits).toEqual([]);
   });
 
   describe.each(THEMES)("%s contrast", (theme) => {
@@ -56,6 +88,14 @@ describe("theme tokens", () => {
         expect(contrast(get(fg), get(bg))).toBeGreaterThanOrEqual(4.5);
       },
     );
+    test.each(["up", "down"])("the %s text step is at least 4.5:1 on page and surf", (k) => {
+      const root = block(":root");
+      const fg = resolve(root, root.get(k) ?? "");
+      for (const bg of ["page", "surf"]) expect(contrast(fg, get(bg)), `${k} on ${bg}`).toBeGreaterThanOrEqual(4.5);
+    });
+    test.each(["blue", "friend-a", "friend-b"])("page text on %s is at least 4.5:1", (k) => {
+      expect(contrast(get("page"), block(":root").get(k) ?? "")).toBeGreaterThanOrEqual(4.5);
+    });
     test("accent on surf is at least 3:1", () => {
       expect(contrast(get("accent"), get("surf"))).toBeGreaterThanOrEqual(3);
     });

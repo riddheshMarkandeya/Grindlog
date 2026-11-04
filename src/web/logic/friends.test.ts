@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { carryRest, carryShares, modeSwitch, namedPairs, pageOf, pickKind, pickMode, pickSize, recordText, sideCopy, winPctText } from "./friends";
+import { carryRest, carryShares, diffText, modeSwitch, namedPairs, overtimeNote, pageOf, pickKind, pickMode, pickSize, recordText, sideCopy, winPctText } from "./friends";
 
 describe("pager", () => {
   test("ten a page, clamped to the pages there are", () => {
@@ -118,5 +118,23 @@ describe("pairs", () => {
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn).toHaveBeenCalledWith("[rlt] friends/pair_unnamed", { ids: ["k", "x"] });
     warn.mockRestore();
+  });
+});
+
+describe("overtime and compare text", () => {
+  test("the overtime note counts decided matches, so a no-result doesn't dilute it", () => {
+    const withNoResult = { w: 2, l: 2, n: 5 };
+    expect(overtimeNote(withNoResult)).toBe("50% of 4");
+    expect(overtimeNote({ w: 1, l: 0 })).toBe("100% of 1");
+  });
+
+  test("a difference takes its sign and direction from the text it prints", () => {
+    expect(diffText(0.001)).toEqual({ text: "0", dir: 0 });
+    expect(diffText(-0.004)).toEqual({ text: "0", dir: 0 });
+    expect(diffText(0)).toEqual({ text: "0", dir: 0 });
+    expect(diffText(1.256)).toEqual({ text: "+1.26", dir: 1 });
+    expect(diffText(-0.5)).toEqual({ text: "−0.5", dir: -1 });
+    expect(diffText(1234)).toEqual({ text: "+1,234", dir: 1 });
+    expect(diffText(-7, true)).toEqual({ text: "−7", dir: -1 });
   });
 });

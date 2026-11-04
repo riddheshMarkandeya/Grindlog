@@ -11,8 +11,8 @@ import { teammateValue } from "../../../shared/teammate-filter";
 import { cx } from "../../components/cx";
 import { Scorebug } from "../../components/Scorebug";
 import { Tile, Tiles } from "../../components/Tile";
-import { dateLabel, decimal, durationText, plural } from "../../logic/format";
-import { carryRest, carryShares, modeSwitch, OTHERS, PAGE_SIZE, pageOf, pickKind, pickMode, pickSize, recordText, sideCopy, sizeOf, winPctText, type Mode, type SideCopy } from "../../logic/friends";
+import { dateLabel, decimal, durationText, plural, whole } from "../../logic/format";
+import { carryRest, carryShares, diffText, modeSwitch, OTHERS, overtimeNote, PAGE_SIZE, pageOf, pickKind, pickMode, pickSize, recordText, sideCopy, sizeOf, winPctText, type Mode, type SideCopy } from "../../logic/friends";
 import { letter, pct, recapPath } from "../../logic/recap";
 import styles from "./Friends.module.css";
 import { recordLabel, WlBar } from "./parts";
@@ -25,7 +25,7 @@ type Row = WithSide["playlists"][number];
 
 const MODE_LABEL: Record<Mode, string> = { "2": "2v2", "3": "3v3", "4": "4v4", p2: "Private 2v2", p3: "Private 3v3" };
 // Friend i's colour in the carry bars and its legend; the pages build pairs at most.
-const SHADES = [styles.them, styles.b];
+const SHADES = [styles.friendA, styles.friendB];
 const day = (ms: number) => dateLabel(dayOf(ms));
 const streakText = (s: WithSide["streak"]) => (s === null ? "–" : `${String(s.length)} ${letter(s.result)}`);
 
@@ -105,7 +105,7 @@ function Playlists({ rows }: { rows: readonly Row[] }) {
 }
 
 const playlistNote = (r: Row) => `${r.label} · ${recordText(r)}`;
-const overtimeTile = (ot: WithSide["overtime"]) => ot.n > 0 && <Tile label="Overtime" value={recordText(ot)} note={`${winPctText(ot)} of ${String(ot.n)}`} />;
+const overtimeTile = (ot: WithSide["overtime"]) => ot.w + ot.l > 0 && <Tile label="Overtime" value={recordText(ot)} note={overtimeNote(ot)} />;
 
 function WithZone({ side, friends, copy }: { side: WithSide; friends: readonly Who[]; copy: SideCopy }) {
   return (
@@ -221,12 +221,10 @@ const STATS = [["score", "Score"], ["goals", "Goals"], ["assists", "Assists"], [
 
 function Compare({ compare, mode, friends, copy }: { compare: CompareView; mode: Mode; friends: readonly Who[]; copy: SideCopy }) {
   const { with: w, without: wo } = compare;
-  // Win % differs in whole points; the stats in decimal()'s steps.
   const diff = (a: number | undefined, b: number | undefined, points = false) => {
     if (a === undefined || b === undefined) return <td className={styles.muted}>–</td>;
-    const d = a - b;
-    const sign = d > 0 ? "+" : d < 0 ? "−" : "";
-    return <td className={d > 0 ? styles.up : d < 0 ? styles.down : styles.muted}>{sign}{points ? String(Math.abs(d)) : decimal(Math.abs(d))}</td>;
+    const { text, dir } = diffText(a - b, points);
+    return <td className={dir > 0 ? styles.up : dir < 0 ? styles.down : styles.muted}>{text}</td>;
   };
   const winOf = (p: number | null | undefined) => (p === null || p === undefined ? undefined : pct(p));
   const ww = winOf(w.winPct);
@@ -305,7 +303,7 @@ function Matches({ matches, friends }: { matches: AgainstSide["matches"]; friend
   // A column group per person, in the match lines' order: 0 is you, i + 1 is friend i.
   const groups = [
     { key: "me", name: "You", cls: styles.you, line: (m: Match) => m.me, star: "Your MVP" },
-    ...friends.map((f, i) => ({ key: f.id, name: f.name, cls: styles.them, line: (m: Match) => m.friends[i], star: `${f.name}'s MVP` })),
+    ...friends.map((f, i) => ({ key: f.id, name: f.name, cls: styles.opp, line: (m: Match) => m.friends[i], star: `${f.name}'s MVP` })),
   ];
   return (
     <div className={styles.panel}>
@@ -333,11 +331,17 @@ function Matches({ matches, friends }: { matches: AgainstSide["matches"]; friend
                   <span className={styles.muted}>{m.label}</span>
                 </td>
                 <td className={m.result === "win" ? styles.w : m.result === "loss" ? styles.l : styles.muted}>{letter(m.result)}</td>
-                {groups.map((g, gi) => COLS.map(([k], i) => (
-                  <td key={`${g.key}-${k}`} className={gi > 0 && i === 0 ? styles.sep : undefined}>
-                    {g.line(m)?.[k]}{i === 0 && m.mvp === gi && <span title={g.star}> ★</span>}
-                  </td>
-                )))}
+                {groups.map((g, gi) => {
+                  const line = g.line(m);
+                  return COLS.map(([k], i) => {
+                    const v = line?.[k];
+                    return (
+                      <td key={`${g.key}-${k}`} className={gi > 0 && i === 0 ? styles.sep : undefined}>
+                        {v === undefined ? null : whole(v)}{i === 0 && m.mvp === gi && <span title={g.star}> ★</span>}
+                      </td>
+                    );
+                  });
+                })}
               </tr>
             ))}
           </tbody>
@@ -346,7 +350,7 @@ function Matches({ matches, friends }: { matches: AgainstSide["matches"]; friend
       {pages > 1 && (
         <div className={styles.pager}>
           <button type="button" className={styles.button} aria-disabled={page === 0} onClick={() => { go(page - 1); }}>← Newer</button>
-          <span className={styles.muted} aria-live="polite">{first}–{first + rows.length - 1} of {matches.length}</span>
+          <span className={styles.muted} aria-live="polite">{whole(first)}–{whole(first + rows.length - 1)} of {whole(matches.length)}</span>
           <button type="button" className={styles.button} aria-disabled={page === pages - 1} onClick={() => { go(page + 1); }}>Older →</button>
         </div>
       )}

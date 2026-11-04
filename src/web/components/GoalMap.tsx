@@ -5,7 +5,7 @@ import { useLinkClickHandler } from "react-router";
 import { GOAL_LINE_Y, SIDE_WALL_X } from "../../shared/constants";
 import type { Goal, MyMatchWire } from "../../shared/schemas/responses";
 import { goalMarks, goalSummary, MAP_H, MAP_W, markScale, type GoalMark, type SideSummary } from "../logic/goal-map";
-import { plural } from "../logic/format";
+import { plural, whole } from "../logic/format";
 import { useSettings } from "../queries";
 import { cx } from "./cx";
 import styles from "./GoalMap.module.css";
@@ -39,7 +39,7 @@ export function GoalMap({ matches, goals, viewKey, hrefFor }: { matches: MyMatch
           viewBox={`${String(-PAD)} ${String(-PAD)} ${String(MAP_W + 2 * PAD)} ${String(MAP_H + 2 * PAD)}`}
           // A group, not an img: axe holds that an image has no links inside, even ones out of the tab order.
           role="group"
-          aria-label={`Where ${plural(summary.scored.total, "goal")} for and ${String(summary.conceded.total)} against came from`}
+          aria-label={`Where ${plural(summary.scored.total, "goal")} for and ${whole(summary.conceded.total)} against came from`}
         >
           <Field />
           {marks.map((m) => (hrefFor ? <LinkedMark key={m.key} mark={m} k={k} href={hrefFor(m.matchGuid)} /> : <Mark key={m.key} mark={m} k={k} />))}
@@ -55,7 +55,7 @@ export function GoalMap({ matches, goals, viewKey, hrefFor }: { matches: MyMatch
       </div>
       <div className={styles.summary}>
         <SideCounts label="Scored" side={summary.scored} tone="blue" />
-        {summary.scored.total > 0 && <p className={styles.note}>You scored {summary.yours} of the team's {summary.scored.total}.</p>}
+        {summary.scored.total > 0 && <p className={styles.note}>You scored {whole(summary.yours)} of the team's {whole(summary.scored.total)}.</p>}
         <SideCounts label="Conceded" side={summary.conceded} tone="orange" />
         <p className={styles.note}>Close: within a quarter of the pitch from goal. Long: from halfway or further.</p>
       </div>
@@ -121,8 +121,8 @@ function SideCounts({ label, side, tone }: { label: string; side: SideSummary; t
     <div>
       <h3 className={styles.h3}>
         <svg width="12" height="12" aria-hidden="true"><circle className={tone === "blue" ? styles.yours : styles.conceded} cx="6" cy="6" r="5" /></svg>
-        {label} · <span className="num">{side.total}</span>
-        {side.aerial > 0 && <span className={styles.note}> · {side.aerial} aerial</span>}
+        {label} · <span className="num">{whole(side.total)}</span>
+        {side.aerial > 0 && <span className={styles.note}> · {whole(side.aerial)} aerial</span>}
       </h3>
       {side.total === 0 ? (
         <p className={styles.note}>None.</p>

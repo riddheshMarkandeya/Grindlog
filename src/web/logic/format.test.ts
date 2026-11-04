@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
-import { clock, dateLabel, dayLabel, decimal, durationText, monthLabel, ordinal, plural, SPEED_LABEL, speedIn, timeRange } from "./format";
+import { clock, dateLabel, dayLabel, decimal, durationText, monthLabel, ordinal, plural, SPEED_LABEL, speedIn, timeRange, whole } from "./format";
 
 beforeAll(() => {
   vi.stubEnv("TZ", "UTC");
@@ -56,4 +56,9 @@ describe("text", () => {
 
 test("decimal: whole from 100, else up to 2 decimals without trailing zeros", () => {
   expect([decimal(412.6), decimal(100), decimal(1.04), decimal(1.5), decimal(2), decimal(0.333), decimal(0)]).toEqual(["413", "100", "1.04", "1.5", "2", "0.33", "0"]);
+});
+
+test("whole and decimal group thousands, so a session's score total doesn't read 12345", () => {
+  expect([whole(12345), whole(999.4), whole(1000), whole(0), whole(-0.4), whole(-1234.6)]).toEqual(["12,345", "999", "1,000", "0", "0", "-1,235"]);
+  expect([decimal(12345), decimal(100), decimal(999.4)]).toEqual(["12,345", "100", "999"]);
 });

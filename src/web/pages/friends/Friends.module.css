@@ -22,7 +22,7 @@
 :is(.status, .error) + .h2, :is(.status, .error) + section > .h2:first-child { margin-top: 0; }
 .h2 + p { margin: var(--s1) 0 0; font-size: 12px; color: var(--muted); }
 /* Suggestions: the top few in a panel, the rest behind "Show N more". */
-.sugg { margin: var(--s3) 0 0; padding: 0; list-style: none; background: var(--surf); border: 1px solid var(--line); border-left: 2px solid var(--flag); border-radius: var(--r); }
+.sugg { margin: var(--s3) 0 0; padding: 0; list-style: none; background: var(--surf); border: 1px solid var(--line); border-left: 2px solid var(--ink2); border-radius: var(--r); }
 .sugg li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: var(--s2) var(--s4); align-items: center; padding: 8px var(--s4); border-bottom: 1px solid var(--grid); font-size: 14px; }
 .sugg li:last-child { border-bottom: 0; }
 .more { margin-top: var(--s2); }
@@ -98,18 +98,18 @@
 .split span { display: flex; align-items: center; padding: 0 6px; white-space: nowrap; overflow: hidden; }
 /* An unlabelled segment (a sliver, or a rest no one fills) takes no padding, so the bar ends flush. */
 .split span:empty { padding: 0; }
-/* Dark text: white on the team blue misses AA at this size. */
-.split .me { background: var(--blue); color: #0c1a2b; }
-.split .them { background: var(--friend-a); color: #0c1a2b; }
-.split .b { background: var(--friend-b); color: #0c1a2b; }
+/* Dark text: light text on the team blue misses AA at this size. */
+.split .me { background: var(--blue); color: var(--page); }
+.split .friendA { background: var(--friend-a); color: var(--page); }
+.split .friendB { background: var(--friend-b); color: var(--page); }
 /* The legend over the bars: a swatch and a name per colour. */
 .legend { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); margin: 0 0 var(--s3); padding: 0; list-style: none; font-size: 12px; color: var(--muted); }
 .legend li { display: flex; align-items: center; min-width: 0; }
 /* border-box: the grey key's edge stays inside the 10px. */
 .key { flex: none; box-sizing: border-box; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; }
 .key.me { background: var(--blue); }
-.key.them { background: var(--friend-a); }
-.key.b { background: var(--friend-b); }
+.key.friendA { background: var(--friend-a); }
+.key.friendB { background: var(--friend-b); }
 /* The bar's grey is surf2, near-invisible on the panel's surf without an edge. */
 .key.rest { background: var(--surf2); border: 1px solid var(--ink2); }
 /* ink2, not muted: muted misses AA on surf2 at this size. */
@@ -126,7 +126,7 @@
 .table .sep { border-left: 1px solid var(--line); }
 /* Lightened toward the ink: the team colours alone miss AA on a panel in some themes. */
 .table .you { color: color-mix(in srgb, var(--blue) 70%, var(--ink)); text-align: center; }
-.table .them { color: color-mix(in srgb, var(--orange) 70%, var(--ink)); text-align: center; }
+.table .opp { color: color-mix(in srgb, var(--orange) 70%, var(--ink)); text-align: center; }
 /* A friend's name over a column: cut, the full name in its title. */
 .cap { display: inline-block; max-width: 10em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 .w { color: var(--win); }

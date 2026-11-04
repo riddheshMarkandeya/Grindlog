@@ -3,6 +3,7 @@
 // friend's page and a pair's.
 import type { FriendDetail } from "../../shared/schemas/responses";
 import { sum } from "../../shared/aggregate";
+import { decimal, whole } from "./format";
 import { pct } from "./recap";
 
 export type Mode = NonNullable<FriendDetail["view"]["with"]["defaultMode"]>;
@@ -90,15 +91,28 @@ export function sideCopy(names: readonly string[]) {
     /** What the Compare table weighs, for `label` matches (e.g. "3v3"): `w` with, `wo` without. */
     compareNote: (label: string, w: number, wo: number) =>
       one
-        ? `Your ${label} matches with them (${String(w)}) against your other ${label} matches (${String(wo)}), including ones where they were an opponent.`
-        : `Your ${label} matches with both on your team (${String(w)}) against your ${label} matches where neither was (${String(wo)}).`,
+        ? `Your ${label} matches with them (${whole(w)}) against your other ${label} matches (${whole(wo)}), including ones where they were an opponent.`
+        : `Your ${label} matches with both on your team (${whole(w)}) against your ${label} matches where neither was (${whole(wo)}).`,
   };
 }
 export type SideCopy = ReturnType<typeof sideCopy>;
 
-export const recordText = ({ w, l }: { w: number; l: number }): string => `${String(w)}–${String(l)}`;
+export const recordText = ({ w, l }: { w: number; l: number }): string => `${whole(w)}–${whole(l)}`;
 
 export const winPctText = ({ w, l }: { w: number; l: number }): string => (w + l === 0 ? "–" : `${String(pct(w / (w + l)))}%`);
+
+/** "50% of 4": the count is the decided matches the % is taken over, not every overtime match. */
+export const overtimeNote = (ot: { w: number; l: number }): string => `${winPctText(ot)} of ${whole(ot.w + ot.l)}`;
+
+/**
+ * A with-minus-without difference: whole points for win %, decimal()'s steps for a stat. The sign and
+ * direction come from the rounded text, so a tiny difference reads a muted "0", never a green "+0".
+ */
+export function diffText(d: number, points = false): { text: string; dir: -1 | 0 | 1 } {
+  const text = points ? whole(Math.abs(d)) : decimal(Math.abs(d));
+  if (text === "0") return { text, dir: 0 };
+  return d > 0 ? { text: `+${text}`, dir: 1 } : { text: `−${text}`, dir: -1 };
+}
 
 /**
  * Each pair with both friends' names. Pairs and friends come in one answer, so a missing name is a
