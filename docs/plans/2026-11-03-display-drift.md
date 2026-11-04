@@ -1,5 +1,8 @@
 # Display drift and data sense: audit and fixes
 
+Status: done, deployed 2026-11-04 (WP-A `926782b`, WP-B `c245321`, WP-C `2fa1994`). Deploy: check 1165
+passed, e2e 82 passed, recompute wrote 168 match records with 0 failed.
+
 ## Context
 BACKLOG item "Display layer drift across pages" (`BACKLOG.md:79`, user 2026-10-28) was written
 before the Friends page was built. The user asked for a fresh audit across every page, to find
