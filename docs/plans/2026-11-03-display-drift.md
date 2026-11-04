@@ -238,6 +238,7 @@ commit, and each is roughly one session.
   - `settings.spec.ts:30` `[class*=row]` and `settings-tables.spec.ts:180` `[class*=head]`.
     Substring selectors could match new Section classes, so either name the Section header class
     to avoid `head`/`row`, or change those selectors to role-based ones.
+- Carried from WP-B review: `Friends.module.css:73` `.zone .tiles` never matches, because `<Tiles>` carries Tile.module.css's hashed class. So the zone tiles have always been centred, with Tile's top margin. Decide with the user whether they should be left-aligned. If so, give `Tiles` a `className` passthrough, using the same override pattern as the global classes.
 
 ### BACKLOG changes (with WP-C's commit)
 - Close "Display layer drift across pages" and point to this plan.
@@ -383,3 +384,53 @@ Runs: `bun run check` passes (1161 tests). `bun run e2e` gives 81 passed (3.8m).
 
 ### WP-A, round 4 (delta from 65b439c)
 Passes: `/code-review low`, `security-reviewer`. The arch fix was a comment nit, so arch wasn't re-run. No findings. The review is done.
+
+### WP-B, implementation notes (before review)
+- `.display` sets the face, stretch, italic and 800 but no line height. A module class on the same element ties it on specificity (the WP-C override concern), so each use sets its own size and line height and never its style or weight.
+- Additions to the size scale: 36 for the Trends period title, 24/18 for the match cards. The match score went from 32 to 30, the Tile size. The share card keeps its own scale.
+- `StatCards stretch` (auto-fit) is for Trends' fixed six cards. Overview keeps auto-fill, so two Highlights cards don't stretch across the whole row.
+- New tests (red first): `tokens.test.ts` checks that Bahnschrift is named only in `--display`. `recap.spec.ts` checks that the Shooting tile reads "up/down avg" and its ▲/▼ is aria-hidden; it failed on the old Tile.
+- Pre-existing, outside the plan: the 320px run of the recap, trends and friends specs failed `friends-page` axe with scrollable-region-focusable. The friend page's "Match by match" table scroll box couldn't be focused, which blocks keyboard access, and HEAD fails the same way. Fix: both friend tables' scroll boxes are now focusable named regions (`zones.tsx`). A test was added to the 320px friends test; it is red without the fix.
+- Runs: `bun run check` passes (1162 tests). `bun run e2e` gives 81 passed (3.8m). The 320px run of the recap, trends and friends specs gives 47 passed.
+
+### WP-B, round 1 (snapshot 25e4c7a)
+Passes: `/code-review high`, `arch-reviewer` (opus), `security-reviewer`, `/simplify`.
+- security: no findings.
+- simplify:
+  - The ▲/▼ plus hidden "up"/"down" was written three times (Tile, Overview `VsText`, Trends `DeltaText`). [Fixed] It's now one `components/DirArrow.tsx`; each caller keeps its colour, amount and "same" wording.
+  - Tile's label relied on `.tiles > li > span`. [Fixed] It has a `.label` class now.
+  - The two glob calls in `tokens.test.ts`. [Fixed] Hoisted to `CSS_FILES`.
+  - "`./tokens.css` never matches a glob key". [Disputed] The hex test uses the same key and passes, although tokens.css is full of hex. Vite keys a same-folder file as `./`.
+  - Skipped, as behaviour-neutral or WP-C scope: the caller-built unit space (`" /game"`), the `| null` props, the shared label recipe (Tile, StatCard and Friends `.rk`) and the `.tw` wrapper helper.
+- arch:
+  - StatCard's sub line was brighter (`--ink2`) than the old `--muted`, and "N total" lost `num`. [Fixed] `.sub` is `--muted` and `num` again.
+  - ShareCard `.rec` lost `letter-spacing: -.02em`, which isn't part of the face. [Fixed] Restored, so the exported image keeps its look.
+  - The `" "` delta placeholder: see code-review.
+- code-review:
+  - `button.card:hover` (0,2,1) beat `.card[aria-pressed=true]`, so hovering the selected Trends card lost its accent border. [Fixed] Hover is now `:not([aria-pressed=true])`.
+  - The `" "` placeholder collapsed once `.delta`'s min-height went, so a period with no comparison made the row a line shorter. [Fixed] `.vs` has `min-height: 1.45em`, and Trends passes `""` for no delta (commented in StatCard.module.css).
+  - Tile's "=" had no screen-reader word. [Fixed] It's an aria-hidden "=" plus a hidden "same".
+  - Scorebug `.side b` and Overview's match card `b` re-declared italic 800. [Fixed] Both take `display`. The scorebug `.mid b` stays: its `<b>` comes from each caller's `mid` node.
+  - Trends `.record` and MatchView `.title` set no line height. [Fixed] Both are 1.1.
+  - The table scroll boxes are focusable even when the table fits. [Verified, no fix needed] A focusable scroll box is the standard pattern, and detecting overflow would need a ResizeObserver for little gain.
+  - The face test only matched `font-family:` in CSS. [Fixed] It now matches any "Bahnschrift" in CSS, TS and TSX. A `font:` shorthand copy turns it red.
+Runs: `bun run check` passes (1162 tests). `bun run e2e` gives 81 passed (4.2m). The 320px run of the recap, trends and friends specs gives 47 passed.
+
+### WP-B, round 2 (delta from 25e4c7a, snapshot f144ecc)
+A full round, because the fixes touched `Scorebug.tsx` and added `DirArrow.tsx`. Passes: `/code-review high`, `arch-reviewer` (sonnet), `security-reviewer`.
+- security: no findings.
+- arch: all ten round-1 fixes match the log.
+  - `THEMES =[` lost a space. [Fixed]
+  - The DirArrow import order. [Verified, no fix needed] It follows the file's existing order.
+  - Trends' "≈" isn't aria-hidden: see code-review.
+- code-review:
+  - Trends' "same" read "≈" and then "about the same". [Fixed] The glyph is aria-hidden now. Overview's visible "≈ 30-day avg" stays: "almost equal to 30-day avg" reads correctly.
+  - `.vs` min-height hard-coded the body's 1.45. [Fixed] It's `1lh` now.
+  - The `vs=""` contract was only in the CSS. [Fixed] It's in the StatCard doc comment too.
+  - Tile's "same" fragment copies DirArrow's structure. [Verified, no fix needed] Round 1 left each caller's "same" wording to the caller (Tile "=", Trends "≈", Overview "≈ 30-day avg"). A shared "same" would force one wording.
+  - The face test fails on a "Bahnschrift" in any comment and doesn't scan `index.html`. [Verified, no fix needed] A comment hit fails loudly with the path, so it's trivial to reword. `index.html` has no styles.
+  - `Friends.module.css:73` `.zone .tiles` never matches. This was already there before WP-B (e1ec52e). [Deferred → WP-C] Fixing it changes the layout, which is a product call. It's listed in WP-C.
+
+### WP-B, round 3 (delta from f144ecc, snapshot bb32766)
+Passes: `/code-review low`, `security-reviewer`. The arch fix was whitespace only, so arch wasn't re-run. No findings. The review is done.
+Runs: `bun run check` passes (1162 tests). The recap and trends e2e give 28 passed. The full `bun run e2e` gave 81 passed after round 1. Round 2 changed only an aria-hidden span, a min-height unit and comments.

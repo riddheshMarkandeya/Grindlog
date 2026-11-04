@@ -46,24 +46,14 @@
 .hint { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
 
 .head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin-top: var(--s5); }
-.title, .record { font-family: Bahnschrift, "Arial Narrow", "Segoe UI", sans-serif; font-stretch: condensed; }
-.title { margin: 0; font-size: 36px; font-style: italic; font-weight: 800; line-height: 1; }
+.title { margin: 0; font-size: 36px; line-height: 1; }
 .title:focus { outline: none; }
 .stats { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2) var(--s4); margin-top: var(--s3); }
-.record { font-size: 26px; font-weight: 700; }
+.record { font-size: 26px; line-height: 1.1; }
 .flag { color: var(--flag); font-size: 13px; }
 
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--s2); margin-top: var(--s4); }
-.tile {
-  display: grid; gap: 2px; padding: var(--s3); text-align: left; cursor: pointer;
-  background: var(--surf); border: 1px solid var(--line); border-radius: var(--r); transition: border-color .12s;
-}
-.tile:hover { border-color: var(--muted); }
-.tile[aria-pressed=true] { border-color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
-.lbl { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink2); }
-.value { font-size: 22px; font-weight: 600; }
-.delta { font-size: 12px; min-height: 1.45em; }
-.spark { width: 100%; height: 24px; }
+.tiles { margin-top: var(--s4); }
+.spark { width: 100%; height: 24px; margin-top: auto; }
 .spark path { fill: none; stroke: var(--accent); stroke-width: 1.5; }
 
 /* The big chart and the W/L chart: drawn at the measured width, so the axis text keeps its size. */

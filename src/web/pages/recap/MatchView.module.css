@@ -24,8 +24,8 @@
 .flag { color: var(--flag); }
 
 .kpis { display: flex; flex-wrap: wrap; gap: var(--s3) var(--s5); align-items: center; }
-.title { display: flex; align-items: baseline; gap: var(--s2); margin: 0; font-size: 32px; font-weight: 700; }
-.title i { font-style: normal; color: var(--muted); }
+.title { display: flex; align-items: baseline; gap: var(--s2); margin: 0; font-size: 30px; line-height: 1.1; }
+.title i { color: var(--muted); }
 .title .winText { color: var(--win); }
 .title .lossText { color: var(--loss); }
 .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink2); white-space: nowrap; }

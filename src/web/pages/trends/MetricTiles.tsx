@@ -7,18 +7,18 @@ import goalIcon from "../../assets/icons/Goal.png";
 import saveIcon from "../../assets/icons/Save.png";
 import shotIcon from "../../assets/icons/Shot.png";
 import { METRICS, metricDelta, metricValue, sparkPath, type Delta, type MetricId, type TrendIcon } from "../../logic/trends";
-import { cx } from "../../components/cx";
+import { DirArrow } from "../../components/DirArrow";
+import { StatCard, StatCards } from "../../components/StatCard";
 import styles from "./Trends.module.css";
 
 const ICONS: Record<TrendIcon, string> = { Goal: goalIcon, Shot: shotIcon, Assist: assistIcon, Save: saveIcon };
 
 /** "▲ 5 pts" with the direction in words for screen readers, or a muted "≈". */
 function DeltaText({ delta }: { delta: Delta }) {
-  if (delta.dir === "same") return <span className={styles.muted}>≈ <span className="visually-hidden">about the same</span></span>;
+  if (delta.dir === "same") return <span className={styles.muted}><span aria-hidden="true">≈</span><span className="visually-hidden">about the same</span></span>;
   return (
     <span className={delta.dir === "up" ? styles.up : styles.down}>
-      <span aria-hidden="true">{delta.dir === "up" ? "▲" : "▼"}</span>
-      <span className="visually-hidden">{delta.dir}</span> {delta.text}
+      <DirArrow dir={delta.dir} /> {delta.text}
     </span>
   );
 }
@@ -38,20 +38,19 @@ export function MetricTiles({ view, metric, onMetric }: { view: PeriodView; metr
   const buckets = view.buckets.map((b) => b.stats);
   return (
     <div className={styles.tiles} role="group" aria-label="Metric to chart">
-      {METRICS.map((m) => {
-        const delta = metricDelta(m.id, cur, prev);
-        return (
-          <button key={m.id} type="button" className={styles.tile} aria-pressed={m.id === metric} onClick={() => { onMetric(m.id); }}>
-            <span className={styles.lbl}>
-              {m.icon && <img className={styles.ico} src={ICONS[m.icon]} alt="" />}
-              {m.label}
-            </span>
-            <span className={cx(styles.value, "num")}>{metricValue(m.id, cur)}</span>
-            <span className={styles.delta}>{delta ? <DeltaText delta={delta} /> : " "}</span>
-            <Sparkline path={sparkPath(m.id, buckets)} />
-          </button>
-        );
-      })}
+      <StatCards stretch>
+        {METRICS.map((m) => {
+          const delta = metricDelta(m.id, cur, prev);
+          return (
+            <StatCard
+              key={m.id} label={m.label} icon={m.icon && ICONS[m.icon]} value={metricValue(m.id, cur)}
+              vs={delta ? <DeltaText delta={delta} /> : ""} pressed={m.id === metric} onClick={() => { onMetric(m.id); }}
+            >
+              <Sparkline path={sparkPath(m.id, buckets)} />
+            </StatCard>
+          );
+        })}
+      </StatCards>
     </div>
   );
 }

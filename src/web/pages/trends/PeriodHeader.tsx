@@ -41,7 +41,7 @@ export function PeriodHeader({
       {noun && (
         <button type="button" className={styles.step} aria-label={`Earlier ${noun}`} disabled={!earlier} onClick={() => { if (earlier) onStep(earlier); }}>‹</button>
       )}
-      <h2 className={styles.title} ref={titleRef} tabIndex={-1}>{periodTitle(spec, ctx)}</h2>
+      <h2 className={cx(styles.title, "display")} ref={titleRef} tabIndex={-1}>{periodTitle(spec, ctx)}</h2>
       {noun && (
         <button type="button" className={styles.step} aria-label={`Later ${noun}`} disabled={!later} onClick={() => { if (later) onStep(later); }}>›</button>
       )}
@@ -55,7 +55,7 @@ export function StatsLine({ view }: { view: PeriodView }) {
   const left = a.leftEarly ?? 0;
   return (
     <div className={styles.stats}>
-      <span className={cx(styles.record, "num")}>
+      <span className={cx(styles.record, "num", "display")}>
         <span className={styles.win}>{a.wins ?? 0}W</span> – <span className={styles.loss}>{a.losses ?? 0}L</span>
       </span>
       <span className={styles.muted}>

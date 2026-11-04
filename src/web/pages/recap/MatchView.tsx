@@ -88,7 +88,7 @@ function Match({ detail, m, n }: { detail: SessionDetail; m: MyMatchWire; n: num
     <>
       <div className={styles.panel}>
         <div className={styles.kpis}>
-          <h2 className={styles.title}>
+          <h2 className={cx(styles.title, "display")}>
             <span className="visually-hidden">Match {n}: </span>
             <i className={cx(m.result === "win" && styles.winText, m.result === "loss" && styles.lossText)} aria-hidden="true">{letter(m.result)}</i>
             <span className="visually-hidden">{resultWord(m.result)} </span>

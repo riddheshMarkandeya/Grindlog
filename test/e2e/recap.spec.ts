@@ -111,6 +111,10 @@ test("the long session's Overview: per game, what stood out, by playlist, the go
   await expect(perGame.getByRole("listitem").filter({ hasText: "Goals" })).toContainText("1.12 /game");
   await expect(perGame.getByRole("listitem").filter({ hasText: "Goals" })).toContainText("up 12% vs 30-day avg");
   await expect(perGame.getByRole("listitem").filter({ hasText: "Goals" })).toContainText("29 total");
+  // The headline tile's ▲/▼ is hidden from screen readers, which read the direction as a word.
+  const shooting = page.getByRole("listitem").filter({ has: page.getByText("Shooting", { exact: true }) });
+  await expect(shooting).toContainText(/(up|down) avg \d/);
+  await expect(shooting.locator("[aria-hidden=true]")).toHaveText(/^[▲▼]$/);
   await expect(perGame.getByRole("listitem").filter({ hasText: "Score" })).toContainText("≈ 30-day avg");
   // A zero average has no fair ratio, so saves (none, then and now) show no comparison.
   await expect(perGame.getByRole("listitem").filter({ hasText: "Saves" })).not.toContainText("avg");

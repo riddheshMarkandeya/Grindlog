@@ -209,7 +209,7 @@ function Records({ w, a }: { w: FriendCard["with"]; a: FriendCard["with"] }) {
   const side = (label: string, r: FriendCard["with"]) => (
     <div>
       <div className={styles.rk}>{label}</div>
-      <div className={cx(styles.rv, "num")}><span aria-hidden="true">{r.n > 0 ? recordText(r) : "–"}</span><span className="visually-hidden">{r.n > 0 ? recordLabel(r) : "none yet"}</span></div>
+      <div className={cx(styles.rv, "num", "display")}><span aria-hidden="true">{r.n > 0 ? recordText(r) : "–"}</span><span className="visually-hidden">{r.n > 0 ? recordLabel(r) : "none yet"}</span></div>
       {/* Read once, as the hidden "none yet" above. */}
       {r.n > 0 ? <WlBar w={r.w} l={r.l} /> : <div className={cx(styles.muted, styles.small)} aria-hidden="true">not yet</div>}
     </div>

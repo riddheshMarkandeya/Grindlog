@@ -39,7 +39,7 @@
   text-align: right; color: var(--muted); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
 }
 .hero { display: flex; align-items: flex-end; justify-content: space-between; margin-top: 14px; }
-.rec { font-size: 64px; font-weight: 800; line-height: 1; letter-spacing: -.02em; }
+.rec { font-size: 64px; line-height: 1; letter-spacing: -.02em; }
 .small .rec { font-size: 50px; }
 .dash { margin: 0 4px; color: var(--muted); font-weight: 400; }
 .w { color: var(--win); }

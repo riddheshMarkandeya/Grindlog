@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import css from "./tokens.css?raw";
 
+const CSS_FILES = import.meta.glob<string>("../**/*.css", { query: "?raw", import: "default", eager: true });
 const THEMES = ["carbon", "slate", "oled"];
 const THEME_TOKENS = ["page", "surf", "surf2", "line", "grid", "ink", "ink2", "muted", "accent"];
 
@@ -71,12 +72,19 @@ describe("theme tokens", () => {
   });
 
   test("no literal colours in CSS outside tokens.css", () => {
-    const files = import.meta.glob<string>("../**/*.css", { query: "?raw", import: "default", eager: true });
-    expect(Object.keys(files).length).toBeGreaterThan(5);
-    const hits = Object.entries(files)
+    expect(Object.keys(CSS_FILES).length).toBeGreaterThan(5);
+    const hits = Object.entries(CSS_FILES)
       .filter(([path]) => path !== "./tokens.css")
       .flatMap(([path, text]) => [...text.matchAll(LITERAL_COLOUR)].map((m) => `${path}: ${m[0]}`));
     expect(hits).toEqual([]);
+  });
+
+  test("the display face is named once, as --display in tokens.css", () => {
+    expect(block(":root").get("display")).toMatch(/^Bahnschrift,/);
+    // Any mention, so a font: shorthand or an inline style in a component counts too.
+    const code = import.meta.glob<string>("../**/*.{ts,tsx}", { query: "?raw", import: "default", eager: true });
+    const copies = Object.entries({ ...CSS_FILES, ...code }).filter(([path, text]) => path !== "./tokens.css" && path !== "./tokens.test.ts" && text.includes("Bahnschrift")).map(([path]) => path);
+    expect(copies).toEqual([]);
   });
 
   describe.each(THEMES)("%s contrast", (theme) => {

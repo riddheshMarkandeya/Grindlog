@@ -232,7 +232,8 @@ function Compare({ compare, mode, friends, copy }: { compare: CompareView; mode:
   const sep = (i: number) => (i === 0 ? styles.sep : undefined);
   return (
     <div className={styles.panel}>
-      <div className={styles.tw}>
+      {/* Focusable, so a keyboard can scroll the table sideways on a narrow screen. */}
+      <div className={styles.tw} role="region" aria-label="Who carries, per match" tabIndex={0}>
         <table className={cx(styles.table, "num")}>
           <thead>
             <tr>
@@ -307,7 +308,7 @@ function Matches({ matches, friends }: { matches: AgainstSide["matches"]; friend
   ];
   return (
     <div className={styles.panel}>
-      <div className={styles.tw}>
+      <div className={styles.tw} role="region" aria-label="Match by match" tabIndex={0}>
         <table className={cx(styles.table, "num")}>
           <thead>
             <tr>

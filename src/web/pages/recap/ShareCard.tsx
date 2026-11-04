@@ -172,7 +172,7 @@ function Card({ view, cardRef }: { view: ShareCardView; cardRef: RefObject<HTMLD
         {view.label !== null && <span className={styles.filter} data-part="filter">{view.label}</span>}
       </div>
       <div className={cx(styles.hero, view.smallRecord && styles.small)}>
-        <div className={cx(styles.rec, "num")}>
+        <div className={cx(styles.rec, "num", "display")}>
           <span className={styles.w}>{view.wins}</span><span className={styles.dash}>–</span><span className={styles.l}>{view.losses}</span>
         </div>
         {view.winPct !== null && <div className={styles.pct}><b className="num">{view.winPct}%</b>win rate</div>}

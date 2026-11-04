@@ -9,9 +9,16 @@
      success/failure and errors.
    - --flag: a warning or a flagged match.
    - --accent: selection, focus and the current page. Never data, never decoration.
-   - Decoration uses neutrals (--ink, --line, and the black --scrim/--shadow) only. */
+   - Decoration uses neutrals (--ink, --line, and the black --scrim/--shadow) only.
+
+   Big numbers use the global .display rule: --display, condensed, italic 800. Sizes, largest first:
+   96 a scorebug count (64 a record) · 36 the Trends period title · 30 a Tile and the match score ·
+   28 a StatCard · 26 an inline record (Trends, a Friends card) · 24 a match card (18 dense).
+   The share card keeps its own scale: it's an image, sized for its 360px frame. */
 :root {
   color-scheme: dark;
+  /* Windows' own condensed face, so nothing is fetched. */
+  --display: Bahnschrift, "Arial Narrow", "Segoe UI", sans-serif;
   --blue: #3987e5;
   --orange: #d95926;
   /* The friends' segments in a carry bar, after your team blue; --page text sits on them. */

@@ -10,9 +10,9 @@ interface Side { label: string; value: string }
 export function Scorebug({ label, left, right, mid, records = false }: { label: string; left: Side; right: Side; mid: ReactNode; records?: boolean }) {
   return (
     <div className={cx(styles.bug, records && styles.records)} role="img" aria-label={label}>
-      <div className={styles.side}><span>{left.label}</span><b className="num">{left.value}</b></div>
+      <div className={styles.side}><span>{left.label}</span><b className="num display">{left.value}</b></div>
       <div className={styles.mid}>{mid}</div>
-      <div className={cx(styles.side, styles.right)}><b className="num">{right.value}</b><span>{right.label}</span></div>
+      <div className={cx(styles.side, styles.right)}><b className="num display">{right.value}</b><span>{right.label}</span></div>
     </div>
   );
 }

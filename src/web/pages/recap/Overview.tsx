@@ -14,8 +14,10 @@ import mvpIcon from "../../assets/icons/MVP.png";
 import saveIcon from "../../assets/icons/Save.png";
 import shotIcon from "../../assets/icons/Shot.png";
 import { cx } from "../../components/cx";
+import { DirArrow } from "../../components/DirArrow";
 import { GoalMap } from "../../components/GoalMap";
 import { Scorebug } from "../../components/Scorebug";
+import { StatCard, StatCards } from "../../components/StatCard";
 import { Tile, Tiles } from "../../components/Tile";
 import { clock, dayLabel, decimal, durationText, plural, whole } from "../../logic/format";
 import {
@@ -162,7 +164,7 @@ function MatchCards({ matches, matchPath }: { matches: MyMatchWire[]; matchPath:
             <li key={m.guid}>
               <Link to={matchPath(m.guid)} className={cx(styles.card, m.result === "win" && styles.win, m.result === "loss" && styles.loss, m.flags.length > 0 && styles.flagged)} aria-label={matchLabel(m, i + 1, hours)}>
                 <span className={styles.t} aria-hidden="true">#{i + 1} · {clock(m.startedAt, hours)}</span>
-                <b className="num" aria-hidden="true"><i>{letter(m.result)}</i> {score}</b>
+                <b className="num display" aria-hidden="true"><i>{letter(m.result)}</i> {score}</b>
                 <span className={styles.p} aria-hidden="true" title={playlist}>{playlist}</span>
                 {mvp && <img className={styles.mvp} src={mvpIcon} alt="" />}
               </Link>
@@ -181,8 +183,7 @@ function VsText({ vs }: { vs: Vs }) {
   if (vs.dir === "same") return <span className={styles.muted}>≈ 30-day avg</span>;
   return (
     <span className={vs.dir === "up" ? styles.up : styles.down}>
-      <span aria-hidden="true">{vs.dir === "up" ? "▲" : "▼"}</span>
-      <span className="visually-hidden">{vs.dir}</span> {Math.abs(vs.pct)}%
+      <DirArrow dir={vs.dir} /> {Math.abs(vs.pct)}%
     </span>
   );
 }
@@ -194,16 +195,14 @@ function PerGame({ detail }: { detail: SessionDetail }) {
   return (
     <section aria-labelledby="per-game-heading">
       <h2 id="per-game-heading" className={styles.sec}>{hasBase ? "Per game vs your 30-day average" : "Per game"}</h2>
-      <ul className={styles.grid}>
+      <StatCards>
         {cards.map((c) => (
-          <li key={c.id} className={styles.stat}>
-            <span className={styles.lbl}>{c.icon && <img className={styles.sIco} src={ICONS[c.icon]} alt="" />}{c.label}</span>
-            <b className="num">{decimal(c.perGame)}<small> /game</small></b>
-            {c.vs && <span className={styles.vs}><VsText vs={c.vs} />{c.vs.dir !== "same" && <span className={styles.muted}> vs 30-day avg</span>}</span>}
-            <span className={cx(styles.muted, styles.small, "num")}>{whole(c.total)} total</span>
-          </li>
+          <StatCard
+            key={c.id} label={c.label} icon={c.icon && ICONS[c.icon]} value={decimal(c.perGame)} unit=" /game" sub={`${whole(c.total)} total`}
+            vs={c.vs && <><VsText vs={c.vs} />{c.vs.dir !== "same" && <span className={styles.muted}> vs 30-day avg</span>}</>}
+          />
         ))}
-      </ul>
+      </StatCards>
     </section>
   );
 }
@@ -269,27 +268,18 @@ export function ExtrasSection({ agg: a, matches, heading }: { agg: AggregateWire
         <p className={cx(styles.muted, styles.small)}>Over {a.extrasMatches} of {plural(a.matches, "match", "matches")}.</p>
       )}
       {cards.length > 0 && (
-        <ul className={styles.grid}>
+        <StatCards>
           {cards.map((c) => (
-            <li key={c.id} className={styles.stat}>
-              <span className={styles.lbl}>{c.label}</span>
-              <b className="num">{c.value}{c.unit && <small>{c.unit === "%" ? "%" : ` ${c.unit}`}</small>}</b>
-              {c.sub && <span className={cx(styles.muted, styles.small)}>{c.sub}</span>}
-            </li>
+            <StatCard key={c.id} label={c.label} value={c.value} unit={c.unit && (c.unit === "%" ? "%" : ` ${c.unit}`)} sub={c.sub} />
           ))}
-        </ul>
+        </StatCards>
       )}
       {hl.length > 0 && (
         <>
           <h3 className={styles.h3}>Highlights</h3>
-          <ul className={styles.grid}>
-            {hl.map((h) => (
-              <li key={h.event} className={styles.stat}>
-                <span className={styles.lbl}>{h.label}</span>
-                <b className="num">{h.count}</b>
-              </li>
-            ))}
-          </ul>
+          <StatCards>
+            {hl.map((h) => <StatCard key={h.event} label={h.label} value={whole(h.count)} />)}
+          </StatCards>
         </>
       )}
     </section>

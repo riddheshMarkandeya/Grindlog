@@ -239,6 +239,9 @@ test("at 320px no page scrolls sideways", async ({ page, request }) => {
     await expect(h1(page)).toBeVisible();
     await expect(page.getByText(/Loading/)).toHaveCount(0);
     expect(await page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth"), path).toBe(0);
+    // A table too wide for the screen scrolls in its own box, which a keyboard has to be able to reach.
+    const { violations } = await new AxeBuilder({ page }).withRules(["scrollable-region-focusable"]).analyze();
+    expect(violations.map((v) => `${path}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
   }
 });
 

@@ -1,5 +1,5 @@
-/* Ported from variant D. The condensed face is Windows' own Bahnschrift, so nothing is fetched. */
-.card { font-family: Bahnschrift, "Arial Narrow", "Segoe UI", sans-serif; font-stretch: condensed; }
+/* Ported from variant D. */
+.card { font-family: var(--display); font-stretch: condensed; }
 
 .sub { text-align: center; margin: var(--s4) auto 0; max-width: 780px; }
 .mood { margin: 0 0 var(--s1); font-size: 24px; font-weight: 700; }
@@ -27,7 +27,7 @@
 .card.win { border-top-color: var(--win); }
 .card.loss { border-top-color: var(--loss); }
 .t { font-size: 12px; letter-spacing: .06em; color: var(--muted); }
-.card b { font-size: 24px; font-style: italic; font-weight: 800; line-height: 1.1; }
+.card b { font-size: 24px; line-height: 1.1; }
 .card b i { font-style: inherit; color: var(--muted); }
 .card.win b i { color: var(--win); }
 .card.loss b i { color: var(--loss); }
@@ -46,13 +46,6 @@
 .h3 { margin: var(--s5) 0 var(--s3); font-size: 15px; }
 .small { font-size: 12px; }
 .panel { background: var(--surf); border: 1px solid var(--line); border-radius: var(--r); padding: var(--s4); min-width: 0; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--s3); margin: 0; padding: 0; list-style: none; }
-.stat { display: flex; flex-direction: column; gap: 2px; background: var(--surf); border: 1px solid var(--line); border-radius: var(--r); padding: var(--s3) var(--s4); }
-.lbl { display: flex; align-items: center; gap: 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink2); }
-.stat b { font-family: Bahnschrift, "Arial Narrow", "Segoe UI", sans-serif; font-stretch: condensed; font-size: 28px; font-weight: 800; line-height: 1.15; }
-.stat b small { font-size: 13px; font-weight: 400; color: var(--ink2); }
-.vs { font-size: 13px; }
-.sIco { width: 18px; height: 18px; object-fit: contain; }
 .bIco { width: 28px; height: 28px; object-fit: contain; }
 
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); margin-top: var(--s6); }
