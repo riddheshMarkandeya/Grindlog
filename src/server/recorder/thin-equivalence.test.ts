@@ -41,7 +41,8 @@ beforeAll(async () => {
     if (rec) full.set(guid, rec);
   }
   const result = await runRetention(storage.raw, { now: () => new Date("2027-06-01T00:00:00Z"), isRecording: () => false, logger: memoryLogger(), yieldFn: () => Promise.resolve() });
-  expect(result.status).toBe("done");
+  // A false mismatch would keep a fixture whole, and a whole match trivially re-reads equal.
+  expect(result).toMatchObject({ status: "done", mismatched: 0, thinned: 7 });
   thinned = storage.raw.all<{ g: string }>("SELECT match_guid AS g FROM retention_matches WHERE status = 'thinned'").map((r) => r.g);
 }, 30_000);
 afterAll(() => {

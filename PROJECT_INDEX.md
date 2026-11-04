@@ -57,8 +57,8 @@ maybe later.
   `RLTRACKER_DATA_DIR` overrides it for tests and dev runs. Also `tracker.db` (settings, seasons,
   IDs, match records; backed up to `backups/`, 7 kept), `raw.db` (raw events; after 90 days a
   match's UpdateStates are thinned to the scoreboard changes, with its car stats and camera
-  snapshotted in `retention_matches`; a flagged match is kept whole, and every other event is
-  kept).
+  snapshotted in `retention_matches`; a flagged match is kept whole, as is one whose thinned
+  rebuild gives a different record (`retention/thin_mismatch`), and every other event is kept).
 
 ## Decisions
 - `docs/decisions/2026-10-21-query-sessions-baseline.md`: sessions cut at read time over every

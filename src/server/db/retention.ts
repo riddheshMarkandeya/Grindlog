@@ -1,9 +1,12 @@
+import { isDeepStrictEqual } from "node:util";
 import { RETENTION_DAYS } from "../../shared/constants";
 import type { Logger } from "../log";
+import type { CloseVia } from "../recorder/lifecycle";
 import { readableAs, readMatch } from "../recorder/read-match";
-import { createRawStore, type ThinnedOutputs } from "../recorder/store";
+import { createRawStore, type StoredEvent, type ThinnedOutputs } from "../recorder/store";
 import type { MatchSummary } from "../recorder/summary";
 import { statesToDrop } from "../recorder/thin";
+import { toRecord } from "../records/record";
 import { DENSE_PLAYER_COLUMNS, DENSE_RULE_IDS, RECORDED_RULE_VERSIONS } from "../rules/registry";
 import type { Db } from "./sqlite";
 
@@ -35,8 +38,10 @@ export interface RetentionResult {
   exempt: number;
   /** Not a record (lobby, open, trimmed), so nothing to snapshot from. */
   keptWhole: number;
-  /** readMatch threw; retried next run. */
+  /** The full readMatch threw; retried next run. */
   failed: number;
+  /** The thinned rebuild differed or threw; kept whole, re-checked next run. */
+  mismatched: number;
   /** UpdateStates deleted. */
   states: number;
 }
@@ -58,18 +63,30 @@ function snapshotOf(summary: MatchSummary): ThinnedOutputs["outputs"] {
   return { cameraKey: summary.cameraKey, players, denseRules: [...DENSE_RULE_IDS] };
 }
 
+/** Up to `max` leaf paths where `a` and `b` differ, e.g. `players.1.extras.car_ms`. */
+function differingPaths(a: unknown, b: unknown, path = "", out: string[] = [], max = 5): string[] {
+  if (out.length >= max || isDeepStrictEqual(a, b)) return out;
+  if (a !== null && b !== null && typeof a === "object" && typeof b === "object") {
+    const [ra, rb] = [a as Record<string, unknown>, b as Record<string, unknown>];
+    for (const k of new Set([...Object.keys(ra), ...Object.keys(rb)])) differingPaths(ra[k], rb[k], path ? `${path}.${k}` : k, out, max);
+  } else out.push(path);
+  return out;
+}
+
 /**
  * Past RETENTION_DAYS, thins each whole match (its last event past the cutoff) to the UpdateStates
  * the scoreboard rules need, after snapshotting what the rest gave the dense rules; every other
- * event is kept forever. A match flagged under the current rules stays whole as the rule corpus,
- * re-checked only when the recorded rule versions change. Then returns the freed pages to the
- * filesystem. Logs and rethrows a SQLite failure.
+ * event is kept forever. Before deleting, it rebuilds the record from what thinning would leave and
+ * keeps the match whole if that differs from the full record, so a rule that came to read dropped
+ * data can't silently change its record. A match flagged under the current rules stays whole as
+ * the rule corpus, re-checked only when the recorded rule versions change. Then returns the freed
+ * pages to the filesystem. Logs and rethrows a SQLite failure.
  */
 export async function runRetention(raw: Db, opts: RetentionOptions): Promise<RetentionResult> {
   const { now, isRecording, stopping = () => false, logger, yieldFn = setImmediateYield } = opts;
   const { vacuumPages = VACUUM_PAGES } = opts;
   const started = performance.now();
-  const counts: Omit<RetentionResult, "status"> = { thinned: 0, exempt: 0, keptWhole: 0, failed: 0, states: 0 };
+  const counts: Omit<RetentionResult, "status"> = { thinned: 0, exempt: 0, keptWhole: 0, failed: 0, mismatched: 0, states: 0 };
   /** Lets other work run, then says why the run must stop, if it must. */
   const pause = async (): Promise<"recording" | "shutdown" | undefined> => {
     await yieldFn();
@@ -86,7 +103,27 @@ export async function runRetention(raw: Db, opts: RetentionOptions): Promise<Ret
   const decidedAt = () => now().getTime();
   const versionsJson = JSON.stringify(RECORDED_RULE_VERSIONS);
 
-  /** One match past the cutoff: kept whole, exempt or thinned. */
+  /** Whether the record rebuilt from the kept events and snapshot, as a later read sees them, equals the full one; counts and logs if not. */
+  function rebuildsSame(guid: string, via: CloseVia, kept: StoredEvent[], summary: MatchSummary, outputsJson: string): boolean {
+    let thinned: MatchSummary;
+    try {
+      const thinnedOutputs = () => ({ outputs: JSON.parse(outputsJson) as ThinnedOutputs["outputs"], ruleVersions: RECORDED_RULE_VERSIONS });
+      thinned = readMatch({ matchEvents: () => kept, thinnedOutputs }, guid, via).summary;
+    } catch (err) {
+      // Broad on purpose, as for the full read: the match stays whole and the rest go on.
+      counts.mismatched++;
+      logger.error(C, "thin_mismatch", { guid, err });
+      return false;
+    }
+    const [full, rebuilt] = [toRecord(summary), toRecord(thinned)];
+    if (isDeepStrictEqual(rebuilt, full)) return true;
+    counts.mismatched++;
+    const parts = (Object.keys(full) as (keyof typeof full)[]).filter((k) => !isDeepStrictEqual(full[k], rebuilt[k]));
+    logger.error(C, "thin_mismatch", { guid, parts, paths: differingPaths(full, rebuilt), ...(thinned.extrasError && { extrasError: thinned.extrasError }) });
+    return false;
+  }
+
+  /** One match past the cutoff: kept whole, exempt, mismatched or thinned. */
   function decide(guid: string, minSeq: number): void {
     const r = readableAs(store, guid, minSeq);
     if ("unreadable" in r) {
@@ -121,6 +158,10 @@ export async function runRetention(raw: Db, opts: RetentionOptions): Promise<Ret
     }
     const t0 = performance.now();
     const drop = new Set(statesToDrop(events));
+    // Written as the snapshot only if the rebuild from this same string agrees. Its values come
+    // from JSON events by finite arithmetic, so the round-trip loses nothing.
+    const outputsJson = JSON.stringify(snapshotOf(summary));
+    if (!rebuildsSame(guid, r.via, events.filter((e) => !drop.has(e.seq)), summary, outputsJson)) return;
     const states = events.filter((e) => e.name === "UpdateState");
     const bytes = states.filter((e) => drop.has(e.seq)).reduce((sum, e) => sum + JSON.stringify(e.data).length, 0);
     raw.transaction(() => {
@@ -130,7 +171,7 @@ export async function runRetention(raw: Db, opts: RetentionOptions): Promise<Ret
         guid,
         decidedAt(),
         versionsJson,
-        JSON.stringify(snapshotOf(summary)),
+        outputsJson,
         states.length,
         states.length - drop.size,
       );

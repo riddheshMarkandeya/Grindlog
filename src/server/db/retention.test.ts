@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { RETENTION_DAYS } from "../../shared/constants";
 import { feed } from "../recorder/feed";
 import { createRecorder } from "../recorder/recorder";
@@ -11,6 +11,27 @@ import { memoryLogger, readFixture } from "../testing";
 import { rawMigrations } from "./migrations";
 import { runRetention, type RetentionOptions } from "./retention";
 import { openDb } from "./sqlite";
+
+/** dropAll: thinning drops every UpdateState (the scoreboard too), so the thinned rebuild differs. */
+const thinSeam = vi.hoisted(() => ({ dropAll: false, rebuildThrows: false }));
+vi.mock("../recorder/thin", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../recorder/thin")>();
+  return {
+    ...real,
+    statesToDrop: (...args: Parameters<typeof real.statesToDrop>) =>
+      thinSeam.dropAll ? args[0].filter((e) => e.name === "UpdateState").map((e) => e.seq) : real.statesToDrop(...args),
+  };
+});
+vi.mock("../recorder/read-match", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../recorder/read-match")>();
+  return {
+    ...real,
+    readMatch: (...args: Parameters<typeof real.readMatch>) => {
+      if (thinSeam.rebuildThrows && args[0].thinnedOutputs) throw new TypeError("boom");
+      return real.readMatch(...args);
+    },
+  };
+});
 
 const DAY = 24 * 3600_000;
 const NOW = new Date("2027-06-01T12:00:00.000Z");
@@ -26,6 +47,8 @@ beforeEach(() => {
   storage = openStorage({ dir, logger: memoryLogger(), now });
 });
 afterEach(() => {
+  thinSeam.dropAll = false;
+  thinSeam.rebuildThrows = false;
   storage.close();
   rmSync(dir, { recursive: true, force: true });
 });
@@ -150,6 +173,46 @@ describe("runRetention", () => {
     expect(logger.lines.find((l) => l.event === "thin_failed")).toMatchObject({ level: "error", fields: { guid: "bad" } });
   });
 
+  test("a match whose thinned rebuild differs stays whole, logged with the differing parts", async () => {
+    const guid = completedAt(OLD);
+    const before = rows(guid);
+    thinSeam.dropAll = true;
+    const logger = memoryLogger();
+    const result = await run({ logger });
+    expect(result).toMatchObject({ status: "done", thinned: 0, mismatched: 1, states: 0 });
+    expect(rows(guid)).toEqual(before);
+    expect(decision(guid)).toBeUndefined();
+    const line = logger.lines.find((l) => l.event === "thin_mismatch");
+    expect(line).toMatchObject({ level: "error", fields: { guid } });
+    expect(line?.fields.err).toBeUndefined();
+    expect(line?.fields.parts).toContain("match");
+    expect((line?.fields.paths as string[]).length).toBeGreaterThan(0);
+    expect(logger.lines.find((l) => l.event === "done")?.fields).toMatchObject({ mismatched: 1 });
+  });
+
+  test("a mismatched match is re-checked each run, and thins once the rebuild agrees", async () => {
+    const guid = completedAt(OLD);
+    thinSeam.dropAll = true;
+    await run();
+    expect(await run()).toMatchObject({ thinned: 0, mismatched: 1 });
+    thinSeam.dropAll = false;
+    expect(await run()).toMatchObject({ thinned: 1, mismatched: 0 });
+    expect(decision(guid)?.status).toBe("thinned");
+  });
+
+  test("a match whose thinned rebuild throws stays whole, logged, and the run goes on", async () => {
+    const guid = completedAt(OLD);
+    const before = rows(guid);
+    flaggedMatch("F", OLD + 3600_000);
+    thinSeam.rebuildThrows = true;
+    const logger = memoryLogger();
+    const result = await run({ logger });
+    expect(result).toMatchObject({ status: "done", thinned: 0, mismatched: 1, exempt: 1 });
+    expect(rows(guid)).toEqual(before);
+    expect(decision(guid)).toBeUndefined();
+    expect(logger.lines.find((l) => l.event === "thin_mismatch")).toMatchObject({ level: "error", fields: { guid, err: expect.any(TypeError) as unknown } });
+  });
+
   test("a second run is a no-op", async () => {
     const guid = completedAt(OLD);
     flaggedMatch("F", OLD);
@@ -157,7 +220,7 @@ describe("runRetention", () => {
     const before = storage.raw.all("SELECT * FROM events ORDER BY id");
     const decided = storage.raw.all("SELECT * FROM retention_matches ORDER BY 1");
     const logger = memoryLogger();
-    expect(await run({ logger })).toEqual({ status: "done", thinned: 0, exempt: 0, keptWhole: 0, failed: 0, states: 0 });
+    expect(await run({ logger })).toEqual({ status: "done", thinned: 0, exempt: 0, keptWhole: 0, failed: 0, mismatched: 0, states: 0 });
     expect(storage.raw.all("SELECT * FROM events ORDER BY id")).toEqual(before);
     expect(storage.raw.all("SELECT * FROM retention_matches ORDER BY 1")).toEqual(decided);
     expect(logger.events()).toEqual(["retention/done"]);

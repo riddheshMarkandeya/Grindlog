@@ -51,14 +51,6 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   4). It's one ~75 MB step at replay start, then flat, while private bytes barely moved: likely
   shared or file-backed pages, not heap. Next: measure private bytes vs shared WS in a real match.
   Record: "Footprint" in `docs/plans/2026-10-19-wp3b-background-process.md`.
-- [ ] **[design, Med, Standard]** Retention: verify before deleting. Before the thinning
-  transaction, rebuild the match from the kept events plus the snapshot and compare its record
-  with the full one. On any difference, keep it whole and log `retention/thin_mismatch`. Today a
-  future rule that reads a field thinning drops is caught only by the field-list test and the
-  coarse fixtures; this checks every real match before an irreversible delete. About 15 lines
-  and a test, one extra rebuild per match, no schema change. Do it before mid-January 2027, when
-  the first matches reach 90 days. Record: Review log (`/simplify` altitude #1) in
-  `docs/plans/2026-10-20-wp4c-b-retention-split.md`.
 - [ ] **[bug, Low, Trivial]** Install: if replacing an exe fails after the tracker is stopped
   (antivirus holding the fresh `.new.exe` past `replace`'s 10 s), install throws before
   `schtasks /Run`, so nothing records until the next logon. Restart the task anyway, as the
