@@ -42,8 +42,8 @@ function useRecapTeammate(): Teammate {
   return teammate;
 }
 
-/** The h1 of a state with no session to name, so every page has one. */
-const Title = () => <h1 className={styles.title}>Recap</h1>;
+/** The h1 of a state with no session to name, so every page has one; hidden, as the header tab shows the name. */
+const Title = () => <h1 className="visually-hidden">Recap</h1>;
 
 /** A state with nothing to recap. */
 function Notice({ title, children }: { title: string; children?: ReactNode }) {

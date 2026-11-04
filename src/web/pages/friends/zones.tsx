@@ -10,6 +10,7 @@ import type { FriendDetail } from "../../../shared/schemas/responses";
 import { teammateValue } from "../../../shared/teammate-filter";
 import { cx } from "../../components/cx";
 import { Scorebug } from "../../components/Scorebug";
+import { Section } from "../../components/Section";
 import { Tile, Tiles } from "../../components/Tile";
 import { dateLabel, decimal, durationText, plural, whole } from "../../logic/format";
 import { carryRest, carryShares, diffText, modeSwitch, OTHERS, overtimeNote, PAGE_SIZE, pageOf, pickKind, pickMode, pickSize, recordText, sideCopy, sizeOf, winPctText, type Mode, type SideCopy } from "../../logic/friends";
@@ -66,11 +67,10 @@ export function Zones({ friends, view }: { friends: readonly Who[]; view: View }
   const teammate = { friends: friends.map((f) => f.id) };
   return (
     <div className={styles.zones}>
-      <section className={cx(styles.zone, styles.with)} aria-labelledby="with-heading">
-        <h2 id="with-heading" className={styles.zh}>{copy.withHeading}</h2>
+      <Section title={copy.withHeading} tone="yours" className={cx(styles.zone, styles.with)}>
         {/* ?with= matches only friends on your team, so a pair met only as opponents gets no links. */}
         {view.with.record.n === 0 ? (
-          <p className={styles.muted}>{copy.withEmpty}</p>
+          <p className="muted">{copy.withEmpty}</p>
         ) : (
           <>
             <WithZone side={view.with} friends={friends} copy={copy} />
@@ -80,24 +80,23 @@ export function Zones({ friends, view }: { friends: readonly Who[]; view: View }
             </div>
           </>
         )}
-      </section>
-      <section className={cx(styles.zone, styles.against)} aria-labelledby="against-heading">
-        <h2 id="against-heading" className={styles.zh}>{copy.againstHeading}</h2>
-        {view.against.record.n === 0 ? <p className={styles.muted}>{copy.againstEmpty}</p> : <AgainstZone side={view.against} friends={friends} copy={copy} />}
-      </section>
+      </Section>
+      <Section title={copy.againstHeading} tone="theirs" className={cx(styles.zone, styles.against)}>
+        {view.against.record.n === 0 ? <p className="muted">{copy.againstEmpty}</p> : <AgainstZone side={view.against} friends={friends} copy={copy} />}
+      </Section>
     </div>
   );
 }
 
 function Playlists({ rows }: { rows: readonly Row[] }) {
   return (
-    <div className={styles.panel}>
+    <div className="panel">
       {rows.map((r) => (
         <div key={r.label} className={styles.pl}>
           <span className={styles.trunc} title={r.label}>{r.label}</span>
           <span className={cx(styles.r, "num")}><span aria-hidden="true">{recordText(r)}</span><span className="visually-hidden">{recordLabel(r)}</span></span>
           <WlBar w={r.w} l={r.l} />
-          <span className={cx(styles.r, styles.muted, "num")}>{winPctText(r)}</span>
+          <span className={cx(styles.r, "muted", "num")}>{winPctText(r)}</span>
         </div>
       ))}
     </div>
@@ -110,7 +109,7 @@ const overtimeTile = (ot: WithSide["overtime"]) => ot.w + ot.l > 0 && <Tile labe
 function WithZone({ side, friends, copy }: { side: WithSide; friends: readonly Who[]; copy: SideCopy }) {
   return (
     <>
-      <Tiles>
+      <Tiles className={styles.zoneTiles}>
         <Tile label="Current streak" value={streakText(side.streak)} note={copy.withNote} />
         <Tile label="Best win streak" value={String(side.bestWinStreak)} note={copy.withNote} />
         {side.best && <Tile label="Best playlist" value={winPctText(side.best)} note={playlistNote(side.best)} />}
@@ -118,8 +117,7 @@ function WithZone({ side, friends, copy }: { side: WithSide; friends: readonly W
         <Tile label="Time together" value={durationText(side.timeMs)} note={`over ${plural(side.record.n, "match", "matches")}`} />
         {overtimeTile(side.overtime)}
       </Tiles>
-      <div className={styles.sec}><h3>By playlist</h3></div>
-      <Playlists rows={side.playlists} />
+      <Section level={3} region={false} title="By playlist"><Playlists rows={side.playlists} /></Section>
       {side.defaultMode !== null && <Modes side={side} defaultMode={side.defaultMode} friends={friends} copy={copy} />}
     </>
   );
@@ -132,14 +130,13 @@ function Modes({ side, defaultMode, friends, copy }: { side: WithSide; defaultMo
   const view = side.modes.find((m) => m.mode === mode);
   if (!view) return null;
   return (
-    <>
-      <div className={styles.sec}>
-        <h3>Who carries · stats with them</h3>
-        {modes.length === 1 ? <span className={styles.muted}>{MODE_LABEL[mode]}</span> : <ModeSwitch modes={modes} mode={mode} pick={setPicked} />}
-      </div>
+    <Section
+      level={3} title="Who carries · stats with them"
+      aside={modes.length === 1 ? <span className="muted">{MODE_LABEL[mode]}</span> : <ModeSwitch modes={modes} mode={mode} pick={setPicked} />}
+    >
       <Carry carry={view.carry} mode={mode} friends={friends} copy={copy} />
       <Compare compare={view.compare} mode={mode} friends={friends} copy={copy} />
-    </>
+    </Section>
   );
 }
 
@@ -170,9 +167,9 @@ function Carry({ carry, mode, friends, copy }: { carry: WithSide["modes"][number
   const rest = carryRest(mode, friends.length);
   // The grey end is named (key and bar labels) whenever a bar draws it, even one the mode says can't happen.
   const restKey = rest ?? (rows.some(([, s]) => (s?.pcts[friends.length + 1] ?? 0) > 0) ? OTHERS : null);
-  if (carry.matches === 0) return <div className={styles.panel}><p className={styles.muted}>Every {MODE_LABEL[mode]} match {copy.together} had a team switch, so there's no share to show.</p></div>;
+  if (carry.matches === 0) return <div className="panel"><p className="muted">Every {MODE_LABEL[mode]} match {copy.together} had a team switch, so there's no share to show.</p></div>;
   return (
-    <div className={styles.panel}>
+    <div className="panel">
       <ul className={styles.legend} aria-label="Bar colours">
         <li><i className={cx(styles.key, styles.me)} />You</li>
         {friends.map((f, i) => <li key={f.id}><i className={cx(styles.key, SHADES[i])} /><Cap name={f.name} /></li>)}
@@ -189,7 +186,7 @@ function Carry({ carry, mode, friends, copy }: { carry: WithSide["modes"][number
 }
 
 function Bar({ label, shares, friends, rest }: { label: string; shares: ReturnType<typeof carryShares>; friends: readonly Who[]; rest: string | null }) {
-  if (shares === null) return <><span className={styles.muted}>{label}</span><span className={styles.muted}>none yet</span></>;
+  if (shares === null) return <><span className="muted">{label}</span><span className="muted">none yet</span></>;
   // [you, ...friends, rest]
   const [me = 0, ...after] = shares.pcts;
   const restPct = after[friends.length] ?? 0;
@@ -197,7 +194,7 @@ function Bar({ label, shares, friends, rest }: { label: string; shares: ReturnTy
   if (rest !== null) parts.push(`${rest} ${String(restPct)}%`);
   return (
     <>
-      <span className={styles.muted}>{label}</span>
+      <span className="muted">{label}</span>
       <div className={styles.bar} role="img" aria-label={`${label}: you ${String(me)}%, ${parts.join(", ")}`}>
         <div className={styles.split}>
           <span className={styles.me} style={{ width: `${String(me)}%` }}>{me >= 12 && `You ${String(me)}%`}</span>
@@ -222,19 +219,19 @@ const STATS = [["score", "Score"], ["goals", "Goals"], ["assists", "Assists"], [
 function Compare({ compare, mode, friends, copy }: { compare: CompareView; mode: Mode; friends: readonly Who[]; copy: SideCopy }) {
   const { with: w, without: wo } = compare;
   const diff = (a: number | undefined, b: number | undefined, points = false) => {
-    if (a === undefined || b === undefined) return <td className={styles.muted}>–</td>;
+    if (a === undefined || b === undefined) return <td className="muted">–</td>;
     const { text, dir } = diffText(a - b, points);
-    return <td className={dir > 0 ? styles.up : dir < 0 ? styles.down : styles.muted}>{text}</td>;
+    return <td className={dir > 0 ? "up" : dir < 0 ? "down" : "muted"}>{text}</td>;
   };
   const winOf = (p: number | null | undefined) => (p === null || p === undefined ? undefined : pct(p));
   const ww = winOf(w.winPct);
   const wow = winOf(wo?.winPct);
   const sep = (i: number) => (i === 0 ? styles.sep : undefined);
   return (
-    <div className={styles.panel}>
+    <div className="panel">
       {/* Focusable, so a keyboard can scroll the table sideways on a narrow screen. */}
       <div className={styles.tw} role="region" aria-label="Who carries, per match" tabIndex={0}>
-        <table className={cx(styles.table, "num")}>
+        <table className="table num">
           <thead>
             <tr>
               <th scope="col">Per match</th>
@@ -248,15 +245,15 @@ function Compare({ compare, mode, friends, copy }: { compare: CompareView; mode:
             <tr>
               <th scope="row">Win %</th>
               <td>{ww === undefined ? "–" : `${String(ww)}%`}</td>
-              <td className={styles.muted}>{wow === undefined ? "–" : `${String(wow)}%`}</td>
+              <td className="muted">{wow === undefined ? "–" : `${String(wow)}%`}</td>
               {diff(ww, wow, true)}
-              {friends.map((f, i) => <td key={f.id} className={cx(sep(i), styles.muted)}>–</td>)}
+              {friends.map((f, i) => <td key={f.id} className={cx(sep(i), "muted")}>–</td>)}
             </tr>
             {STATS.map(([k, label]) => (
               <tr key={k}>
                 <th scope="row">{label}</th>
                 <td>{decimal(w[k])}</td>
-                <td className={styles.muted}>{wo ? decimal(wo[k]) : "–"}</td>
+                <td className="muted">{wo ? decimal(wo[k]) : "–"}</td>
                 {diff(w[k], wo?.[k])}
                 {friends.map((f, i) => {
                   const them = compare.friends[i];
@@ -278,17 +275,15 @@ function Compare({ compare, mode, friends, copy }: { compare: CompareView; mode:
 function AgainstZone({ side, friends, copy }: { side: AgainstSide; friends: readonly Who[]; copy: SideCopy }) {
   return (
     <>
-      <Tiles>
+      <Tiles className={styles.zoneTiles}>
         <Tile label="Current streak" value={streakText(side.streak)} note={copy.againstNote} />
         <Tile label="MVPs" value={side.mvps.join("–")} note={copy.versus} noteLines={2} />
         <Tile label="Goals" value={side.goals.join("–")} note={copy.versus} noteLines={2} />
         {side.biggestWin && <Tile label="Biggest win" value={`+${String(side.biggestWin.goalDiff)}`} note={`${day(side.biggestWin.startedAt)} · ${side.biggestWin.label}`} />}
         {overtimeTile(side.overtime)}
       </Tiles>
-      <div className={styles.sec}><h3>By playlist</h3></div>
-      <Playlists rows={side.playlists} />
-      <div className={styles.sec}><h3>Match by match</h3></div>
-      <Matches matches={side.matches} friends={friends} />
+      <Section level={3} region={false} title="By playlist"><Playlists rows={side.playlists} /></Section>
+      <Section level={3} region={false} title="Match by match"><Matches matches={side.matches} friends={friends} /></Section>
     </>
   );
 }
@@ -307,9 +302,9 @@ function Matches({ matches, friends }: { matches: AgainstSide["matches"]; friend
     ...friends.map((f, i) => ({ key: f.id, name: f.name, cls: styles.opp, line: (m: Match) => m.friends[i], star: `${f.name}'s MVP` })),
   ];
   return (
-    <div className={styles.panel}>
+    <div className="panel">
       <div className={styles.tw} role="region" aria-label="Match by match" tabIndex={0}>
-        <table className={cx(styles.table, "num")}>
+        <table className="table num">
           <thead>
             <tr>
               <td />
@@ -329,9 +324,9 @@ function Matches({ matches, friends }: { matches: AgainstSide["matches"]; friend
                   {m.sessionKey === null ? day(m.startedAt) : (
                     <Link to={recapPath(m.sessionKey, m.playlistId === null ? "everything" : { playlist: m.playlistId }, { match: m.guid })}>{day(m.startedAt)}</Link>
                   )}{" "}
-                  <span className={styles.muted}>{m.label}</span>
+                  <span className="muted">{m.label}</span>
                 </td>
-                <td className={m.result === "win" ? styles.w : m.result === "loss" ? styles.l : styles.muted}>{letter(m.result)}</td>
+                <td className={m.result === "win" ? styles.w : m.result === "loss" ? styles.l : "muted"}>{letter(m.result)}</td>
                 {groups.map((g, gi) => {
                   const line = g.line(m);
                   return COLS.map(([k], i) => {
@@ -351,7 +346,7 @@ function Matches({ matches, friends }: { matches: AgainstSide["matches"]; friend
       {pages > 1 && (
         <div className={styles.pager}>
           <button type="button" className={styles.button} aria-disabled={page === 0} onClick={() => { go(page - 1); }}>← Newer</button>
-          <span className={styles.muted} aria-live="polite">{whole(first)}–{whole(first + rows.length - 1)} of {whole(matches.length)}</span>
+          <span className="muted" aria-live="polite">{whole(first)}–{whole(first + rows.length - 1)} of {whole(matches.length)}</span>
           <button type="button" className={styles.button} aria-disabled={page === pages - 1} onClick={() => { go(page + 1); }}>Older →</button>
         </div>
       )}

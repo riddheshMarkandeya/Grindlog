@@ -15,9 +15,9 @@ const ICONS: Record<TrendIcon, string> = { Goal: goalIcon, Shot: shotIcon, Assis
 
 /** "▲ 5 pts" with the direction in words for screen readers, or a muted "≈". */
 function DeltaText({ delta }: { delta: Delta }) {
-  if (delta.dir === "same") return <span className={styles.muted}><span aria-hidden="true">≈</span><span className="visually-hidden">about the same</span></span>;
+  if (delta.dir === "same") return <span className="muted"><span aria-hidden="true">≈</span><span className="visually-hidden">about the same</span></span>;
   return (
-    <span className={delta.dir === "up" ? styles.up : styles.down}>
+    <span className={delta.dir}>
       <DirArrow dir={delta.dir} /> {delta.text}
     </span>
   );

@@ -117,7 +117,7 @@ function WindowInput({ id, stored, from, onSave }: { id: string; stored: number;
           if (e.key === "Escape") revert();
         }}
       />{" "}
-      <span className={styles.muted}>matches</span>
+      <span className={cx("muted", styles.small)}>matches</span>
       {error && <div id={errId} className={styles.error}>{error}</div>}
     </div>
   );

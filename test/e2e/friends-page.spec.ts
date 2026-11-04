@@ -44,6 +44,7 @@ test("the landing: a card per friend with both records, a row per suggestion", a
   await page.goto("/");
   await page.getByRole("link", { name: "Friends", exact: true }).click();
   await expect(h1(page)).toHaveText("Friends");
+  await expect(h1(page)).toHaveClass("visually-hidden");
   const sam = page.getByRole("link", { name: /^Sammy/ });
   await expect(sam).toContainText("SamInGame · Steam");
   await expect(sam).toContainText("5 won, 4 lost");
@@ -146,6 +147,10 @@ test("a pair: the Together card, both zones, the four-way carry and the links to
   const bars = zone.getByRole("img", { name: /^\w+: you \d+%/ });
   await expect(bars.first()).toHaveAttribute("aria-label", /^Score: you \d+%, Kim \d+%, Lee \d+%, 4th teammate \d+%$/);
   await expect(zone.getByRole("columnheader")).toHaveText(["Per match", "With both", "Without", "Diff", "Kim", "Lee"]);
+  // The share bars and the comparison are two panels with a gap between them, not one merged box.
+  const panels = zone.getByRole("region", { name: /^Who carries · / }).locator(".panel");
+  const [first, second] = [await panels.nth(0).boundingBox(), await panels.nth(1).boundingBox()];
+  expect((second?.y ?? NaN) - ((first?.y ?? NaN) + (first?.height ?? NaN))).toBeGreaterThanOrEqual(8);
   await expect(zone.getByText(/with both on your team \(3\) against your .* matches where neither was/)).toBeVisible();
   await expect(page.getByRole("region", { name: "Both on the other team" })).toContainText("You haven't played against Kim and Lee on the same team yet.");
 

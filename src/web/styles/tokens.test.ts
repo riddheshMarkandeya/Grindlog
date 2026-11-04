@@ -90,7 +90,7 @@ describe("theme tokens", () => {
   describe.each(THEMES)("%s contrast", (theme) => {
     const t = block(`[data-theme=${theme}]`);
     const get = (k: string) => t.get(k) ?? "";
-    test.each([["ink", "page"], ["ink", "surf"], ["ink", "surf2"], ["ink2", "page"], ["ink2", "surf"], ["ink2", "surf2"], ["muted", "surf"]])(
+    test.each([["ink", "page"], ["ink", "surf"], ["ink", "surf2"], ["ink2", "page"], ["ink2", "surf"], ["ink2", "surf2"], ["muted", "page"], ["muted", "surf"]])(
       "%s on %s is at least 4.5:1",
       (fg, bg) => {
         expect(contrast(get(fg), get(bg))).toBeGreaterThanOrEqual(4.5);

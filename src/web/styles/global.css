@@ -23,6 +23,22 @@ a { color: var(--accent); }
 
 main { max-width: 1200px; margin: 0 auto; padding: var(--s4); }
 
+/* The shared panel and table, applied as plain class names like .num. Written inside :where(), so
+   they weigh nothing: a page's module class on the same element or cell (cx("table", styles.matches),
+   then .matches th) always wins, whatever order the bundle puts the two files in. */
+:where(.panel) { background: var(--surf); border: 1px solid var(--line); border-radius: var(--r); padding: var(--s4); min-width: 0; }
+:where(.table) { width: 100%; border-collapse: collapse; font-size: 14px; }
+:where(.table th, .table td) { padding: 6px var(--s2); text-align: right; border-bottom: 1px solid var(--grid); }
+:where(.table th:first-child, .table td:first-child) { text-align: left; }
+:where(.table tbody th) { font-weight: 400; }
+:where(.table thead th) { font-size: 12px; font-weight: 600; letter-spacing: .06em; color: var(--ink2); }
+:where(.table tbody tr:last-child > *) { border-bottom: 0; }
+:where(.table abbr) { text-decoration: none; }
+/* Text colours by meaning: these do weigh a class, so they beat an element's default. */
+.muted { color: var(--muted); }
+.up { color: var(--up); }
+.down { color: var(--down); }
+
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }

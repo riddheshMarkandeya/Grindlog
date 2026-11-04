@@ -177,7 +177,9 @@ test.describe("Seasons", () => {
     await page.goto("/settings");
     await row(page, "Seasons", "Gone").getByRole("button", { name: "Delete" }).click();
     await expect(row(page, "Seasons", "Gone")).toHaveCount(0);
-    await expect(section(page, "Seasons").locator("[class*=head]").getByRole("status")).toHaveText("✓ Saved");
+    // The status sits on the heading's line, not by a row.
+    const line = section(page, "Seasons").getByRole("heading", { name: "Seasons" }).locator("xpath=..");
+    await expect(line.getByRole("status")).toHaveText("✓ Saved");
     await expect(row(page, "Seasons", "S23").getByRole("button", { name: "Edit" })).toBeFocused();
   });
 
@@ -223,9 +225,12 @@ test("passes axe in every theme, with a row in edit and an error showing; fits a
   await row(page, "Seasons", "S22").getByRole("button", { name: "Edit" }).click();
   expect(await page.evaluate("document.documentElement.scrollWidth")).toBeLessThanOrEqual(320);
   const nav = page.getByRole("navigation", { name: "Settings sections" });
-  await nav.getByRole("link", { name: "Seasons" }).click();
-  // The sticky row stays on screen above the heading it jumped to.
+  await nav.getByRole("link", { name: "Remarks" }).click();
+  // The sticky row stays on screen, and the heading lands just under it: not hidden beneath it, and not
+  // short of the top (a section too near the page end can't scroll up, which would pass with no offset).
   await expect(nav).toBeInViewport();
-  const [navBox, headBox] = [await nav.boundingBox(), await page.getByRole("heading", { level: 2, name: "Seasons" }).boundingBox()];
-  expect(headBox && navBox && headBox.y >= navBox.y + navBox.height).toBe(true);
+  const [navBox, headBox] = [await nav.boundingBox(), await page.getByRole("heading", { level: 2, name: "Remarks" }).boundingBox()];
+  const gap = (headBox?.y ?? NaN) - ((navBox?.y ?? NaN) + (navBox?.height ?? NaN));
+  expect(gap).toBeGreaterThanOrEqual(0);
+  expect(gap).toBeLessThan(24);
 });

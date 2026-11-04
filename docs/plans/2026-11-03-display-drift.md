@@ -240,6 +240,48 @@ commit, and each is roughly one session.
     to avoid `head`/`row`, or change those selectors to role-based ones.
 - Carried from WP-B review: `Friends.module.css:73` `.zone .tiles` never matches, because `<Tiles>` carries Tile.module.css's hashed class. So the zone tiles have always been centred, with Tile's top margin. Decide with the user whether they should be left-aligned. If so, give `Tiles` a `className` passthrough, using the same override pattern as the global classes.
 
+**WP-C as built (2026-11-04).**
+- Zone tiles: the user chose left-aligned. `Tiles` takes a `className`, and Tile's row rule is
+  inside `:where()` so Friends' `.zoneTiles` wins.
+- Changed from the plan:
+  - Override pattern: the shared `.panel` and `.table` rules in `global.css` are written inside
+    `:where()`, so they weigh nothing and any module class wins. Variants are plain module rules
+    (`.matches th`, `.sep`, `.you`) instead of `:global(.table) .sep`. `.muted`/`.up`/`.down` keep
+    a class's weight, so they beat element defaults. Section's own spacing uses `:where()` too.
+  - Section gained `intro` (Settings' intro line, the Friends landing hints; 13px `--ink2`).
+  - Every Section is a landmark named by its heading, except where `region={false}` makes it a
+    plain `div`: the two Friends zones' "By playlist", and "Match by match", whose table box is
+    already a region of that name. axe's landmark-unique fails on a repeated name.
+  - The Matches page and MatchView moved onto Section and the shared table too (the plan listed
+    only their CSS copies).
+- Visible changes worth checking by eye:
+  - Friends zone headings: 16px ink with the blue/orange rule, no longer uppercase coloured text.
+  - Settings h2 18→16px. The reset link and status sit at the right end of the heading row.
+  - Global `.muted` is `--muted`, so text that was `--ink2` (Overview, Trends header, Tile "=",
+    recap picker time) is dimmer. The token test now checks `--muted` on `--page` too.
+  - Table row headers are weight 400 everywhere (the Friends Compare labels were bold). Match page
+    cells go from 5px to 6px padding.
+  - The first column header ("Player" on the match page, "Playlist" in Overview's By playlist) is
+    600 like the other headers. It was 400.
+  - Trends chart headings are h3 Sections at 15px (were 16px), with the W/L hint as an aside
+    ("Select a day to open its recap").
+  - The Recap empty-state h1 and the Friends landing h1 are visually hidden.
+- Touched in passing: the recap headline's win % delta uses `DirArrow`, so screen readers hear
+  "up"/"down" there too.
+- Tests:
+  - New e2e "the Overview's section headings share one size…": red first ("What stood out" was
+    inside its panel), then green.
+  - First full e2e: 80 passed, 2 failed. One was axe landmark-unique; the other was the Settings
+    aside `<span>` matching a `span` text selector. Both fixed.
+  - Then `bun run check` passed (1165 tests), the full e2e gave 82 passed, and the 320px run
+    (recap, trends, friends) gave 48 passed.
+  - A last fix moved Settings' narrow-screen `scroll-margin-top` from the dead `.h2` to
+    `.section h2`. After it, the settings specs gave 21 passed.
+  - Weak test: the sticky-nav check used Seasons, the last section, which can't scroll to the
+    top, so it passed with the margin missing. Fixed in review round 1.
+- Outside the diff: `PeriodControls.tsx:45` uses `styles.controls`, which no CSS defines
+  (already there at c245321).
+
 ### BACKLOG changes (with WP-C's commit)
 - Close "Display layer drift across pages" and point to this plan.
 - Add **[design, Med, Standard] Data sense review**: every clutter and label item listed above,
@@ -434,3 +476,76 @@ A full round, because the fixes touched `Scorebug.tsx` and added `DirArrow.tsx`.
 ### WP-B, round 3 (delta from f144ecc, snapshot bb32766)
 Passes: `/code-review low`, `security-reviewer`. The arch fix was whitespace only, so arch wasn't re-run. No findings. The review is done.
 Runs: `bun run check` passes (1162 tests). The recap and trends e2e give 28 passed. The full `bun run e2e` gave 81 passed after round 1. Round 2 changed only an aria-hidden span, a min-height unit and comments.
+
+### WP-C, implementation notes (before review)
+See "WP-C as built (2026-11-04)" under the WP-C plan section.
+
+### WP-C, round 1 (snapshot 79ca3fa)
+Passes: `/code-review high`, `arch-reviewer` (opus), `security-reviewer`, `/simplify` (4 angles).
+- security: no findings.
+- code-review:
+  - The Matches tfoot: `:nth-child(-n+4)` counted DOM children, so the Total row's first three stat cells were left-aligned. This was already there, but the diff rewrote the line. [Fixed] The rule covers only thead and tbody.
+  - Level-3 Sections were plain divs everywhere, so the Trends charts lost their landmarks to fix a Friends-only clash. [Fixed] Every Section is a region; `region={false}` opts out. The Friends "By playlist" ×2 opt out. The next full e2e found that "Match by match" clashes with its own table box region, so it opts out too.
+  - The first thead header ("Player", "Playlist") went from 400 to 600. [Verified, no fix needed] It now matches the other headers. Added to the as-built list of visible changes.
+  - The settings-tables status locator took the outermost div holding the heading. [Fixed] It uses the heading's parent, which is the heading line.
+  - The Friends landing first-section spacing uses `:is(.status, .error) + section`. [Verified, no fix needed] The first Section varies with the data (Suggested only shows with suggestions), so a className would need the same condition. The adjacency rule says it directly.
+  - global.css "(see tokens.css)" pointed at a file. [Fixed] Dropped.
+  - Section.module.css's comment named a `[class*=head]` selector that this diff removed. [Fixed] It names only "row" now.
+  - Settings writes `cx("muted", styles.small)` five times. [Verified, no fix needed] Overview, Friends and Recap use the same two-class pattern.
+  - The parts.tsx aside guard checks `!== undefined`, so a `false` status would render an empty div. [Verified, no fix needed] The one caller always passes an element, and an empty div there is harmless.
+- arch:
+  - BACKLOG cited `Overview.tsx:205` for "What stood out". [Fixed] It cites `:211`.
+  - PROJECT_INDEX had no entry for this plan. [Fixed] The plan and the WP-A and WP-C review summaries are indexed.
+  - The sticky-nav e2e passed without `scroll-margin-top`. [Fixed] It targets Remarks. With the rule removed it failed (1 failed at the heading-below-nav check); with it, it passes.
+  - `PeriodControls.tsx:45` `styles.controls` has no CSS class. It's outside the diff. [Deferred → BACKLOG] Added to "Controls drift".
+  - Section.tsx's header said an h3 goes inside a panel, which none of its level-3 uses do. [Fixed] Level 3 is described as a sub-section with its h3 above its panel.
+  - The `"up" | "down"` union doubled as global class names in three places. [Fixed] `dirClass()` in `DirArrow.tsx` maps a direction to its class, with a comment saying so. Tile, Overview `VsText` and Trends `DeltaText` use it. The Friends Diff cell maps a number, so it stays.
+  - The Trends landmarks: see code-review. The Player header and the global.css comment: see code-review.
+- simplify:
+  - `dirClass`: see arch. [Fixed]
+  - `.zone .panel + .panel` was dead, because every zone panel is now inside its own Section. [Fixed] Removed.
+  - `level` was tested three times in Section. [Fixed] Folded into the region change.
+  - Skipped as YAGNI, since each has one user or its values differ by context:
+    - one shared `.small` (Overview and Friends use 12px, Settings 13px, so merging them is a visual change);
+    - `.hint2`;
+    - a Section `panel` or `flush` prop (the children and margins differ per page);
+    - moving Settings' 56px offset into Section (it's Settings' own sticky nav);
+    - a panel edge custom property, a `.fill` cell, a Tiles `align` prop, a `.table.nowrap` modifier;
+    - one hidden-h1 component (one of the three carries the focus ref).
+  - Efficiency: no findings.
+Runs:
+- `bun run check` passes (1165 tests).
+- The full `bun run e2e` gave 81 passed and 1 failed: the "Match by match" landmark above. After that fix, the friends-page, trends and recap specs give 40 passed and the settings specs 21 passed.
+- The 320px run (recap, trends, friends) gave 47 passed and 1 failed. The failure was the known `friends-page.spec.ts:43` flake (h1 still "Recap"); it passed 3/3 on re-run.
+
+### WP-C, round 2 (delta from 79ca3fa, snapshot 87151a1)
+A full round, because the `dirClass` fix touched `DirArrow.tsx`. Passes: `/code-review high`, `arch-reviewer` (sonnet), `security-reviewer`.
+- security: no findings.
+- arch: every round-1 fix matches its log entry.
+  - `dirClass` was inserted between DirArrow's doc comment and DirArrow. [Fixed] It no longer matters, since `dirClass` is gone (see code-review).
+- code-review:
+  - **Bug:** round 1's removal of `.zone .panel + .panel` was wrong. "Who carries" holds two panels (Carry and Compare) inside one Section, and they touched. The round-1 check only looked at the zone's direct children. [Fixed] The rule is back with a comment. A new assertion in the pair e2e checks the gap between the two panels: it failed without the rule (gap 0) and passes with it.
+  - The `region` default made "Who carries", Overview "Highlights" and the two Trends charts named regions. [Disputed] That was round 1's fix. The Trends charts were `<section aria-labelledby>` regions before WP-C, so this restores them. The names are unique on each page, and a page section that's a named region is the standard pattern. A chart name that follows the X mode reads the current chart.
+  - `dirClass` was a no-op in `VsText` and `DeltaText`, because both return early on "same". It's a plain function exported from a component module, which breaks Fast Refresh. The two numeric mappings couldn't use it. [Fixed] `dirClass` is removed. DirArrow's doc comment says each `dir` value is also the global colour class of that name, which answers round 1's concern.
+  - Section.module.css's comment listed only "row". [Fixed] It lists "row", "label" and "panel".
+  - Section.tsx said level 3 sits "above its own panel", but Highlights holds StatCards and Who carries holds two panels. [Fixed] "above its own content".
+  - The sticky-nav e2e could still pass if Remarks stopped short of the top. [Fixed] It asserts the heading lands 0–24px under the nav. With the rule removed (fresh build) it fails: the heading is 25.5px under the nav.
+  - `locator("xpath=..")` pins the status to the heading's line. [Verified, no fix needed] The heading line is where the design puts it (Section's `aside`). A move would be a visible change the test should flag.
+Runs:
+- `bun run check` passes (1165 tests).
+- The full `bun run e2e` gives 82 passed.
+- The 320px run (recap, trends, friends) gives 48 passed.
+- The friends-page specs give 11 passed after the lint fix to the new assertion.
+- Note: `bunx playwright test` serves the last `vite build`, so a red check of a CSS change needs `bun run e2e -- <spec>`.
+
+### WP-C, round 3 (delta from 87151a1, snapshot 8a9af04)
+Passes: `/code-review high`, `security-reviewer`. Arch's round-2 finding was a misplaced comment, so arch wasn't re-run.
+- security: no findings.
+- code-review: no correctness bugs. It confirmed the restored rule covers every adjacent zone panel.
+  - At 320px the Settings sticky row can be about 60px tall where scrollbars take space, more than the fixed 56px offset. Headless e2e hides scrollbars. [Deferred → BACKLOG] Watch list. The 56px predates WP-C, and it only affects a narrow desktop window with classic scrollbars.
+  - Friends' stacked-panel gap is page-local, not a shared `.panel + .panel`. [Verified, no fix needed] Round 1 skipped shared variants as YAGNI. A shared sibling rule would also add margin inside flex and grid parents.
+  - The comment named only Who carries, but the rule covers any stacked zone panels. [Fixed] Comment only.
+  - The panel-gap e2e checks ≥ 8px, not the real 16px. [Verified, no fix needed] It tests that the panels don't merge, not the spacing scale.
+  - Tile checks `vs.dir === "same"` twice. [Verified, no fix needed] This was dispositioned in WP-B round 2.
+  - A `dir` value doubling as a class name is enforced only by a comment. [Verified, no fix needed] This was dispositioned in round 2.
+The review is done: no new finding needed a code change. The only edit was a comment.

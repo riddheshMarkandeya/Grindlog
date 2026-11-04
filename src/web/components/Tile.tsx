@@ -8,8 +8,9 @@ import styles from "./Tile.module.css";
 
 export interface TileVs { dir: "up" | "down" | "same"; text: string }
 
-export function Tiles({ children }: { children: ReactNode }) {
-  return <ul className={styles.tiles}>{children}</ul>;
+/** `className` is a page's variant of the row (the Friends zones start theirs at the left edge). */
+export function Tiles({ className, children }: { className?: string; children: ReactNode }) {
+  return <ul className={cx(styles.tiles, className)}>{children}</ul>;
 }
 
 export function Tile({ label, value, icon, vs, note, noteLines = 1 }: { label: string; value: string; icon?: string; vs?: TileVs; note?: string; noteLines?: 1 | 2 }) {
@@ -19,7 +20,7 @@ export function Tile({ label, value, icon, vs, note, noteLines = 1 }: { label: s
         {icon && <img className={styles.ico} src={icon} alt="" />}
         {value}
         {vs && (
-          <small className={vs.dir === "up" ? styles.up : vs.dir === "down" ? styles.down : styles.muted}>
+          <small className={vs.dir === "same" ? "muted" : vs.dir}>
             {vs.dir === "same" ? <><span aria-hidden="true">=</span><span className="visually-hidden">same</span></> : <DirArrow dir={vs.dir} />} {vs.text}
           </small>
         )}

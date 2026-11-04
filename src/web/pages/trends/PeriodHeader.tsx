@@ -45,7 +45,7 @@ export function PeriodHeader({
       {noun && (
         <button type="button" className={styles.step} aria-label={`Later ${noun}`} disabled={!later} onClick={() => { if (later) onStep(later); }}>›</button>
       )}
-      <span className={styles.muted}>{parts.join(" · ")}</span>
+      <span className="muted">{parts.join(" · ")}</span>
     </div>
   );
 }
@@ -58,7 +58,7 @@ export function StatsLine({ view }: { view: PeriodView }) {
       <span className={cx(styles.record, "num", "display")}>
         <span className={styles.win}>{a.wins ?? 0}W</span> – <span className={styles.loss}>{a.losses ?? 0}L</span>
       </span>
-      <span className={styles.muted}>
+      <span className="muted">
         {plural(a.matches, "match", "matches")} · {plural(view.sessions, "session")} · best streak W{a.bestWinStreak ?? 0} ·{" "}
         <img className={styles.ico} src={mvpIcon} alt="MVPs" /> ×{a.mvps ?? 0}
       </span>

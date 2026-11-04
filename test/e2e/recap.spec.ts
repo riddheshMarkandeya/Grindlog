@@ -146,6 +146,15 @@ test("the long session's Overview: per game, what stood out, by playlist, the go
   await expect(extras.getByRole("listitem").filter({ hasText: "Hat tricks" })).toContainText("1");
 });
 
+test("the Overview's section headings share one size, each above its panel and never inside it", async ({ page }) => {
+  await page.goto("/recap/e2e-long-00");
+  for (const name of ["Matches", "Per game vs your 30-day average", "What stood out", "By playlist", "Where the goals came from", "Extras"]) {
+    const h = page.getByRole("heading", { level: 2, name, exact: true });
+    await expect(h).toHaveCSS("font-size", "16px");
+    await expect(page.locator("[class*=panel]").filter({ has: h }), name).toHaveCount(0);
+  }
+});
+
 test("one playlist: no By playlist; no baseline: no What stood out and no ▲▼", async ({ page }) => {
   await page.goto("/recap/e2e-first-a");
   await expect(page.getByRole("heading", { name: "What stood out" })).toBeVisible();

@@ -76,32 +76,70 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   (`src/web/pages/recap/Matches.tsx`, the `<tfoot>`, and the header comment that mentions it). The
   user doesn't want totals there, as on the Friends page's match-by-match table (user, 2026-10-28,
   Friends prototype review).
-- [ ] **[design, Med, Standard]** Display layer drift across pages (user, 2026-10-28). Tokens,
-  panels, tables and team colours are shared, but each page grew its own:
-  - big-number type: condensed italic (recap scorebug and tiles, Trends title), plain Segoe
-    (match page title, share card, Friends prototype);
-  - tile anatomy: four kinds (recap `.tiles`/`.stat`, Trends `.tile`, share card `.tile`, the
-    Friends prototype's), with different label case, size and order;
-  - heading placement: sentence-case headings above panels (Recap, Trends, Settings) against
-    uppercase headings inside panels (Friends prototype).
-  Fix: one shared Tile and one section-heading pattern in `src/web/components`, then move pages onto
-  them. The share card keeps its own scale (a 360px image), but its record should use the same
-  face. WP9 builds Friends on the existing primitives, so it doesn't add a fifth tile.
-  - Colour roles: the code mostly follows an unwritten rule, blue/orange = your side / the other
-    side (`TEAM_TONE` in `MatchView.tsx`, `GoalMap`, the Friends zones) and green/red = result
-    (`--win`/`--loss`). Write it down, then fix the leaks: the match page falls back to blue/orange
-    meaning the game's own team colours when "yours" is unknown (one colour, two meanings); the
-    share card's blue/orange background is decoration only; `--up`/`--down` is a second green/red
-    pair for deltas next to `--win`/`--loss`. Decide whether the pairs merge or the rule says why
-    they're separate.
+- [ ] **[design, Med, Standard]** Data sense review: values shown twice on one screen, and labels
+  that don't say what's computed. Removing data is a product call, so decide each one with the user.
+  Paths are under `src/web/`. Found in the display-drift audit (2026-11-03). Record:
+  `docs/plans/2026-11-03-display-drift.md`.
+  - Repeats:
+    - Overview "What stood out" re-sorts the per-game cards and shows their numbers again
+      (`pages/recap/Overview.tsx:211`).
+    - Matches heading "Every match · 7 matches · 4–3" repeats the scorebug
+      (`pages/recap/Matches.tsx:33`).
+    - Trends: the period average is on the tile, on the "avg" line and in the legend
+      (`pages/trends/TrendChart.tsx:90`); the chart heading repeats the selected tile's name.
+    - Friend page: the scorebug's middle repeats the h1's names and a win % that the two records
+      beside it give (`pages/friends/zones.tsx:46`).
+    - Friends By playlist: the bar repeats the win % beside it (`pages/friends/zones.tsx:98`).
+    - Best/Worst playlist tiles are the top and bottom rows of the list just below
+      (`pages/friends/zones.tsx:115-116`).
+    - Settings › Remarks: the section title, row label and help say the same thing
+      (`pages/settings/SettingsPage.tsx:166-167`).
+    - Seasons: the "current" badge and "still running" say the same thing
+      (`pages/settings/SeasonsSection.tsx:33,43`).
+    - Match page: the result is in the title and on both team headings
+      (`pages/recap/MatchView.tsx:92,161`).
+  - Labels:
+    - "Ended on W3" is unclear (`logic/recap.ts:33`).
+    - "Best streak" counts win streaks only (`pages/trends/PeriodHeader.tsx:62`).
+    - Bare "Shooting" for goals/shots (`logic/recap.ts:35`).
+    - Delta units: "12%" is relative and "12 pts" absolute, both with ▲; the 30-day comparison has
+      four phrasings (`pages/recap/Overview.tsx` `VsText`, `Headline`; the tiles' `avg …`).
+    - Friends landing: "Together" is a section heading and a record label
+      (`pages/friends/FriendsPage.tsx:162,215`).
+    - Compare "Without" includes matches with the friend as an opponent, said only in the
+      footnote, and the friends' Win % cells are always "–" (`pages/friends/zones.tsx:239`).
+    - Recap: three different "aerial" counts on one page (`components/GoalMap.tsx:125`,
+      `logic/recap.ts:141`, the highlights' aerial goals) and two "long" goal rules.
+  - Small samples: win % and deltas show with no match count; a previous period of one match still
+    gives "▲ 40 pts" (`logic/trends.ts:258`); a playlist row of one match shows 100%.
+  - Charts: the sparkline's min–max scale makes 50→51% fill the tile (`logic/trends.ts:272`); the
+    y-axis isn't at zero and its ticks aren't round; the two stacked Trends charts have different
+    left padding, so a day sits at a different x in each (`logic/trend-chart.ts:131,207`); the
+    "⚑ left early" note shows on metrics other than win % (`pages/trends/PeriodHeader.tsx:67`).
+- [ ] **[design, Low, Standard]** Controls drift: about six button styles, two segmented controls
+  (Trends `.xmode` buttons, Settings `.seg` radios, plus Friends' own `.seg`), two `.link` rules,
+  and Trends `.picks button` against the match page's `.chip`. One shared set, as the display-drift
+  work did for panels and tables. On the way, `PeriodControls.tsx:45` uses `styles.controls`,
+  which no CSS defines. Record: `docs/plans/2026-11-03-display-drift.md`.
+- [ ] **[design, Low, Standard]** Trends data line: the line, dots and sparklines use `--accent`,
+  which the colour rule in `src/web/styles/tokens.css` now keeps for selection and focus; on oled
+  the accent is white, the same as the text. Choose a data colour (a new token, checked on every
+  theme). Record: `docs/plans/2026-11-03-display-drift.md`.
 - [ ] **[feature, Low, Standard]** Settings › Appearance: choose the colour pair for sides (blue /
   orange) and for results (green / red), each on its own and apart from the theme (user,
   2026-10-28). Also helps red-green colour blindness. The pairs are already tokens
   (`--blue`/`--orange`, `--win`/`--loss` in `src/web/styles/tokens.css`), so it's a setting that
-  overrides them on `<html>`, plus a check that each pair stays readable on every theme. Do it after
-  the colour-roles part of the drift item above, so each token has one meaning first.
+  overrides them on `<html>`, plus a check that each pair stays readable on every theme. Unblocked
+  (2026-11-04): each token now has one meaning, written at the top of `tokens.css`, and
+  `--up`/`--down` are mixed from `--win`/`--loss`, so overriding the result pair moves both.
 
 ## Watch list
+- [ ] **[a11y, Low, Standard]** Trigger: a report that a Settings section link, below 768px,
+  leaves its heading partly under the sticky section row. The jump offset is a fixed
+  `scroll-margin-top: 56px` (`Settings.module.css`, `.section h2`), and the row scrolls sideways at
+  320px. Where scrollbars take space (Windows with classic scrollbars) the row is about 60px tall.
+  Headless e2e hides scrollbars, so it passes. Fix: a taller offset, or measure the row. Record:
+  `docs/plans/2026-11-03-display-drift.md` (WP-C, round 3).
 - [ ] **[bug (accepted), Low, Standard]** Trigger: a friend or pair page showing old stats for
   someone already removed, after the removal was made in another tab. React Query keeps the
   cached page (staleTime Infinity) and a failed 404 refetch keeps its data; this tab's Remove

@@ -12,6 +12,7 @@ import type { FriendCard, FriendPair, FriendSuggestions } from "../../../shared/
 import { cx } from "../../components/cx";
 import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
+import { Section } from "../../components/Section";
 import { dateLabel, plural } from "../../logic/format";
 import { recordText } from "../../logic/friends";
 import { useAddFriend, useFriendPairs, useFriends, useNeverSuggest, useNeverSuggested, useSuggestAgain, useSuggestions } from "../../queries";
@@ -78,7 +79,7 @@ export function FriendsPage() {
   if ((friends.isError && !friends.data) || (suggestions.isError && !suggestions.data)) {
     return (
       <>
-        <h1 className={styles.h1}>Friends</h1>
+        <h1 className="visually-hidden">Friends</h1>
         <EmptyState title="Couldn't load your friends. Is the tracker running?">
           <button type="button" className={styles.link} onClick={() => { void friends.refetch(); void suggestions.refetch(); }}>Retry</button>
         </EmptyState>
@@ -88,7 +89,7 @@ export function FriendsPage() {
   if (!friends.data || !suggestions.data) {
     return (
       <>
-        <h1 className={styles.h1}>Friends</h1>
+        <h1 className="visually-hidden">Friends</h1>
         <Loading label="Loading your friends…" />
       </>
     );
@@ -130,13 +131,11 @@ export function FriendsPage() {
 
   return (
     <div ref={page}>
-      <h1 ref={h1} tabIndex={-1} className={styles.h1}>Friends</h1>
+      <h1 ref={h1} tabIndex={-1} className="visually-hidden">Friends</h1>
       <p className={styles.status} role="status">{status}</p>
       {failed && <p className={styles.error} role="alert">{failed}</p>}
       {suggestions.data.length > 0 && (
-        <section aria-labelledby="suggested-heading">
-          <h2 id="suggested-heading" className={styles.h2}>Suggested</h2>
-          <p>Often on your team, not friends yet. Add them to see your record together.</p>
+        <Section title="Suggested" intro="Often on your team, not friends yet. Add them to see your record together.">
           <ul className={styles.sugg}>{suggestions.data.slice(0, SHOWN).map(row)}</ul>
           {suggestions.data.length > SHOWN && (
             <details className={styles.more}>
@@ -144,30 +143,27 @@ export function FriendsPage() {
               <ul className={styles.sugg}>{suggestions.data.slice(SHOWN).map(row)}</ul>
             </details>
           )}
-        </section>
+        </Section>
       )}
       {nothing ? (
         <EmptyState title="No friends yet.">{RULE}</EmptyState>
       ) : (
-        <>
-          <h2 className={styles.h2}>Your friends</h2>
+        <Section title="Your friends">
           {friends.data.length === 0 ? (
-            <p className={styles.muted}>No friends yet. {RULE}</p>
+            <p className="muted">No friends yet. {RULE}</p>
           ) : (
             <ul className={styles.cards}>
               {friends.data.map((f) => <li key={f.id}><Card f={f} /></li>)}
             </ul>
           )}
-        </>
+        </Section>
       )}
       {pairCards.length > 0 && (
-        <section aria-labelledby="together-heading">
-          <h2 id="together-heading" className={styles.h2}>Together</h2>
-          <p>{PAIR_RULE}</p>
+        <Section title="Together" intro={PAIR_RULE}>
           <ul className={styles.cards}>
             {pairCards.map(({ pair, a, b }) => <li key={pair.ids.join(",")}><PairCard pair={pair} a={a} b={b} /></li>)}
           </ul>
-        </section>
+        </Section>
       )}
       {never.isError && !never.data && (
         <p className={cx(styles.error, styles.never)}>
@@ -180,7 +176,7 @@ export function FriendsPage() {
           <ul>
             {never.data.map((p) => (
               <li key={p.id}>
-                <span className={styles.trunc} title={p.name}>{p.name} <span className={styles.muted}>· {platformOf(p.id).name}</span></span>
+                <span className={styles.trunc} title={p.name}>{p.name} <span className="muted">· {platformOf(p.id).name}</span></span>
                 <button type="button" className={styles.button} aria-disabled={again.isPending} onClick={() => { if (!again.isPending) suggestAgain(p); }}>Suggest again</button>
               </li>
             ))}
@@ -195,7 +191,7 @@ function SuggestionRow({ s, busy, onAdd, onNever }: { s: Suggestion; busy: boole
   return (
     <li>
       <b className={styles.trunc} title={s.name}>{s.name}</b>
-      <span className={cx(styles.muted, "num")}>{plural(s.matches, "match", "matches")} · {plural(s.sessions, "session")}</span>
+      <span className={cx("muted", "num")}>{plural(s.matches, "match", "matches")} · {plural(s.sessions, "session")}</span>
       <span className={styles.acts}>
         <button type="button" data-add className={cx(styles.button, styles.primary)} aria-disabled={busy} onClick={() => { if (!busy) onAdd(); }}>Add friend</button>
         <button type="button" className={styles.button} aria-disabled={busy} onClick={() => { if (!busy) onNever(); }}>Never suggest</button>
@@ -211,7 +207,7 @@ function Records({ w, a }: { w: FriendCard["with"]; a: FriendCard["with"] }) {
       <div className={styles.rk}>{label}</div>
       <div className={cx(styles.rv, "num", "display")}><span aria-hidden="true">{r.n > 0 ? recordText(r) : "–"}</span><span className="visually-hidden">{r.n > 0 ? recordLabel(r) : "none yet"}</span></div>
       {/* Read once, as the hidden "none yet" above. */}
-      {r.n > 0 ? <WlBar w={r.w} l={r.l} /> : <div className={cx(styles.muted, styles.small)} aria-hidden="true">not yet</div>}
+      {r.n > 0 ? <WlBar w={r.w} l={r.l} /> : <div className={cx("muted", styles.small)} aria-hidden="true">not yet</div>}
     </div>
   );
   return (
@@ -227,9 +223,9 @@ function Card({ f }: { f: FriendCard }) {
   return (
     <Link to={friendPath(f.id)} className={styles.card}>
       <span className={cx(styles.name, styles.trunc)} title={f.name}>{f.name}</span>
-      <span className={cx(styles.muted, styles.small, styles.trunc)} title={seen + platformOf(f.id).name}>{seen}{platformOf(f.id).name}</span>
+      <span className={cx("muted", styles.small, styles.trunc)} title={seen + platformOf(f.id).name}>{seen}{platformOf(f.id).name}</span>
       <Records w={f.with} a={f.against} />
-      <span className={cx(styles.muted, styles.small)}>{lastPlayed(f.lastPlayed)}</span>
+      <span className={cx("muted", styles.small)}>{lastPlayed(f.lastPlayed)}</span>
     </Link>
   );
 }
@@ -240,7 +236,7 @@ function PairCard({ pair, a, b }: { pair: FriendPair; a: string; b: string }) {
       <span className={cx(styles.name, styles.trunc)} title={a}>{a}</span>
       <span className={cx(styles.second, styles.trunc)} title={b}><i>+</i> {b}</span>
       <Records w={pair.with} a={pair.against} />
-      <span className={cx(styles.muted, styles.small)}>{lastPlayed(pair.lastPlayed)}</span>
+      <span className={cx("muted", styles.small)}>{lastPlayed(pair.lastPlayed)}</span>
     </Link>
   );
 }

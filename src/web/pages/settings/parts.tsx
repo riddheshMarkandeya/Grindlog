@@ -3,7 +3,9 @@
 import { useRef, type ReactNode } from "react";
 import type { SectionId, Settings, SettingsPatch } from "../../../shared/schemas/settings";
 import { ApiError } from "../../api";
+import { cx } from "../../components/cx";
 import { SaveStatus } from "../../components/SaveStatus";
+import { Section as SharedSection } from "../../components/Section";
 import { atDefaults, sectionDefaults } from "../../logic/settings";
 import { useSaveSettings } from "../../queries";
 import styles from "./Settings.module.css";
@@ -30,7 +32,7 @@ function ResetLink({ id, s, onSaved }: { id: SectionId; s: Settings; onSaved: ()
   const reset = () => { save(sectionDefaults(id)); };
   return (
     <>
-      {atDefaults(s, id) ? <span className={styles.muted}>Defaults</span> : <button type="button" className={styles.link} onClick={reset}>Reset to defaults</button>}
+      {atDefaults(s, id) ? <span className={cx("muted", styles.small)}>Defaults</span> : <button type="button" className={styles.link} onClick={reset}>Reset to defaults</button>}
       <SaveStatus m={m} retry={reset} />
     </>
   );
@@ -51,18 +53,18 @@ export const SECTIONS = [
  */
 export function Section({ anchor, title, intro, reset, status, note, children }: { anchor: (typeof SECTIONS)[number][0]; title: string; intro: string; reset?: { id: SectionId; s: Settings }; status?: ReactNode; note?: ReactNode; children: ReactNode }) {
   const heading = useRef<HTMLHeadingElement>(null);
+  // The reset link turns into "Defaults" as the reset lands, so focus moves to the section's heading.
+  const aside = (reset !== undefined || status !== undefined) && (
+    <div className={styles.aside}>
+      {reset && <ResetLink id={reset.id} s={reset.s} onSaved={() => heading.current?.focus()} />}
+      {status}
+    </div>
+  );
   return (
-    <section className={styles.section} aria-labelledby={anchor}>
-      <div className={styles.head}>
-        <h2 id={anchor} ref={heading} tabIndex={-1} className={styles.h2}>{title}</h2>
-        {/* The link turns into "Defaults" as the reset lands, so focus moves to the section's heading. */}
-        {reset && <ResetLink id={reset.id} s={reset.s} onSaved={() => heading.current?.focus()} />}
-        {status}
-      </div>
-      <p className={styles.intro}>{intro}</p>
+    <SharedSection id={anchor} headingRef={heading} title={title} intro={intro} aside={aside} className={styles.section}>
       {note}
       {children !== false && <div className={styles.card}>{children}</div>}
-    </section>
+    </SharedSection>
   );
 }
 
@@ -75,7 +77,7 @@ export function TableState({ what, failed, retry }: { what: string; failed: bool
           Couldn't load {what}. <button type="button" className={styles.link} onClick={retry}>Retry</button>
         </span>
       ) : (
-        <span className={styles.muted}>Loading…</span>
+        <span className={cx("muted", styles.small)}>Loading…</span>
       )}
     </p>
   );

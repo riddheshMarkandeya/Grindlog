@@ -69,9 +69,9 @@ function Head({ friend, h1 }: { friend: FriendDetail["friend"]; h1: RefObject<HT
       <div className={styles.who}>
         <h1 ref={h1} tabIndex={-1} className={styles.h1} title={friend.name}>{friend.name}</h1>
         {friend.nickname !== null && friend.lastSeenName !== null && (
-          <span className={cx(styles.muted, styles.trunc, styles.seen)} title={friend.lastSeenName}>seen as {friend.lastSeenName}</span>
+          <span className={cx("muted", styles.trunc, styles.seen)} title={friend.lastSeenName}>seen as {friend.lastSeenName}</span>
         )}
-        <span className={styles.muted}>{platform}</span>
+        <span className="muted">{platform}</span>
         <Nickname friend={friend} />
       </div>
       <Remove friend={friend} />
@@ -118,7 +118,7 @@ function Nickname({ friend }: { friend: FriendDetail["friend"] }) {
         />
         <button type="submit" className={cx(styles.button, styles.primary)} aria-disabled={save.isPending}>Save</button>
         <button type="button" className={styles.button} onClick={cancel}>Cancel</button>
-        <span className={styles.muted}>Empty uses the name they last played as.</span>
+        <span className="muted">Empty uses the name they last played as.</span>
         <SaveStatus m={save} retry={() => { submit(); }} />
       </form>
     );

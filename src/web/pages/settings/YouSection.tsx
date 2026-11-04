@@ -5,6 +5,7 @@ import { useEffect, useId, useRef } from "react";
 import type { IdRow } from "../../../shared/schemas/responses";
 import type { IdAnswer } from "../../../shared/schemas/tables";
 import { useIds, useSetIdStatus } from "../../queries";
+import { cx } from "../../components/cx";
 import { SaveStatus } from "../../components/SaveStatus";
 import { codeOf, Section, TableState } from "./parts";
 import styles from "./Settings.module.css";
@@ -35,8 +36,8 @@ function IdLine({ row }: { row: IdRow }) {
     <li className={styles.row}>
       <div className={styles.text}>
         <div className={styles.label}>
-          <span id={nameId}>{row.name ?? <span className={styles.muted}>No name</span>}</span>
-          {row.status === "pending" ? <span className={styles.badge}>{STATUS.pending}</span> : <span className={styles.muted}>{STATUS[row.status]}</span>}
+          <span id={nameId}>{row.name ?? <span className={cx("muted", styles.small)}>No name</span>}</span>
+          {row.status === "pending" ? <span className={styles.badge}>{STATUS.pending}</span> : <span className={cx("muted", styles.small)}>{STATUS[row.status]}</span>}
           <SaveStatus m={m} retry={retry} />
         </div>
         <div className={styles.help}>{row.platform}</div>

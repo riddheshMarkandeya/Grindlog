@@ -4,7 +4,6 @@
 .h1 { margin: 0 0 var(--s4); font-size: 22px; }
 /* Focused by code only (tabindex -1), as the Trends title: no ring. */
 .h1:focus { outline: none; }
-.muted { color: var(--muted); }
 .small { font-size: 12px; }
 .trunc { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .button { background: var(--surf2); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r); padding: 4px 12px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: border-color .12s; white-space: nowrap; }
@@ -16,11 +15,8 @@
 .status:empty { display: none; }
 .status { margin: 0 0 var(--s3); color: var(--ink2); }
 
-/* Landing: a heading per section, the rule or a hint under it. */
-.h2 { margin: var(--s6) 0 0; font-size: 15px; }
-/* The page's first heading sits under the h1's own margin, with or without an error line above it. */
-:is(.status, .error) + .h2, :is(.status, .error) + section > .h2:first-child { margin-top: 0; }
-.h2 + p { margin: var(--s1) 0 0; font-size: 12px; color: var(--muted); }
+/* Landing: the h1 is hidden, so the first section starts at the top, with or without a line above it. */
+:is(.status, .error) + section { margin-top: 0; }
 /* Suggestions: the top few in a panel, the rest behind "Show N more". */
 .sugg { margin: var(--s3) 0 0; padding: 0; list-style: none; background: var(--surf); border: 1px solid var(--line); border-left: 2px solid var(--ink2); border-radius: var(--r); }
 .sugg li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: var(--s2) var(--s4); align-items: center; padding: 8px var(--s4); border-bottom: 1px solid var(--grid); font-size: 14px; }
@@ -65,16 +61,14 @@
 
 /* The zones */
 .zones { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
-.zone { min-width: 0; padding-right: var(--s5); }
+.zone { min-width: 0; margin: 0; padding-right: var(--s5); }
 .zone + .zone { padding: 0 0 0 var(--s5); border-left: 1px solid var(--line); }
 .with { --zc: var(--blue); }
 .against { --zc: var(--orange); }
-.zh { margin: 0 0 var(--s4); padding-bottom: 6px; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--zc); border-bottom: 2px solid var(--zc); }
-.zone .tiles { justify-content: flex-start; margin: 0; }
-.sec { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s3); align-items: center; justify-content: space-between; margin: var(--s5) 0 var(--s3); }
-.sec h3 { margin: 0; font-size: 15px; }
-.panel { background: var(--surf); border: 1px solid var(--line); border-left: 2px solid color-mix(in srgb, var(--zc) 55%, var(--line)); border-radius: var(--r); padding: var(--s4); min-width: 0; }
-.panel + .panel { margin-top: var(--s4); }
+.zoneTiles { justify-content: flex-start; margin: 0; }
+.zone :global(.panel) { border-left: 2px solid color-mix(in srgb, var(--zc) 55%, var(--line)); }
+/* Stacked panels in a zone, as in Who carries (the share bars, then the comparison). */
+.zone :global(.panel) + :global(.panel) { margin-top: var(--s4); }
 .note { margin: var(--s3) 0 0; font-size: 12px; color: var(--muted); }
 .links { display: flex; flex-wrap: wrap; gap: var(--s4); margin-top: var(--s4); }
 
@@ -118,21 +112,15 @@
 
 /* Tables */
 .tw { overflow-x: auto; }
-.table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.table th, .table td { padding: 6px var(--s2); text-align: right; white-space: nowrap; border-bottom: 1px solid var(--grid); }
-.table th:first-child, .table td:first-child { text-align: left; }
-.table thead th { font-size: 12px; font-weight: 600; letter-spacing: .06em; color: var(--ink2); }
-.table tbody tr:last-child > * { border-bottom: 0; }
-.table .sep { border-left: 1px solid var(--line); }
+.tw :is(th, td) { white-space: nowrap; }
+.sep { border-left: 1px solid var(--line); }
 /* Lightened toward the ink: the team colours alone miss AA on a panel in some themes. */
-.table .you { color: color-mix(in srgb, var(--blue) 70%, var(--ink)); text-align: center; }
-.table .opp { color: color-mix(in srgb, var(--orange) 70%, var(--ink)); text-align: center; }
+.you { color: color-mix(in srgb, var(--blue) 70%, var(--ink)); text-align: center; }
+.opp { color: color-mix(in srgb, var(--orange) 70%, var(--ink)); text-align: center; }
 /* A friend's name over a column: cut, the full name in its title. */
 .cap { display: inline-block; max-width: 10em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 .w { color: var(--win); }
 .l { color: var(--loss); }
-.up { color: var(--up); }
-.down { color: var(--down); }
 .pager { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); margin-top: var(--s3); font-size: 13px; }
 
 @media (max-width: 1023px) {

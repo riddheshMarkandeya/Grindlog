@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import type { Season } from "../../../shared/periods";
 import type { PeriodView } from "../../../shared/schemas/responses";
 import { trendStats } from "../../../shared/trends";
+import { Section } from "../../components/Section";
 import { useWidth } from "../../components/useWidth";
 import { autoNote, chartSummary, FEW, lineGeometry, linePoints, modeText, seasonMarks, type ChartMode, type LineGeometry, type LinePoint } from "../../logic/trend-chart";
 import { formatMetric, isRate, METRICS, rawValue, type MetricId, type XMode } from "../../logic/trends";
@@ -62,40 +63,43 @@ export function TrendChart({ view, size, metric, chart, seasons, onX }: { view: 
   const marks = g && mode === "date" ? seasonMarks(view.buckets, seasons).map((m) => ({ x: g.xOf(m.i), name: m.name })) : [];
 
   return (
-    <section className={styles.panel} aria-labelledby="trend-chart-h">
-      <div className={styles.panelHead}>
-        <h3 id="trend-chart-h" className={styles.h3}>{label} · {modeText(mode, view.bucket, size)}</h3>
+    <Section
+      level={3} title={`${label} · ${modeText(mode, view.bucket, size)}`}
+      aside={
         <div className={styles.xmode} role="group" aria-label="X axis">
           <button type="button" aria-pressed={mode === "date"} onClick={() => { onX("date"); }}>By date</button>
           <button type="button" aria-pressed={mode === "match"} onClick={() => { onX("match"); }}>By match</button>
         </div>
+      }
+    >
+      <div className="panel">
+        {chart.auto && <p className={styles.note}>{autoNote(chart.withData, view.bucket, size)}</p>}
+        <div ref={ref} className={styles.plotBox} style={{ minHeight: height }}>
+          {mode === "match" && view.rolling.length === 0 ? (
+            <p className={styles.note}>By match needs {size} matches with these filters.</p>
+          ) : width > 0 && g === null ? (
+            <p className={styles.note}>Nothing measured for {label} in this period.</p>
+          ) : (
+            g && <Plot g={g} points={points} width={width} height={height} label={chartSummary(label, mode, view.bucket, size, points.length, avgText)} marks={marks} avgText={avgText} />
+          )}
+        </div>
+        <div className={styles.key}>
+          {avgText !== null && (
+            <span>
+              <svg width="18" height="8" aria-hidden="true"><line className={styles.avg} x1="0" x2="18" y1="4" y2="4" /></svg>
+              period average
+            </span>
+          )}
+          {mode === "match" ? (
+            <span>each point = your last {size} matches</span>
+          ) : (
+            <span>
+              <svg width="12" height="12" aria-hidden="true"><circle className={styles.hollow} cx="6" cy="6" r="4" /></svg>
+              hollow dot = under {FEW} matches
+            </span>
+          )}
+        </div>
       </div>
-      {chart.auto && <p className={styles.note}>{autoNote(chart.withData, view.bucket, size)}</p>}
-      <div ref={ref} className={styles.plotBox} style={{ minHeight: height }}>
-        {mode === "match" && view.rolling.length === 0 ? (
-          <p className={styles.note}>By match needs {size} matches with these filters.</p>
-        ) : width > 0 && g === null ? (
-          <p className={styles.note}>Nothing measured for {label} in this period.</p>
-        ) : (
-          g && <Plot g={g} points={points} width={width} height={height} label={chartSummary(label, mode, view.bucket, size, points.length, avgText)} marks={marks} avgText={avgText} />
-        )}
-      </div>
-      <div className={styles.key}>
-        {avgText !== null && (
-          <span>
-            <svg width="18" height="8" aria-hidden="true"><line className={styles.avg} x1="0" x2="18" y1="4" y2="4" /></svg>
-            period average
-          </span>
-        )}
-        {mode === "match" ? (
-          <span>each point = your last {size} matches</span>
-        ) : (
-          <span>
-            <svg width="12" height="12" aria-hidden="true"><circle className={styles.hollow} cx="6" cy="6" r="4" /></svg>
-            hollow dot = under {FEW} matches
-          </span>
-        )}
-      </div>
-    </section>
+    </Section>
   );
 }

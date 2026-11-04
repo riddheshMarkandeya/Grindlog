@@ -11,6 +11,7 @@ import { ApiError } from "../../api";
 import mvpIcon from "../../assets/icons/MVP.png";
 import { cx } from "../../components/cx";
 import { GoalMap } from "../../components/GoalMap";
+import { Section } from "../../components/Section";
 import { filterValue } from "../../../shared/playlist-filter";
 import { clock, whole } from "../../logic/format";
 import { flagLines, flagShort, isMyMvp, letter, matchLabel, recapPath, resultWord, scoreboardTeams, scoreFor, type ScoreTeam } from "../../logic/recap";
@@ -86,7 +87,7 @@ function Match({ detail, m, n }: { detail: SessionDetail; m: MyMatchWire; n: num
   const goals = detail.goals.filter((g) => g.matchGuid === m.guid);
   return (
     <>
-      <div className={styles.panel}>
+      <div className="panel">
         <div className={styles.kpis}>
           <h2 className={cx(styles.title, "display")}>
             <span className="visually-hidden">Match {n}: </span>
@@ -112,13 +113,12 @@ function Match({ detail, m, n }: { detail: SessionDetail; m: MyMatchWire; n: num
       )}
       <Scoreboard guid={m.guid} />
       {goals.length > 0 && (
-        <section aria-labelledby="match-goals-heading">
-          <h2 id="match-goals-heading" className={styles.sec}>Where the goals came from</h2>
-          <div className={styles.panel}>
+        <Section title="Where the goals came from" className={styles.goals}>
+          <div className="panel">
             {/* The session's matches, so each mark's title numbers its match as the cards do. */}
             <GoalMap matches={detail.matches} goals={goals} viewKey={m.guid} />
           </div>
-        </section>
+        </Section>
       )}
       <ExtrasSection agg={aggregate([m])} matches={[m]} heading="Your match" />
     </>
@@ -157,9 +157,9 @@ function Scoreboard({ guid }: { guid: string }) {
 function Team({ team, winner }: { team: ScoreTeam; winner: number | null }) {
   const outcome = team.teamNum === null || winner === null ? "" : team.teamNum === winner ? " · won" : " · lost";
   return (
-    <div className={cx(styles.panel, styles.team, TEAM_TONE[team.side])}>
+    <div className={cx("panel", styles.team, TEAM_TONE[team.side])}>
       <h3 className={styles.h3}>{TEAM_LABEL[team.side]}{outcome}</h3>
-      <table className={cx(styles.table, "num")}>
+      <table className="table num">
         <thead>
           <tr>
             <th scope="col">Player</th><th scope="col">Score</th><th scope="col"><abbr title="Goals">G</abbr></th>
@@ -199,7 +199,7 @@ function NotInView({ detail, filter, teammate, guid }: Filters) {
   if (full.isPending) return <div className={styles.loading} role="status"><span className="visually-hidden">Looking for this match…</span></div>;
   const heading = status === 404 ? "This match isn't here any more." : status !== null ? "Couldn't look up this match." : "This match isn't in this view.";
   return (
-    <div className={styles.panel}>
+    <div className="panel">
       <h2 className={styles.h3}>{heading}</h2>
       <ul className={styles.links}>
         {elsewhere !== null && elsewhere !== detail.key && <li><Link to={recapPath(elsewhere, filter, { match: guid }, teammate)}>Open it in its own session</Link></li>}

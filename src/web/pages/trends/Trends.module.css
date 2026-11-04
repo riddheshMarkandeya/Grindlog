@@ -1,9 +1,6 @@
 /* After variant B of the period-views prototype: quick picks, the year strip, the period header and
    metric tiles. */
 .loading { min-height: 50vh; }
-.muted { color: var(--ink2); }
-.up { color: var(--up); }
-.down { color: var(--down); }
 .win { color: var(--win); }
 .loss { color: var(--loss); }
 .ico { width: 18px; height: 18px; object-fit: contain; vertical-align: middle; }
@@ -57,10 +54,7 @@
 .spark path { fill: none; stroke: var(--accent); stroke-width: 1.5; }
 
 /* The big chart and the W/L chart: drawn at the measured width, so the axis text keeps its size. */
-.panel { margin-top: var(--s4); background: var(--surf); border: 1px solid var(--line); border-radius: var(--r); padding: var(--s4); min-width: 0; }
-.panelHead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2) var(--s3); }
-.h3 { margin: 0; font-size: 16px; }
-.hint2 { font-size: 13px; font-weight: 400; color: var(--muted); }
+.hint2 { font-size: 13px; color: var(--muted); }
 .note { margin: var(--s2) 0 0; font-size: 12px; color: var(--ink2); }
 .xmode { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
 .xmode button { background: var(--surf2); border: 0; padding: 4px 12px; color: var(--ink2); font-weight: 600; cursor: pointer; transition: background-color .12s; }

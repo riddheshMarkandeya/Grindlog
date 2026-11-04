@@ -1,7 +1,6 @@
 // The recap's Overview: scorebug, the remarks and the change against the 30-day average, the
 // tiles, the match cards, then per-game stats, what stood out, by playlist, the goal map, extras
 // and highlights.
-import { useId } from "react";
 import { Link } from "react-router";
 import { filterValue, type PlaylistFilter } from "../../../shared/playlist-filter";
 import { teammateValue, type TeammateFilter } from "../../../shared/teammate-filter";
@@ -16,6 +15,7 @@ import shotIcon from "../../assets/icons/Shot.png";
 import { cx } from "../../components/cx";
 import { DirArrow } from "../../components/DirArrow";
 import { GoalMap } from "../../components/GoalMap";
+import { Section } from "../../components/Section";
 import { Scorebug } from "../../components/Scorebug";
 import { StatCard, StatCards } from "../../components/StatCard";
 import { Tile, Tiles } from "../../components/Tile";
@@ -52,12 +52,11 @@ export function Overview({ detail, summary, filter, teammate }: { detail: Sessio
       <PerGame detail={detail} />
       <StandoutAndPlaylists detail={detail} />
       {detail.goals.length > 0 && (
-        <section aria-labelledby="goals-heading">
-          <h2 id="goals-heading" className={styles.sec}>Where the goals came from</h2>
-          <div className={styles.panel}>
+        <Section title="Where the goals came from">
+          <div className="panel">
             <GoalMap matches={detail.matches} goals={detail.goals} viewKey={detail.key} hrefFor={matchPath} />
           </div>
-        </section>
+        </Section>
       )}
       <ExtrasSection agg={detail.aggregate} matches={detail.matches} heading="Extras" />
     </>
@@ -131,9 +130,9 @@ function Headline({ detail, filter, teammate }: { detail: SessionDetail; filter:
           {delta.points === 0 ? (
             "Level with your 30-day win %"
           ) : (
-            <span className={delta.points > 0 ? styles.up : styles.down}>{delta.points > 0 ? "▲" : "▼"} {Math.abs(delta.points)} pts win % vs your 30-day average</span>
+            <span className={delta.points > 0 ? "up" : "down"}><DirArrow dir={delta.points > 0 ? "up" : "down"} /> {Math.abs(delta.points)} pts win % vs your 30-day average</span>
           )}{" "}
-          <span className={styles.muted}>({delta.avg}%)</span>
+          <span className="muted">({delta.avg}%)</span>
         </p>
       )}
       {tiles.length > 0 && (
@@ -150,11 +149,7 @@ function Headline({ detail, filter, teammate }: { detail: SessionDetail; filter:
 function MatchCards({ matches, matchPath }: { matches: MyMatchWire[]; matchPath: (guid: string) => string }) {
   const { clock: hours } = useSettings();
   return (
-    <section aria-labelledby="matches-heading">
-      <div className={styles.cardsHead}>
-        <h2 id="matches-heading" className={styles.h2}>Matches</h2>
-        <span className={styles.muted}>Results in order</span>
-      </div>
+    <Section title="Matches" aside={<span className={cx("muted", styles.small)}>Results in order</span>}>
       <ol className={cx(styles.cards, isDense(matches.length) && styles.dense)}>
         {matches.map((m, i) => {
           const score = scoreFor(m);
@@ -172,7 +167,7 @@ function MatchCards({ matches, matchPath }: { matches: MyMatchWire[]; matchPath:
           );
         })}
       </ol>
-    </section>
+    </Section>
   );
 }
 
@@ -180,9 +175,9 @@ const ICONS: Record<IconName, string> = { Goal: goalIcon, Assist: assistIcon, Sa
 
 /** "▲ 12%" with the direction in words for screen readers, or "≈ 30-day avg". */
 function VsText({ vs }: { vs: Vs }) {
-  if (vs.dir === "same") return <span className={styles.muted}>≈ 30-day avg</span>;
+  if (vs.dir === "same") return <span className="muted">≈ 30-day avg</span>;
   return (
-    <span className={vs.dir === "up" ? styles.up : styles.down}>
+    <span className={vs.dir}>
       <DirArrow dir={vs.dir} /> {Math.abs(vs.pct)}%
     </span>
   );
@@ -193,17 +188,16 @@ function PerGame({ detail }: { detail: SessionDetail }) {
   if (!cards.length) return null;
   const hasBase = detail.baseline.matches > 0;
   return (
-    <section aria-labelledby="per-game-heading">
-      <h2 id="per-game-heading" className={styles.sec}>{hasBase ? "Per game vs your 30-day average" : "Per game"}</h2>
+    <Section title={hasBase ? "Per game vs your 30-day average" : "Per game"}>
       <StatCards>
         {cards.map((c) => (
           <StatCard
             key={c.id} label={c.label} icon={c.icon && ICONS[c.icon]} value={decimal(c.perGame)} unit=" /game" sub={`${whole(c.total)} total`}
-            vs={c.vs && <><VsText vs={c.vs} />{c.vs.dir !== "same" && <span className={styles.muted}> vs 30-day avg</span>}</>}
+            vs={c.vs && <><VsText vs={c.vs} />{c.vs.dir !== "same" && <span className="muted"> vs 30-day avg</span>}</>}
           />
         ))}
       </StatCards>
-    </section>
+    </Section>
   );
 }
 
@@ -214,42 +208,44 @@ function StandoutAndPlaylists({ detail }: { detail: SessionDetail }) {
   return (
     <div className={styles.grid2}>
       {stood !== null && (
-        <section className={styles.panel} aria-labelledby="stood-out-heading">
-          <h2 id="stood-out-heading" className={styles.h2}>What stood out</h2>
-          {stood.length === 0 ? (
-            <p className={styles.muted}>Close to your 30-day average on every stat.</p>
-          ) : (
-            <ul className={styles.stand}>
-              {stood.map((s) => (
-                <li key={s.id}>
-                  {s.icon ? <img className={styles.bIco} src={ICONS[s.icon]} alt="" /> : <span />}
-                  <div>
-                    <b className="num">{decimal(s.perGame)} {s.label.toLowerCase()} per game</b>
-                    <div className="num"><VsText vs={s.vs} /> <span className={styles.muted}>vs 30-day avg ({decimal(s.avg)})</span></div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <Section title="What stood out" className={styles.cell}>
+          <div className="panel">
+            {stood.length === 0 ? (
+              <p className="muted">Close to your 30-day average on every stat.</p>
+            ) : (
+              <ul className={styles.stand}>
+                {stood.map((s) => (
+                  <li key={s.id}>
+                    {s.icon ? <img className={styles.bIco} src={ICONS[s.icon]} alt="" /> : <span />}
+                    <div>
+                      <b className="num">{decimal(s.perGame)} {s.label.toLowerCase()} per game</b>
+                      <div className="num"><VsText vs={s.vs} /> <span className="muted">vs 30-day avg ({decimal(s.avg)})</span></div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </Section>
       )}
       {rows !== null && (
-        <section className={styles.panel} aria-labelledby="by-playlist-heading">
-          <h2 id="by-playlist-heading" className={styles.h2}>By playlist</h2>
-          <table className={cx(styles.table, "num")}>
-            <thead><tr><th scope="col">Playlist</th><th scope="col">W–L</th><th scope="col">Win %</th><th scope="col">Goals/g</th></tr></thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={String(r.playlistId)}>
-                  <th scope="row">{r.name}</th>
-                  <td>{r.wins === null || r.losses === null ? "–" : `${String(r.wins)}–${String(r.losses)}`}</td>
-                  <td>{r.winPct === null ? "–" : `${String(r.winPct)}%`}</td>
-                  <td>{r.goalsPerGame === null ? "–" : decimal(r.goalsPerGame)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
+        <Section title="By playlist" className={styles.cell}>
+          <div className="panel">
+            <table className="table num">
+              <thead><tr><th scope="col">Playlist</th><th scope="col">W–L</th><th scope="col">Win %</th><th scope="col">Goals/g</th></tr></thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={String(r.playlistId)}>
+                    <th scope="row">{r.name}</th>
+                    <td>{r.wins === null || r.losses === null ? "–" : `${String(r.wins)}–${String(r.losses)}`}</td>
+                    <td>{r.winPct === null ? "–" : `${String(r.winPct)}%`}</td>
+                    <td>{r.goalsPerGame === null ? "–" : decimal(r.goalsPerGame)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
       )}
     </div>
   );
@@ -257,15 +253,13 @@ function StandoutAndPlaylists({ detail }: { detail: SessionDetail }) {
 
 /** The extras tiles and highlights over these matches; the Overview's "Extras", a match page's "Your match". */
 export function ExtrasSection({ agg: a, matches, heading }: { agg: AggregateWire; matches: MyMatchWire[]; heading: string }) {
-  const id = useId();
   const cards = extrasCards(a, matches, useSettings());
   const hl = highlights(a.statfeed);
   if (!cards.length && !hl.length) return null;
   return (
-    <section aria-labelledby={id}>
-      <h2 id={id} className={styles.sec}>{heading}</h2>
+    <Section title={heading}>
       {a.extrasMatches > 0 && a.extrasMatches < a.matches && (
-        <p className={cx(styles.muted, styles.small)}>Over {a.extrasMatches} of {plural(a.matches, "match", "matches")}.</p>
+        <p className={cx("muted", styles.small)}>Over {a.extrasMatches} of {plural(a.matches, "match", "matches")}.</p>
       )}
       {cards.length > 0 && (
         <StatCards>
@@ -275,13 +269,12 @@ export function ExtrasSection({ agg: a, matches, heading }: { agg: AggregateWire
         </StatCards>
       )}
       {hl.length > 0 && (
-        <>
-          <h3 className={styles.h3}>Highlights</h3>
+        <Section level={3} title="Highlights">
           <StatCards>
             {hl.map((h) => <StatCard key={h.event} label={h.label} value={whole(h.count)} />)}
           </StatCards>
-        </>
+        </Section>
       )}
-    </section>
+    </Section>
   );
 }

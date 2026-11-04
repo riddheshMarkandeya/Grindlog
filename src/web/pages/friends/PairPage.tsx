@@ -54,7 +54,7 @@ function Body({ detail, h1 }: { detail: ReturnType<typeof usePairDetail>; h1: Re
   const [x, y] = friends;
   return (
     <>
-      <h1 ref={h1} tabIndex={-1} className={cx(styles.h1, styles.pairH1)}>{x.name} <span className={styles.muted}>+</span> {y.name}</h1>
+      <h1 ref={h1} tabIndex={-1} className={cx(styles.h1, styles.pairH1)}>{x.name} <span className="muted">+</span> {y.name}</h1>
       <Bug friends={friends} view={view} />
       <Zones friends={friends} view={view} />
     </>

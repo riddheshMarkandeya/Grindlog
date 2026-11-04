@@ -80,7 +80,7 @@ export function SessionPicker({
           onClick={() => { setOpen((o) => !o); }}
         >
           <span className="visually-hidden">Recap: </span>
-          <b>{dayLabel(detail.day)}</b> <span className={styles.muted}>{timeRange(detail.startedAt, detail.endedAt, hours)}</span>
+          <b>{dayLabel(detail.day)}</b> <span className="muted">{timeRange(detail.startedAt, detail.endedAt, hours)}</span>
           {summary && summary.ofDay > 1 && <span className={styles.chip}>{ordinal(summary.ordinal)} of {summary.ofDay} that day</span>}
         </button>
       </h1>

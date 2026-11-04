@@ -12,7 +12,8 @@ test("an empty history says there's not enough data yet, under any filter", asyn
   for (const path of ["/recap", "/recap?filter=ranked"]) {
     await page.goto(path);
     await expect(page.getByText(/^Not enough data yet\./)).toBeVisible();
-    await expect(page.getByRole("heading", { level: 1, name: "Recap" })).toBeVisible();
+    // Hidden: the header tab already shows the page's name.
+    await expect(page.getByRole("heading", { level: 1, name: "Recap" })).toHaveClass("visually-hidden");
     const { violations } = await new AxeBuilder({ page }).analyze();
     expect(violations.map((v) => v.id)).toEqual([]);
   }

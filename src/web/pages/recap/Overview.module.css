@@ -10,12 +10,6 @@
 .retry { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
 .quip { margin: 0 0 var(--s2); font-style: italic; color: var(--ink2); }
 .delta { margin: 0; }
-.up { color: var(--up); }
-.down { color: var(--down); }
-.muted { color: var(--ink2); }
-
-.cardsHead { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s3); margin: var(--s5) 0 var(--s2); font-size: 12px; }
-.h2 { margin: 0; font-size: 16px; }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
 .cards li { display: flex; min-width: 0; }
 .card {
@@ -41,26 +35,19 @@
 .dense .p { display: none; }
 .dense .mvp { width: 12px; height: 12px; top: 6px; right: 6px; }
 
-/* Sections 5–8. */
-.sec { margin: var(--s6) 0 var(--s3); font-size: 16px; }
-.h3 { margin: var(--s5) 0 var(--s3); font-size: 15px; }
 .small { font-size: 12px; }
-.panel { background: var(--surf); border: 1px solid var(--line); border-radius: var(--r); padding: var(--s4); min-width: 0; }
 .bIco { width: 28px; height: 28px; object-fit: contain; }
 
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); margin-top: var(--s6); }
 .grid2 > :only-child { grid-column: 1 / -1; }
-.grid2 .h2 { margin-bottom: var(--s3); }
+/* A cell: its heading, then its panel stretched to the row's height. */
+.cell { display: flex; flex-direction: column; margin: 0; }
+.cell > :global(.panel) { flex: 1; }
 .grid2 p { margin: 0; }
 .stand { display: flex; flex-direction: column; gap: var(--s3); margin: 0; padding: 0; list-style: none; }
 .stand li { display: grid; grid-template-columns: 28px 1fr; gap: var(--s3); align-items: center; }
 .stand b { font-size: 17px; }
 .stand li div div { font-size: 13px; }
-.table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.table th, .table td { padding: 6px var(--s2); text-align: right; border-bottom: 1px solid var(--grid); }
-.table th:first-child { text-align: left; font-weight: 400; }
-.table thead th { font-size: 12px; font-weight: 600; letter-spacing: .06em; color: var(--ink2); }
-.table tbody tr:last-child > * { border-bottom: 0; }
 
 @media (max-width: 720px) {
   .grid2 { grid-template-columns: minmax(0, 1fr); }

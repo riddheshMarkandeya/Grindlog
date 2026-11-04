@@ -16,7 +16,6 @@
 .pick:hover, .pick[aria-expanded=true] { border-color: var(--line); }
 .pick::after { content: "▾"; color: var(--muted); font-size: 11px; }
 .pick b { font-weight: 600; }
-.muted { color: var(--ink2); }
 .chip {
   font-size: 11px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--line);
   color: var(--ink2); white-space: nowrap;

@@ -1,8 +1,7 @@
 /* The match page: the session's match list on the side, then the match. */
 .split { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: var(--s4); margin-top: var(--s4); align-items: start; }
 .detail { display: grid; gap: var(--s4); min-width: 0; }
-.panel { background: var(--surf); border: 1px solid var(--line); border-radius: var(--r); padding: var(--s4); min-width: 0; }
-.sec { margin: var(--s2) 0 var(--s3); font-size: 16px; }
+.goals { margin-top: var(--s2); }
 .h3 { margin: 0 0 var(--s2); font-size: 15px; }
 .meta { display: block; font-size: 12px; font-weight: 400; color: var(--ink2); }
 .ico { width: 14px; height: 14px; margin-left: 4px; vertical-align: -2px; object-fit: contain; }
@@ -39,12 +38,7 @@
 .team { border-left: 3px solid var(--line); }
 .blue { border-left-color: var(--blue); }
 .orange { border-left-color: var(--orange); }
-.table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.table th, .table td { padding: 5px var(--s2); text-align: right; border-bottom: 1px solid var(--grid); }
-.table th:first-child { text-align: left; font-weight: 400; overflow-wrap: anywhere; }
-.table thead th { font-size: 12px; font-weight: 600; letter-spacing: .06em; color: var(--ink2); }
-.table abbr { text-decoration: none; }
-.table tbody tr:last-child > * { border-bottom: 0; }
+.team th:first-child { overflow-wrap: anywhere; }
 .me th:first-child, .me td { font-weight: 700; }
 .links { margin: 0; padding-left: var(--s4); }
 
