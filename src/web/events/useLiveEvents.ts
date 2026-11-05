@@ -1,8 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { dayOf } from "../../shared/periods";
 import { subscribe } from "./client";
-import { staleAfter } from "../logic/invalidation";
+import { staleAfterLive } from "../logic/invalidation";
 import { live } from "./live";
 
 /** Feeds the events stream into the live store and keeps the query cache fresh. */
@@ -26,10 +25,8 @@ export function useLiveEvents(): void {
             break;
           }
           case "match_ended":
-            void queryClient.invalidateQueries({ predicate: staleAfter(message.data.sessionKey, dayOf(Date.now())) });
-            break;
           case "session_break":
-            void queryClient.invalidateQueries({ predicate: staleAfter(null, null) });
+            void queryClient.invalidateQueries({ predicate: staleAfterLive });
             break;
         }
       }),
