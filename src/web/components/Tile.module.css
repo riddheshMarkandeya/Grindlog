@@ -1,6 +1,7 @@
 /* The row weighs nothing, so a page's className on it wins whatever the bundle order. */
 :where(.tiles) { display: flex; justify-content: center; flex-wrap: wrap; gap: var(--s3); margin: var(--s4) 0 0; padding: 0; list-style: none; }
-.tiles li { min-width: 120px; background: var(--surf); border: 1px solid var(--line); border-radius: var(--r); padding: 8px 16px; text-align: center; }
+/* The row stretches every tile to its tallest, so a tile without a ▲/▼ line or note centres its value and label. */
+.tiles li { display: flex; flex-direction: column; justify-content: center; min-width: 120px; background: var(--surf); border: 1px solid var(--line); border-radius: var(--r); padding: 8px 16px; text-align: center; }
 .tiles b {
   display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 30px; line-height: 1.1;
 }
