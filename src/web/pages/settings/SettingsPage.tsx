@@ -163,8 +163,8 @@ function Form({ s }: { s: Settings }) {
           {(save) => <WindowInput id={id("window")} stored={s.rollingWindow} from={s} onSave={(rollingWindow, onFailed) => { save({ rollingWindow }, onFailed); }} />}
         </Row>
       </Section>
-      <Section anchor="remarks" title="Remarks" intro="The mood line and quip under the recap scorebug." reset={{ id: "remarks", s }}>
-        <Row label="Remarks" help="The mood line and quip, on the recap and the share card." labelId={id("remarks")}>
+      <Section anchor="remarks" title="Remarks" reset={{ id: "remarks", s }}>
+        <Row label="Show remarks" help="The mood line and quip, on the recap and the share card." labelId={id("remarks")}>
           {(save) => <Switch labelId={id("remarks")} checked={s.remarks} onToggle={(remarks) => { save({ remarks }); }} />}
         </Row>
         <div className={cx(!s.remarks && styles.off)}>

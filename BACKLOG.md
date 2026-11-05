@@ -68,46 +68,6 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   (`src/web/pages/recap/Matches.tsx`, the `<tfoot>`, and the header comment that mentions it). The
   user doesn't want totals there, as on the Friends page's match-by-match table (user, 2026-10-28,
   Friends prototype review).
-- [ ] **[design, Med, Standard]** Data sense review: values shown twice on one screen, and labels
-  that don't say what's computed. Removing data is a product call, so decide each one with the user.
-  Paths are under `src/web/`. Found in the display-drift audit (2026-11-03). Record:
-  `docs/plans/2026-11-03-display-drift.md`.
-  - Repeats:
-    - Overview "What stood out" re-sorts the per-game cards and shows their numbers again
-      (`pages/recap/Overview.tsx:211`).
-    - Matches heading "Every match · 7 matches · 4–3" repeats the scorebug
-      (`pages/recap/Matches.tsx:33`).
-    - Trends: the period average is on the tile, on the "avg" line and in the legend
-      (`pages/trends/TrendChart.tsx:90`); the chart heading repeats the selected tile's name.
-    - Friends By playlist: the bar repeats the win % beside it (`pages/friends/zones.tsx:98`).
-    - Best/Worst playlist tiles are the top and bottom rows of the list just below
-      (`pages/friends/zones.tsx:115-116`).
-    - Settings › Remarks: the section title, row label and help say the same thing
-      (`pages/settings/SettingsPage.tsx:166-167`).
-    - Seasons: the "current" badge and "still running" say the same thing
-      (`pages/settings/SeasonsSection.tsx:33,43`).
-    - Match page: the result is in the title and on both team headings
-      (`pages/recap/MatchView.tsx:92,161`).
-  - Labels:
-    - "Ended on W3" is unclear (`logic/recap.ts:33`).
-    - "Best streak" counts win streaks only (`pages/trends/PeriodHeader.tsx:62`).
-    - Bare "Shooting" for goals/shots (`logic/recap.ts:35`).
-    - Delta units: "12%" is relative and "12 pts" absolute, both with ▲; the 30-day comparison has
-      four phrasings (`pages/recap/Overview.tsx` `VsText`, `Headline`; the tiles' `avg …`).
-    - Friends landing: "Together" is a section heading and a record label
-      (`pages/friends/FriendsPage.tsx:162,215`).
-    - Compare "Without" includes matches with the friend as an opponent, said only in the
-      footnote, and the friends' Win % cells are always "–" (`pages/friends/zones.tsx:239`).
-    - Recap: three different "aerial" counts on one page (`components/GoalMap.tsx:125`,
-      `logic/recap.ts:141`, the highlights' aerial goals) and two "long" goal rules.
-    - Compare Diff for Score shows two decimals ("+25.08") beside the whole Score values in the same
-      row (`logic/friends.ts:112`, `decimal()` when `points` is false).
-  - Small samples: win % and deltas show with no match count; a previous period of one match still
-    gives "▲ 40 pts" (`logic/trends.ts:258`); a playlist row of one match shows 100%.
-  - Charts: the sparkline's min–max scale makes 50→51% fill the tile (`logic/trends.ts:272`); the
-    y-axis isn't at zero and its ticks aren't round; the two stacked Trends charts have different
-    left padding, so a day sits at a different x in each (`logic/trend-chart.ts:131,207`); the
-    "⚑ left early" note shows on metrics other than win % (`pages/trends/PeriodHeader.tsx:67`).
 - [ ] **[design, Low, Standard]** Controls drift: about six button styles, two segmented controls
   (Trends `.xmode` buttons, Settings `.seg` radios, plus Friends' own `.seg`), two `.link` rules,
   and Trends `.picks button` against the match page's `.chip`. One shared set, as the display-drift
@@ -128,6 +88,14 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   overrides them on `<html>`, plus a check that each pair stays readable on every theme. Unblocked
   (2026-11-04): each token now has one meaning, written at the top of `tokens.css`, and
   `--up`/`--down` are mixed from `--win`/`--loss`, so overriding the result pair moves both.
+- [ ] **[idea, Low, TBD]** Playful UI touches: the flat peeling corner (variant L on the
+  `prototype/recap-stood-out` branch, never merge) was liked as a stood-out mark (user, 2026-11-04).
+  Look at where flat-but-fun details fit the dashboard. Trigger: a UI polish pass.
+- [ ] **[bug, Low, Standard]** A nav click while `/recap` is still loading the latest session is
+  undone: `RecapIndex`'s `<Navigate>` to that session fires after the click and replaces `/friends`
+  (seen in the Friends landing e2e, 2026-11-04, about 1 run in 6; the trace shows the click at
+  `/recap`). The e2e now waits for the recap first. Fix: redirect only while the location is
+  still `/recap`, with a red e2e that clicks a tab as `/api/sessions/latest` resolves.
 
 ## Watch list
 - [ ] **[a11y, Low, Standard]** Trigger: a report that a Settings section link, below 768px,

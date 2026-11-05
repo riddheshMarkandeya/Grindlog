@@ -6,7 +6,9 @@ import type { PeriodView } from "../../shared/schemas/responses";
 import type { BucketKind } from "../../shared/trends";
 import { dayLabel, monthLabel, plural, shortDayLabel, shortMonthLabel } from "./format";
 import { recapPath } from "./recap";
-import { metricValue, patchTrends, polyline, rawValue, trendsPath, type MetricId, type TrendsState, type XAsk, type XMode } from "./trends";
+import { FEW, metricValue, patchTrends, polyline, rawValue, trendsPath, type MetricId, type TrendsState, type XAsk, type XMode } from "./trends";
+
+export { FEW };
 
 type ViewBucket = PeriodView["buckets"][number];
 interface Box {
@@ -67,9 +69,6 @@ export interface LinePoint {
   short: string;
 }
 
-/** Under this many matches a bucket's dot is hollow: its value swings on one game. */
-export const FEW = 3;
-
 export function linePoints(mode: XMode, metric: MetricId, view: Pick<PeriodView, "bucket" | "buckets" | "rolling">, window: number, locale?: string): LinePoint[] {
   if (mode === "match") {
     return view.rolling.map((r) => {
@@ -111,11 +110,32 @@ export interface LineGeometry {
 
 export const LINE_PAD = { l: 44, r: 10, t: 12, b: 22 };
 
+/** The smallest 1, 2 or 5 × 10ⁿ step that covers lo–hi (hi > lo) in at most 5 ticks, snapped out to it. */
+function roundTicks(lo: number, hi: number): number[] {
+  let k = 10 ** Math.floor(Math.log10((hi - lo) / 10));
+  for (;;) {
+    for (const m of [1, 2, 5]) {
+      const step = m * k;
+      const a = Math.floor(lo / step);
+      const b = Math.ceil(hi / step);
+      // Multiples of the step, rounded, so 3 × 0.1 labels as 0.3.
+      if (b - a <= 4) return Array.from({ length: b - a + 1 }, (_, i) => Number(((a + i) * step).toPrecision(12)));
+    }
+    k *= 10;
+  }
+}
+
 /**
- * Fitted to the points and the average, padded by 15% and never below 0 (a rate never above 100%).
- * Null when no point has a value.
+ * Fitted to the points and the average, padded by 15% and never below 0 (a rate never above 100%),
+ * then out to round y ticks. `centred` puts each point at its bucket's centre, where the W/L chart's
+ * bar is (By date); otherwise the points run end to end. Null when no point has a value.
  */
-export function lineGeometry(points: readonly LinePoint[], avg: number | null, { width, height }: Box, { fmt, rate }: { fmt: (v: number) => string; rate: boolean }): LineGeometry | null {
+export function lineGeometry(
+  points: readonly LinePoint[],
+  avg: number | null,
+  { width, height }: Box,
+  { fmt, rate, centred = false }: { fmt: (v: number) => string; rate: boolean; centred?: boolean },
+): LineGeometry | null {
   const have = points.flatMap((p) => (p.value === null ? [] : [p.value]));
   if (!have.length) return null;
   // A loop, not Math.min(...xs): By match on All time can pass more values than a call takes.
@@ -125,31 +145,37 @@ export function lineGeometry(points: readonly LinePoint[], avg: number | null, {
     a = Math.min(a, v);
     b = Math.max(b, v);
   }
+  // A flat series gets a span from its own size, so the padding below never collapses to nothing.
   const span = b - a || Math.abs(b) || 1;
-  const lo = Math.max(0, a - span * 0.15);
-  const hi = rate ? Math.min(1, b + span * 0.15) : b + span * 0.15;
+  // A rate stops at 100%, unless a value passes it (more goals than shots): never below the top
+  // value, or the range would turn over.
+  const ticks = roundTicks(Math.max(0, a - span * 0.15), rate ? Math.min(Math.max(1, b), b + span * 0.15) : b + span * 0.15);
+  const lo = ticks[0] ?? 0;
+  const hi = ticks.at(-1) ?? 1;
   const plot = { left: LINE_PAD.l, right: width - LINE_PAD.r, top: LINE_PAD.t, bottom: height - LINE_PAD.b };
   const iw = plot.right - plot.left;
   const ih = plot.bottom - plot.top;
   const n = points.length;
-  const x = (i: number) => plot.left + (n < 2 ? iw / 2 : (i * iw) / (n - 1));
+  const x = (i: number) => plot.left + (centred ? ((i + 0.5) * iw) / n : n < 2 ? iw / 2 : (i * iw) / (n - 1));
   const y = (v: number) => plot.bottom - ((v - lo) / (hi - lo)) * ih;
 
   const at = points.flatMap((p, i) => (p.value === null ? [] : [{ x: x(i), y: y(p.value), hollow: p.hollow }]));
   const count = Math.max(1, Math.min(n, Math.floor(iw / MIN_COLUMN)));
-  // Points spread end to end, so the first and last always have one; each column runs halfway to
-  // its neighbours' points, so it holds the area nearest its own.
+  // The first and last points always have a column; each column runs halfway to its neighbours'
+  // points, so it holds the area nearest its own, and the outer two reach the plot's edges.
   const picked = Array.from({ length: count }, (_, c) => (count < 2 ? 0 : Math.round((c * (n - 1)) / (count - 1))));
   const edge = (c: number) => (c <= 0 ? plot.left : c >= count ? plot.left + iw : (x(picked[c - 1] ?? 0) + x(picked[c] ?? 0)) / 2);
   const columns = picked.map((i, c) => ({ x: edge(c), w: edge(c + 1) - edge(c), i }));
   const labelAt = [...new Set([0, Math.floor((n - 1) / 2), n - 1])];
+  // The ends sit at the plot's edges, as the W/L chart's do, whichever way the points are spread.
+  const labelX = (i: number, j: number) => (labelAt.length < 2 ? x(i) : j === 0 ? plot.left : j === labelAt.length - 1 ? plot.right : x(i));
   return {
-    yTicks: [lo, (lo + hi) / 2, hi].map((v) => ({ y: y(v), label: fmt(v) })),
+    yTicks: ticks.map((v) => ({ y: y(v), label: fmt(v) })),
     path: polyline(at),
     dots: n <= MAX_DOTS ? at : [],
     avgY: avg === null ? null : y(avg),
     xLabels: labelAt.map((i, j) => ({
-      x: x(i),
+      x: labelX(i, j),
       text: points[i]?.short ?? "",
       anchor: labelAt.length < 2 ? "middle" : j === 0 ? "start" : j === labelAt.length - 1 ? "end" : "middle",
     })),
@@ -180,7 +206,8 @@ export interface Bar {
   d: string;
 }
 
-export const WL_PAD = { l: 22, r: 6, t: 6, b: 20 };
+/** Its sides match the line chart's, so the two stacked charts share an x scale By date. */
+export const WL_PAD = { l: LINE_PAD.l, r: LINE_PAD.r, t: 6, b: 20 };
 const MAX_BAR = 24;
 const BAR_GAP = 2;
 const BAR_ROUND = 4;

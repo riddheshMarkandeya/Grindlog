@@ -53,7 +53,7 @@ describe("formLine", () => {
 describe("shareCard tiles", () => {
   test("seven fixed tiles in order, shots with its scored share", () => {
     expect(tiles(input())).toEqual([
-      ["Best streak", "W3", null],
+      ["Best win streak", "3", null],
       ["Goals", "4", null],
       ["Assists", "1", null],
       ["Saves", "3", null],
@@ -63,9 +63,9 @@ describe("shareCard tiles", () => {
     ]);
   });
 
-  test("a winless night is W0; no shooting share leaves the shots tile bare", () => {
+  test("a winless night's best win streak is 0; no shooting share leaves the shots tile bare", () => {
     const t = tiles(input({ aggregate: { bestWinStreak: 0, shootingPct: null } }));
-    expect(t[0]).toEqual(["Best streak", "W0", null]);
+    expect(t[0]).toEqual(["Best win streak", "0", null]);
     expect(t[4]).toEqual(["Shots", "10", null]);
   });
 
@@ -79,7 +79,7 @@ describe("shareCard tiles", () => {
   test("the 8th tile is the first of aerial goals, crossbar hits, aerial touches, epic saves that happened", () => {
     const eighth = (a: Partial<AggregateWire>) => tiles(input({ aggregate: a }))[7] ?? null;
     const all = { statfeed: { AerialGoal: 2, EpicSave: 1 }, woodworkHits: 3, aerialTouches: 9 };
-    expect(eighth(all)).toEqual(["Aerial goals", "2", null]);
+    expect(eighth(all)).toEqual(["Aerial goal awards", "2", null]);
     expect(eighth({ ...all, statfeed: { EpicSave: 1 } })).toEqual(["Crossbar hits", "3", null]);
     expect(eighth({ ...all, statfeed: { AerialGoal: 0, EpicSave: 1 }, woodworkHits: 0 })).toEqual(["Aerial touches", "9", null]);
     expect(eighth({ ...all, statfeed: { EpicSave: 1 }, woodworkHits: null, aerialTouches: null })).toEqual(["Epic saves", "1", null]);

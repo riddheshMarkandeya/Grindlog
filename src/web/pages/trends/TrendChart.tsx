@@ -59,7 +59,7 @@ export function TrendChart({ view, size, metric, chart, seasons, onX }: { view: 
   // Kept across resizes: only the geometry follows the width, and By match can hold thousands of points.
   const points = useMemo(() => linePoints(mode, metric, view, size), [mode, metric, view, size]);
   const height = heightFor(width);
-  const g = width > 0 ? lineGeometry(points, avg, { width, height }, { fmt: (v) => formatMetric(metric, v), rate: isRate(metric) }) : null;
+  const g = width > 0 ? lineGeometry(points, avg, { width, height }, { fmt: (v) => formatMetric(metric, v), rate: isRate(metric), centred: mode === "date" }) : null;
   const marks = g && mode === "date" ? seasonMarks(view.buckets, seasons).map((m) => ({ x: g.xOf(m.i), name: m.name })) : [];
 
   return (

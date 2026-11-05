@@ -225,7 +225,7 @@ function Compare({ compare, mode, friends, copy }: { compare: CompareView; mode:
   const { with: w, without: wo } = compare;
   const diff = (a: number | undefined, b: number | undefined, points = false) => {
     if (a === undefined || b === undefined) return <td className="muted">–</td>;
-    const { text, dir } = diffText(a - b, points);
+    const { text, dir } = diffText(a, b, points);
     return <td className={dir > 0 ? "up" : dir < 0 ? "down" : "muted"}>{text}</td>;
   };
   const winOf = (p: number | null | undefined) => (p === null || p === undefined ? undefined : pct(p));
@@ -241,7 +241,7 @@ function Compare({ compare, mode, friends, copy }: { compare: CompareView; mode:
             <tr>
               <th scope="col">Per match</th>
               <th scope="col">{copy.withColumn}</th>
-              <th scope="col">Without</th>
+              <th scope="col">Other matches</th>
               <th scope="col">Diff</th>
               {friends.map((f, i) => <th key={f.id} scope="col" className={sep(i)}><Cap name={f.name} /></th>)}
             </tr>
@@ -252,7 +252,8 @@ function Compare({ compare, mode, friends, copy }: { compare: CompareView; mode:
               <td>{ww === undefined ? "–" : `${String(ww)}%`}</td>
               <td className="muted">{wow === undefined ? "–" : `${String(wow)}%`}</td>
               {diff(ww, wow, true)}
-              {friends.map((f, i) => <td key={f.id} className={cx(sep(i), "muted")}>–</td>)}
+              {/* Empty, not "–": a friend's win % is the same as yours together, so there's nothing to add. */}
+              {friends.map((f, i) => <td key={f.id} className={sep(i)} />)}
             </tr>
             {STATS.map(([k, label]) => (
               <tr key={k}>

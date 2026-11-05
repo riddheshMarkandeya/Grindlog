@@ -115,9 +115,22 @@ describe("the line chart's geometry", () => {
 
   test("a rate never runs past 100%; a flat series still gets a span", () => {
     const g = lineGeometry([pt(1), pt(1)], 1, box, { fmt, rate: true });
-    expect(g?.yTicks.map((t) => t.label)).toEqual(["0.85", "0.93", "1.00"]);
+    expect(g?.yTicks.map((t) => t.label)).toEqual(["0.85", "0.90", "0.95", "1.00"]);
     const flat = lineGeometry([pt(0), pt(0)], 0, box, { fmt, rate: false });
-    expect(new Set(flat?.yTicks.map((t) => t.y)).size).toBe(3);
+    expect(flat?.yTicks.map((t) => t.label)).toEqual(["0.00", "0.05", "0.10", "0.15"]);
+  });
+
+  test("a rate past 100% (more goals than shots) raises the ceiling to its value", () => {
+    const g = lineGeometry([pt(1.5)], 1.5, box, { fmt, rate: true });
+    expect(g?.yTicks.map((t) => t.label)).toEqual(["1.20", "1.30", "1.40", "1.50"]);
+  });
+
+  test("y ticks fall on round steps (1, 2 or 5 × 10ⁿ), 3 to 5 of them, past the padded data", () => {
+    const ticks = (values: number[], avg: number, rate: boolean) => lineGeometry(values.map((v) => pt(v)), avg, box, { fmt, rate })?.yTicks.map((t) => t.label);
+    expect(ticks([0.48, 0.62], 0.55, true)).toEqual(["0.45", "0.50", "0.55", "0.60", "0.65"]);
+    expect(ticks([0.2, 0.3], 0.9, false)).toEqual(["0.00", "0.50", "1.00", "1.50"]);
+    expect(ticks([0.9, 1], 0.95, true)).toEqual(["0.85", "0.90", "0.95", "1.00"]);
+    expect(ticks([312, 455], 380, false)).toEqual(["200.00", "300.00", "400.00", "500.00"]);
   });
 
   test("a single point is centred", () => {
@@ -163,13 +176,33 @@ describe("the line chart's geometry", () => {
     expect(g?.xOf(1)).toBe(midX);
   });
 
-  test("x labels: first, middle and last", () => {
+  test("x labels: first, middle and last; the ends at the plot's edges, as the W/L chart's", () => {
     const pts = ["a", "b", "c", "d", "e"].map((short) => ({ ...pt(1), short }));
-    expect(lineGeometry(pts, 1, box, { fmt, rate: false })?.xLabels.map((l) => [l.text, l.anchor])).toEqual([
-      ["a", "start"],
-      ["c", "middle"],
-      ["e", "end"],
-    ]);
+    for (const centred of [false, true]) {
+      const g = lineGeometry(pts, 1, box, { fmt, rate: false, centred });
+      expect(g?.xLabels.map((l) => [l.text, l.anchor])).toEqual([
+        ["a", "start"],
+        ["c", "middle"],
+        ["e", "end"],
+      ]);
+      expect([g?.xLabels[0]?.x, g?.xLabels[2]?.x]).toEqual([LINE_PAD.l, box.width - LINE_PAD.r]);
+    }
+  });
+
+  test("By date, each point sits at its bucket's centre, where the W/L chart's bar is", () => {
+    const bs = days("2026-10-01", [1, 2, 0, 3]);
+    const pts = bs.map(() => pt(1));
+    const line = lineGeometry(pts, 1, box, { fmt, rate: false, centred: true });
+    const wl = wlGeometry(bs, box);
+    expect(wl.plot.left).toBe(line?.plot.left);
+    expect(wl.plot.right).toBe(line?.plot.right);
+    bs.forEach((_, i) => {
+      const c = wl.columns[i];
+      expect(line?.xOf(i)).toBeCloseTo((c?.x ?? 0) + (c?.w ?? 0) / 2);
+    });
+    // By match the points still run end to end.
+    const ends = lineGeometry(pts, 1, box, { fmt, rate: false, centred: false });
+    expect([ends?.xOf(0), ends?.xOf(3)]).toEqual([LINE_PAD.l, box.width - LINE_PAD.r]);
   });
 });
 

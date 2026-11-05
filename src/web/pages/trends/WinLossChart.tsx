@@ -51,7 +51,7 @@ export function WinLossChart({ view, state, seasons }: { view: PeriodView; state
               <text className={styles.axis} x={4} y={g.plot.top + 12} aria-hidden="true">W</text>
               <text className={styles.axis} x={4} y={g.plot.bottom - 2} aria-hidden="true">L</text>
               {seasonMarks(view.buckets, seasons).map((m) => {
-                // At the bucket's centre, which the big chart's point also stands for (its x scale differs).
+                // At the bucket's centre, where the big chart's By date point and mark are too.
                 const c = g.columns[m.i];
                 const x = c ? c.x + c.w / 2 : g.plot.left;
                 return (

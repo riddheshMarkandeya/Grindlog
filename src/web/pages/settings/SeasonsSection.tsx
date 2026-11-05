@@ -30,7 +30,7 @@ const editOf = (id: number) => `[data-edit="${String(id)}"]`;
 
 function span(row: SeasonRow, last: boolean): string {
   if (!last) return `${dateLabel(row.startDate)} – ${dateLabel(row.end ?? row.startDate)}`;
-  return row.state === "upcoming" ? `Starts ${dateLabel(row.startDate)}` : `From ${dateLabel(row.startDate)}, still running`;
+  return row.state === "upcoming" ? `Starts ${dateLabel(row.startDate)}` : `From ${dateLabel(row.startDate)}`;
 }
 
 function SeasonView({ row, last, locked, saved, failed, onEdit, onDelete }: { row: SeasonRow; last: boolean; locked: boolean; saved: number | null; failed: boolean; onEdit: () => void; onDelete: () => void }) {

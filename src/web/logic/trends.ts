@@ -254,10 +254,17 @@ export interface Delta {
   text: string;
 }
 
-/** The change against the previous period: rates in points (≈ under 1), per game in percent (≈ under 3%). */
+/** Under this many matches a value swings on one game: no ▲/▼ from it, and its chart dot is hollow. */
+export const FEW = 3;
+
+/**
+ * The change against the previous period: rates in points (≈ under 1), per game in percent (≈ under
+ * 3%). None when either period has under FEW matches.
+ */
 export function metricDelta(id: MetricId, cur: TrendStats, prev: TrendStats | null): Delta | null {
+  if (cur.matches < FEW || prev === null || prev.matches < FEW) return null;
   const a = rawValue(id, cur);
-  const b = prev === null || prev.matches === 0 ? null : rawValue(id, prev);
+  const b = rawValue(id, prev);
   if (a === null || b === null) return null;
   if (isRate(id)) {
     const points = pct(a) - pct(b);
@@ -268,13 +275,24 @@ export function metricDelta(id: MetricId, cur: TrendStats, prev: TrendStats | nu
   return vs.dir === "same" ? { dir: "same", text: "≈" } : { dir: vs.dir, text: `${String(Math.abs(vs.pct))}%` };
 }
 
-/** A 100×24 sparkline over the buckets; an empty bucket is skipped, never plotted as 0. Null under 2 points. */
+/** The least a sparkline's scale spans: 20 pts for a rate, and per game a share of the mean (±20%). */
+const SPARK_MIN_RATE = 0.2;
+const SPARK_MIN_SHARE = 0.4;
+
+/**
+ * A 100×24 sparkline over the buckets; an empty bucket is skipped, never plotted as 0. Null under 2
+ * points. The scale has a minimum span, centred on the data, so a small wobble draws small.
+ */
 export function sparkPath(id: MetricId, buckets: readonly TrendStats[]): string | null {
   const values = buckets.map((b) => (b.matches > 0 ? rawValue(id, b) : null));
   const have = values.filter((v): v is number => v !== null);
   if (have.length < 2) return null;
-  const lo = Math.min(...have);
-  const span = Math.max(...have) - lo || 1;
+  const min = Math.min(...have);
+  const max = Math.max(...have);
+  const least = isRate(id) ? SPARK_MIN_RATE : (SPARK_MIN_SHARE * have.reduce((t, v) => t + v, 0)) / have.length;
+  // All-zero per-game data has no span at all: any non-zero one keeps the division safe.
+  const span = Math.max(max - min, least) || 1;
+  const lo = (min + max) / 2 - span / 2;
   const step = 100 / Math.max(1, values.length - 1);
   return polyline(values.flatMap((v, i) => (v === null ? [] : [{ x: i * step, y: 22 - ((v - lo) / span) * 20 }])));
 }

@@ -155,7 +155,8 @@ function Scoreboard({ guid }: { guid: string }) {
 }
 
 function Team({ team, winner }: { team: ScoreTeam; winner: number | null }) {
-  const outcome = team.teamNum === null || winner === null ? "" : team.teamNum === winner ? " · won" : " · lost";
+  // Only the winner says so: a heading per team that both say it reads as noise.
+  const outcome = team.teamNum !== null && team.teamNum === winner ? " · won" : "";
   return (
     <div className={cx("panel", styles.team, TEAM_TONE[team.side])}>
       <h3 className={styles.h3}>{TEAM_LABEL[team.side]}{outcome}</h3>

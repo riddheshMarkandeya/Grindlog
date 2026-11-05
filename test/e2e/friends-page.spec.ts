@@ -42,6 +42,8 @@ test.afterEach(({ consoleErrors }) => {
 
 test("the landing: a card per friend with both records, a row per suggestion", async ({ page }) => {
   await page.goto("/");
+  // A click before the start page's redirect to the latest session lands is undone by it.
+  await expect(h1(page)).toHaveText(/^Recap: /);
   await page.getByRole("link", { name: "Friends", exact: true }).click();
   await expect(h1(page)).toHaveText("Friends");
   await expect(h1(page)).toHaveClass("visually-hidden");
@@ -53,7 +55,7 @@ test("the landing: a card per friend with both records, a row per suggestion", a
   await expect(page.getByRole("link", { name: /^Opal/ })).toContainText("none yet");
   await expect(page.getByRole("heading", { name: "Your friends" })).toBeVisible();
   await expect(suggested(page)).toHaveText([/^Kim\s*3 matches · 2 sessions/, /^Lee\s*3 matches/, /^Max\s*3 matches/]);
-  await expect(page.getByRole("heading", { name: "Together" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Pairs" })).toHaveCount(0);
 });
 
 test("add moves focus to the next suggestion, the one before after the last; never suggest, then suggest again", async ({ page }) => {
@@ -164,6 +166,7 @@ test("a pair: the Together card, both zones, the four-way carry and the links to
   await pairUp(request);
   await page.goto("/friends");
   await expect(page.getByText(/^Two friends both on your team/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Pairs", exact: true })).toBeVisible();
   await page.getByRole("link", { name: /^Kim\s*\+ Lee/ }).click();
   await expect(page).toHaveURL(new RegExp(`${PAIR}$`));
   await expect(h1(page)).toHaveText("Kim + Lee");
@@ -176,7 +179,7 @@ test("a pair: the Together card, both zones, the four-way carry and the links to
   await expect(zone.getByRole("list", { name: "Bar colours" }).getByRole("listitem")).toHaveText(["You", "Kim", "Lee", "4th teammate"]);
   const bars = zone.getByRole("img", { name: /^\w+: you \d+%/ });
   await expect(bars.first()).toHaveAttribute("aria-label", /^Score: you \d+%, Kim \d+%, Lee \d+%, 4th teammate \d+%$/);
-  await expect(zone.getByRole("columnheader")).toHaveText(["Per match", "With both", "Without", "Diff", "Kim", "Lee"]);
+  await expect(zone.getByRole("columnheader")).toHaveText(["Per match", "With both", "Other matches", "Diff", "Kim", "Lee"]);
   // The share bars and the comparison are two panels with a gap between them, not one merged box.
   const panels = zone.getByRole("region", { name: /^Who carries · / }).locator(".panel");
   const [first, second] = [await panels.nth(0).boundingBox(), await panels.nth(1).boundingBox()];

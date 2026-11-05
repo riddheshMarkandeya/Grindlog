@@ -132,12 +132,19 @@ describe("overtime and compare text", () => {
   });
 
   test("a difference takes its sign and direction from the text it prints", () => {
-    expect(diffText(0.001)).toEqual({ text: "0", dir: 0 });
-    expect(diffText(-0.004)).toEqual({ text: "0", dir: 0 });
-    expect(diffText(0)).toEqual({ text: "0", dir: 0 });
-    expect(diffText(1.256)).toEqual({ text: "+1.26", dir: 1 });
-    expect(diffText(-0.5)).toEqual({ text: "−0.5", dir: -1 });
-    expect(diffText(1234)).toEqual({ text: "+1,234", dir: 1 });
-    expect(diffText(-7, true)).toEqual({ text: "−7", dir: -1 });
+    expect(diffText(1.001, 1)).toEqual({ text: "0", dir: 0 });
+    expect(diffText(1, 1.004)).toEqual({ text: "0", dir: 0 });
+    expect(diffText(2, 2)).toEqual({ text: "0", dir: 0 });
+    expect(diffText(2.256, 1)).toEqual({ text: "+1.26", dir: 1 });
+    expect(diffText(1, 1.5)).toEqual({ text: "−0.5", dir: -1 });
+    expect(diffText(1500, 266)).toEqual({ text: "+1,234", dir: 1 });
+    expect(diffText(45, 52, true)).toEqual({ text: "−7", dir: -1 });
+  });
+
+  test("a difference is whole when either value is shown whole (100 or more), as its row is", () => {
+    expect(diffText(512.4, 487.6)).toEqual({ text: "+25", dir: 1 });
+    expect(diffText(99.5, 100.2)).toEqual({ text: "−1", dir: -1 });
+    expect(diffText(100.2, 100)).toEqual({ text: "0", dir: 0 });
+    expect(diffText(99.5, 98.25)).toEqual({ text: "+1.25", dir: 1 });
   });
 });

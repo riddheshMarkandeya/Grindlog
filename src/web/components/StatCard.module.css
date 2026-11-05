@@ -2,7 +2,7 @@
 .stretch { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
 .item { display: flex; min-width: 0; }
 .card {
-  display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; padding: var(--s3) var(--s4);
+  position: relative; display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; padding: var(--s3) var(--s4);
   background: var(--surf); border: 1px solid var(--line); border-radius: var(--r); color: inherit; text-align: left;
 }
 button.card { cursor: pointer; transition: border-color .12s; }

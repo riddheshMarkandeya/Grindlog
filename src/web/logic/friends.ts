@@ -3,7 +3,7 @@
 // friend's page and a pair's.
 import type { FriendDetail } from "../../shared/schemas/responses";
 import { sum } from "../../shared/aggregate";
-import { decimal, whole } from "./format";
+import { decimal, WHOLE_FROM, whole } from "./format";
 import { pct } from "./recap";
 
 export type Mode = NonNullable<FriendDetail["view"]["with"]["defaultMode"]>;
@@ -107,11 +107,13 @@ export const decided = ({ w, l }: { w: number; l: number }): number => w + l;
 export const overtimeNote = (ot: { w: number; l: number }): string => `${winPctText(ot)} of ${whole(decided(ot))}`;
 
 /**
- * A with-minus-without difference: whole points for win %, decimal()'s steps for a stat. The sign and
- * direction come from the rounded text, so a tiny difference reads a muted "0", never a green "+0".
+ * A with-minus-without difference: whole points for win %; for a stat, whole when either side is
+ * (decimal() shows 100 and up whole), else decimal()'s steps. The sign and direction come from the
+ * rounded text, so a tiny difference reads a muted "0", never a green "+0".
  */
-export function diffText(d: number, points = false): { text: string; dir: -1 | 0 | 1 } {
-  const text = points ? whole(Math.abs(d)) : decimal(Math.abs(d));
+export function diffText(a: number, b: number, points = false): { text: string; dir: -1 | 0 | 1 } {
+  const d = a - b;
+  const text = points || a >= WHOLE_FROM || b >= WHOLE_FROM ? whole(Math.abs(d)) : decimal(Math.abs(d));
   if (text === "0") return { text, dir: 0 };
   return d > 0 ? { text: `+${text}`, dir: 1 } : { text: `−${text}`, dir: -1 };
 }

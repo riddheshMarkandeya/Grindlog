@@ -173,11 +173,29 @@ describe("tiles", () => {
     expect(metricDelta("win", stats({ matches: 0, winPct: null }), stats({}))).toBeNull();
   });
 
+  test("no delta when either period has under 3 matches: one game swings it", () => {
+    expect(metricDelta("win", stats({ matches: 2, winPct: 1 }), stats({}))).toBeNull();
+    expect(metricDelta("goals", stats({}), stats({ matches: 2 }))).toBeNull();
+    expect(metricDelta("win", stats({ matches: 3, winPct: 0.67 }), stats({ matches: 3 }))).toEqual({ dir: "up", text: "7 pts" });
+  });
+
   test("the sparkline skips empty buckets rather than plotting 0", () => {
     const empty = stats({ matches: 0, winPct: null });
     expect(sparkPath("win", [stats({ winPct: 0.5 }), empty, stats({ winPct: 1 })])).toBe("M0.0 22.0L100.0 2.0");
     expect(sparkPath("win", [stats({}), empty])).toBeNull();
-    expect(sparkPath("win", [stats({ winPct: 0.5 }), stats({ winPct: 0.5 })])).toBe("M0.0 22.0L100.0 22.0");
+  });
+
+  test("the sparkline's scale spans at least 20 pts for a rate, ±20% of the mean per game, centred", () => {
+    expect(sparkPath("win", [stats({ winPct: 0.5 }), stats({ winPct: 0.55 })])).toBe("M0.0 14.5L100.0 9.5");
+    expect(sparkPath("goals", [stats({ perGame: { goals: 1 } }), stats({ perGame: { goals: 1.1 } })])).toBe("M0.0 14.4L100.0 9.6");
+    // Wider than the minimum: fitted to the data, as before.
+    expect(sparkPath("goals", [stats({ perGame: { goals: 1 } }), stats({ perGame: { goals: 2 } })])).toBe("M0.0 22.0L100.0 2.0");
+  });
+
+  test("a flat sparkline sits in the middle, all-zero too", () => {
+    expect(sparkPath("win", [stats({ winPct: 0.5 }), stats({ winPct: 0.5 })])).toBe("M0.0 12.0L100.0 12.0");
+    expect(sparkPath("goals", [stats({ perGame: { goals: 0 } }), stats({ perGame: { goals: 0 } })])).toBe("M0.0 12.0L100.0 12.0");
+    expect(sparkPath("goals", [stats({ perGame: { goals: 1.5 } }), stats({ perGame: { goals: 1.5 } })])).toBe("M0.0 12.0L100.0 12.0");
   });
 });
 

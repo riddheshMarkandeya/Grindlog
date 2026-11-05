@@ -1,10 +1,10 @@
 // The period's title line (title with ‹ ›, its days, "still running", what it's compared with) and
-// its stats line (W–L, matches, sessions, best streak, MVPs, the ⚑ left-early note).
+// its stats line (W–L, matches, sessions, best win streak, MVPs, the ⚑ left-early note).
 import type { RefObject } from "react";
 import type { PeriodRange, PeriodSpec, Season } from "../../../shared/periods";
 import type { PeriodView } from "../../../shared/schemas/responses";
 import mvpIcon from "../../assets/icons/MVP.png";
-import { plural } from "../../logic/format";
+import { plural, whole } from "../../logic/format";
 import { comparedText, periodTitle, rangeText, showsRunning, stepTarget } from "../../logic/trends";
 import { cx } from "../../components/cx";
 import styles from "./Trends.module.css";
@@ -59,13 +59,11 @@ export function StatsLine({ view }: { view: PeriodView }) {
         <span className={styles.win}>{a.wins ?? 0}W</span> – <span className={styles.loss}>{a.losses ?? 0}L</span>
       </span>
       <span className="muted">
-        {plural(a.matches, "match", "matches")} · {plural(view.sessions, "session")} · best streak W{a.bestWinStreak ?? 0} ·{" "}
+        {plural(a.matches, "match", "matches")} · {plural(view.sessions, "session")} · best win streak {a.bestWinStreak ?? 0} ·{" "}
         <img className={styles.ico} src={mvpIcon} alt="MVPs" /> ×{a.mvps ?? 0}
       </span>
       {left > 0 && (
-        <span className={styles.flag} title="Leaving a match counts as a loss, so these pull win % down">
-          ⚑ includes {plural(left, "match", "matches")} you left early
-        </span>
+        <span className={styles.flag}>⚑ {whole(left)} left early, counted as {left === 1 ? "a loss" : "losses"}</span>
       )}
     </div>
   );

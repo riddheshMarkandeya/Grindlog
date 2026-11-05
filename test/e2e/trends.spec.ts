@@ -51,7 +51,7 @@ test("every quick pick shows its title line, pressed, then its stats or the empt
 
 test("the current month's strip cell, then ‹, reaches last month with its stats and the ⚑ note", async ({ page }) => {
   await lastMonth(page);
-  await expect(page.getByText(/^⚑ includes 1 match you left early/)).toBeVisible();
+  await expect(page.getByText("⚑ 1 left early, counted as a loss", { exact: true })).toBeVisible();
   await expect(page.getByText(/\d+ matches · \d+ sessions/)).toBeVisible();
   await expect(tiles(page)).toBeVisible();
   // The month pressed on the strip follows the period.
@@ -86,6 +86,18 @@ test("last month opens By match with the auto note; By date sticks until a quick
   await expect(page.getByText(/^Only 2 days/)).toHaveCount(0);
   await page.getByRole("group", { name: "Quick periods" }).getByRole("button", { name: "Last 30 days" }).click();
   await expect(page).not.toHaveURL(/x=/);
+});
+
+test("By date a day's point sits over its W/L bar, and the W/L chart doesn't move between modes", async ({ page }) => {
+  await lastMonth(page);
+  const column = page.getByRole("link", { name: /Open its recap\.$/ }).first();
+  const byMatch = await column.boundingBox();
+  await page.getByRole("group", { name: "X axis" }).getByRole("button", { name: "By date" }).click();
+  await expect(page).toHaveURL(/x=date/);
+  const [bar, dot] = [await column.boundingBox(), await page.locator("svg[role=img] circle").first().boundingBox()];
+  // Sideways only: By match's auto note above the charts goes, so they move up.
+  expect([bar?.x, bar?.width]).toEqual([byMatch?.x, byMatch?.width]);
+  expect((dot?.x ?? NaN) + (dot?.width ?? NaN) / 2).toBeCloseTo((bar?.x ?? NaN) + (bar?.width ?? NaN) / 2, 0);
 });
 
 test("a day's W/L column opens that day's first session's recap under the filter", async ({ page }) => {

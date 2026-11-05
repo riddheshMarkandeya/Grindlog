@@ -64,7 +64,7 @@ test("each setting saves, says so, and survives a reload", async ({ page }) => {
   await expect(page.getByLabel("Trends playlist")).toHaveValue("everything");
   await expect(window).toHaveValue("35");
   await expect(page.getByRole("switch", { name: "Mood line" })).not.toBeChecked();
-  await expect(page.getByRole("switch", { name: "Remarks" })).toBeChecked();
+  await expect(page.getByRole("switch", { name: "Show remarks" })).toBeChecked();
 });
 
 test("the theme reaches the share card", async ({ page, request }) => {
@@ -153,7 +153,7 @@ test("remarks off hides the headline lines; mood off keeps the quip and ↻; moo
 
 test("the mood line switch waits on remarks; its value is kept", async ({ page }) => {
   await page.goto("/settings");
-  await page.getByRole("switch", { name: "Remarks" }).click();
+  await page.getByRole("switch", { name: "Show remarks" }).click();
   await expect(page.getByRole("switch", { name: "Mood line" })).toBeDisabled();
   await expect(page.getByRole("switch", { name: "Mood line" })).toBeChecked();
 });

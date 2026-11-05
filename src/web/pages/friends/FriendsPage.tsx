@@ -159,7 +159,7 @@ export function FriendsPage() {
         </Section>
       )}
       {pairCards.length > 0 && (
-        <Section title="Together" intro={PAIR_RULE}>
+        <Section title="Pairs" intro={PAIR_RULE}>
           <ul className={styles.cards}>
             {pairCards.map(({ pair, a, b }) => <li key={pair.ids.join(",")}><PairCard pair={pair} a={a} b={b} /></li>)}
           </ul>

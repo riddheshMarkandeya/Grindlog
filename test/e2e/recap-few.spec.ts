@@ -13,9 +13,9 @@ const team = (page: Page, name: string | RegExp) => page.locator("div").filter({
 test("a match with you on no team names the game's teams, in no side colour", async ({ page }) => {
   await page.goto("/recap/e2e-few-a/match/e2e-few-noteam?filter=everything");
   await expect(page.getByRole("heading", { name: "Blue team · won" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Orange team · lost" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Orange team", exact: true })).toBeVisible();
   await expect(team(page, "Blue team · won")).not.toHaveClass(/blue/);
-  await expect(team(page, "Orange team · lost")).not.toHaveClass(/orange/);
+  await expect(team(page, "Orange team")).not.toHaveClass(/orange/);
 });
 
 test("a match with you on a team keeps the side colour, so the check above can fail", async ({ page }) => {

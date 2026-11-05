@@ -30,6 +30,7 @@ test("the longest of everything still fits: no overflow, the footer inside, the 
   await expect(dialog.getByText(LONGEST)).toBeVisible();
   await expect(dialog.locator("[data-tile]")).toHaveCount(8);
   expect(await labelLines(page, "aerialTouches")).toBe(2);
+  expect(await labelLines(page, "streak")).toBe(2);
   await expect(dialog.getByText("Saves:")).toBeVisible();
 
   const fit = await measureCard(page);

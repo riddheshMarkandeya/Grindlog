@@ -102,28 +102,29 @@ test("« » step by month to the nearest session there; the ends are disabled", 
   await at(page, "e2e-seed-won");
 });
 
-test("the long session's Overview: per game, what stood out, by playlist, the goal map, extras", async ({ page }) => {
+test("the long session's Overview: per game with what stood out marked, by playlist, the goal map, extras", async ({ page }) => {
   await page.goto("/recap/e2e-long-00");
   const section = (name: string) => page.locator("section").filter({ has: page.getByRole("heading", { name, exact: true }) });
 
   const perGame = section("Per game vs your 30-day average");
   await expect(perGame.getByRole("listitem")).toHaveCount(6);
   await expect(perGame.getByRole("listitem").filter({ hasText: "Goals" })).toContainText("1.12 /game");
-  await expect(perGame.getByRole("listitem").filter({ hasText: "Goals" })).toContainText("up 12% vs 30-day avg");
+  await expect(perGame.getByRole("listitem").filter({ hasText: "Goals" })).toContainText("up 12% vs 30-day avg (1)");
   await expect(perGame.getByRole("listitem").filter({ hasText: "Goals" })).toContainText("29 total");
   // The headline tile's ▲/▼ is hidden from screen readers, which read the direction as a word.
-  const shooting = page.getByRole("listitem").filter({ has: page.getByText("Shooting", { exact: true }) });
-  await expect(shooting).toContainText(/(up|down) avg \d/);
+  const shooting = page.getByRole("listitem").filter({ has: page.getByText("Shooting %", { exact: true }) });
+  await expect(shooting).toContainText(/(up|down) \d+ pts vs 30-day avg \(\d+%\)/);
   await expect(shooting.locator("[aria-hidden=true]")).toHaveText(/^[▲▼]$/);
-  await expect(perGame.getByRole("listitem").filter({ hasText: "Score" })).toContainText("≈ 30-day avg");
+  await expect(perGame.getByRole("listitem").filter({ hasText: "Score" })).toContainText(/about the same as\s*30-day avg/);
   // A zero average has no fair ratio, so saves (none, then and now) show no comparison.
   await expect(perGame.getByRole("listitem").filter({ hasText: "Saves" })).not.toContainText("avg");
 
-  // Every other stat matches the baseline's one match, so only goals stood out.
-  const stood = section("What stood out");
-  await expect(stood.getByRole("listitem")).toHaveCount(1);
-  await expect(stood).toContainText("1.12 goals per game");
-  await expect(stood).toContainText("up 12% vs 30-day avg (1)");
+  // Every other stat matches the baseline's one match, so only goals stood out: its card has the "!".
+  await expect(perGame.getByRole("button", { name: "Stood out" })).toHaveCount(1);
+  await expect(perGame.getByRole("listitem").filter({ hasText: "Goals" }).getByRole("button", { name: "Stood out" })).toHaveAccessibleDescription(
+    "Your biggest change from your 30-day average this session: up 12%. Up to 3 stats 10% or more off average are marked.",
+  );
+  await expect(page.getByRole("heading", { name: "What stood out" })).toHaveCount(0);
 
   const byPlaylist = section("By playlist");
   await expect(byPlaylist.getByRole("row")).toHaveCount(3);
@@ -148,22 +149,80 @@ test("the long session's Overview: per game, what stood out, by playlist, the go
 
 test("the Overview's section headings share one size, each above its panel and never inside it", async ({ page }) => {
   await page.goto("/recap/e2e-long-00");
-  for (const name of ["Matches", "Per game vs your 30-day average", "What stood out", "By playlist", "Where the goals came from", "Extras"]) {
+  for (const name of ["Matches", "Per game vs your 30-day average", "By playlist", "Where the goals came from", "Extras"]) {
     const h = page.getByRole("heading", { level: 2, name, exact: true });
     await expect(h).toHaveCSS("font-size", "16px");
     await expect(page.locator("[class*=panel]").filter({ has: h }), name).toHaveCount(0);
   }
 });
 
-test("one playlist: no By playlist; no baseline: no What stood out and no ▲▼", async ({ page }) => {
+test("one playlist: no By playlist, Per game alone; no baseline: no card marked and no ▲▼", async ({ page }) => {
   await page.goto("/recap/e2e-first-a");
-  await expect(page.getByRole("heading", { name: "What stood out" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Per game vs your 30-day average" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "By playlist" })).toHaveCount(0);
 
   await page.goto("/recap/e2e-old");
   await expect(page.getByRole("heading", { name: "Per game", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "What stood out" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Stood out" })).toHaveCount(0);
   await expect(page.getByText(/30-day avg/)).toHaveCount(0);
+});
+
+test("a stood-out card's ! opens its note on a click or hover; Escape, leaving it and a click elsewhere close it", async ({ page }) => {
+  await page.goto("/recap/e2e-long-00");
+  const mark = page.getByRole("button", { name: "Stood out" });
+  const tip = page.getByText(/^Your biggest change/);
+  await expect(tip).toBeHidden();
+  await mark.click();
+  // Off the glyph, so only the click holds it open, not the hover.
+  await page.mouse.move(0, 0);
+  await expect(mark).toHaveAttribute("aria-expanded", "true");
+  await expect(tip).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(tip).toBeHidden();
+  await mark.press("Enter");
+  await expect(tip).toBeVisible();
+  await page.keyboard.press("Tab");
+  await expect(tip).toBeHidden();
+  await mark.hover();
+  await expect(tip).toBeVisible();
+  // The pointer can move onto the note, and Escape hides it with the focus elsewhere.
+  await tip.hover();
+  await expect(tip).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(tip).toBeHidden();
+  await mark.click();
+  await page.mouse.click(5, 5);
+  await expect(tip).toBeHidden();
+});
+
+test("on a touchscreen a tap on the ! opens its note and a tap elsewhere closes it", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, hasTouch: true });
+  const page = await context.newPage();
+  await page.goto("/recap/e2e-long-00");
+  const tip = page.getByText(/^Your biggest change/);
+  await page.getByRole("button", { name: "Stood out" }).tap();
+  await expect(tip).toBeVisible();
+  await page.getByRole("heading", { level: 1 }).tap();
+  await expect(tip).toBeHidden();
+  await context.close();
+});
+
+test("By playlist sits beside Per game at 1024px, its six cards 3 to a row; under it at 320px", async ({ page }) => {
+  const box = async (name: string) => (await page.getByRole("heading", { level: 2, name, exact: true }).boundingBox()) ?? { x: NaN, y: NaN };
+  const cards = page.locator("section").filter({ has: page.getByRole("heading", { name: "Per game vs your 30-day average" }) }).getByRole("listitem");
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await page.goto("/recap/e2e-long-00");
+  await expect(cards).toHaveCount(6);
+  const [per, list] = [await box("Per game vs your 30-day average"), await box("By playlist")];
+  expect(list.y).toBeCloseTo(per.y, 0);
+  expect(list.x).toBeGreaterThan(per.x);
+  const tops = await Promise.all((await cards.all()).map(async (c) => Math.round((await c.boundingBox())?.y ?? NaN)));
+  expect(new Set(tops).size).toBe(2);
+
+  await page.setViewportSize({ width: 320, height: 700 });
+  const [per2, list2] = [await box("Per game vs your 30-day average"), await box("By playlist")];
+  expect(list2.y).toBeGreaterThan(per2.y);
+  expect(list2.x).toBeCloseTo(per2.x, 0);
 });
 
 test("at 320px a two-digit scorebug and the full Overview fit without a sideways scroll", async ({ page }) => {
@@ -283,7 +342,8 @@ test("the match page: header, scoreboard, the match's goal map and extras", asyn
   await expect(page.getByRole("note")).toHaveCount(0);
   await scoreboardLoaded(page);
   await expect(page.getByRole("heading", { name: "Your team · won" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Opponents · lost" })).toBeVisible();
+  // Only the winner's heading says so.
+  await expect(page.getByRole("heading", { name: "Opponents", exact: true })).toBeVisible();
   await expect(page.getByRole("rowheader", { name: /\(you\)/ })).toHaveText("Epic|me|0 (you)");
   await expect(page.getByRole("group", { name: "Where 4 goals for and 1 against came from" })).toBeVisible();
   const mine = page.locator("section").filter({ has: page.getByRole("heading", { name: "Your match", exact: true }) });
@@ -354,21 +414,22 @@ test("at 320px the new pages fit without a sideways scroll", async ({ page }) =>
   }
 });
 
-test("axe: the recap, its picker open, and its states in every theme", async ({ page }) => {
-  const paths = [
-    "/recap/e2e-long-00",
-    "/recap/e2e-long-00/matches",
-    "/recap/e2e-long-00/match/e2e-long-01",
-    "/recap/e2e-first-a/match/e2e-first-c",
-    "/recap/e2e-old",
-    "/recap/e2e-seed-won?filter=private",
-    "/recap?filter=17",
-    "/recap/no-such-session",
-  ];
-  for (const path of paths) {
+// One test per page: 24 scans in one test outgrew the 30s timeout.
+for (const path of [
+  "/recap/e2e-long-00",
+  "/recap/e2e-long-00/matches",
+  "/recap/e2e-long-00/match/e2e-long-01",
+  "/recap/e2e-first-a/match/e2e-first-c",
+  "/recap/e2e-old",
+  "/recap/e2e-seed-won?filter=private",
+  "/recap?filter=17",
+  "/recap/no-such-session",
+]) {
+  const withPicker = path === "/recap/e2e-long-00";
+  test(`axe: ${path}${withPicker ? " with its picker open" : ""} in every theme`, async ({ page }) => {
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    if (path === "/recap/e2e-long-00") {
+    if (withPicker) {
       await picker(page).click();
       await expect(page.locator("a[aria-current=true]")).toBeFocused();
     }
@@ -379,5 +440,5 @@ test("axe: the recap, its picker open, and its states in every theme", async ({ 
       const { violations } = await new AxeBuilder({ page }).analyze();
       expect(violations.map((v) => `${path} ${theme}: ${v.id} (${v.nodes.map((n) => n.target.join(" ")).join(", ")})`)).toEqual([]);
     }
-  }
-});
+  });
+}

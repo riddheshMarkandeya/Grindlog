@@ -51,7 +51,7 @@ export const SECTIONS = [
  * A section, its h2 the target of the page's section links (`anchor` is the h2's id). A settings
  * section passes `reset`; the tables have none (it would forget who you are, or delete your rows).
  */
-export function Section({ anchor, title, intro, reset, status, note, children }: { anchor: (typeof SECTIONS)[number][0]; title: string; intro: string; reset?: { id: SectionId; s: Settings }; status?: ReactNode; note?: ReactNode; children: ReactNode }) {
+export function Section({ anchor, title, intro, reset, status, note, children }: { anchor: (typeof SECTIONS)[number][0]; title: string; intro?: string; reset?: { id: SectionId; s: Settings }; status?: ReactNode; note?: ReactNode; children: ReactNode }) {
   const heading = useRef<HTMLHeadingElement>(null);
   // The reset link turns into "Defaults" as the reset lands, so focus moves to the section's heading.
   const aside = (reset !== undefined || status !== undefined) && (

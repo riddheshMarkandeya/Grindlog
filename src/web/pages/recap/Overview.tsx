@@ -1,6 +1,7 @@
 // The recap's Overview: scorebug, the remarks and the change against the 30-day average, the
-// tiles, the match cards, then per-game stats, what stood out, by playlist, the goal map, extras
-// and highlights.
+// tiles, the match cards, then per-game stats (the stats that stood out marked "!") beside by
+// playlist, the goal map, extras and highlights.
+import { useEffect, useId, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Link } from "react-router";
 import { filterValue, type PlaylistFilter } from "../../../shared/playlist-filter";
 import { teammateValue, type TeammateFilter } from "../../../shared/teammate-filter";
@@ -13,12 +14,11 @@ import mvpIcon from "../../assets/icons/MVP.png";
 import saveIcon from "../../assets/icons/Save.png";
 import shotIcon from "../../assets/icons/Shot.png";
 import { cx } from "../../components/cx";
-import { DirArrow } from "../../components/DirArrow";
 import { GoalMap } from "../../components/GoalMap";
 import { Section } from "../../components/Section";
 import { Scorebug } from "../../components/Scorebug";
 import { StatCard, StatCards } from "../../components/StatCard";
-import { Tile, Tiles } from "../../components/Tile";
+import { Tile, Tiles, VsText } from "../../components/Tile";
 import { clock, dayLabel, decimal, durationText, plural, whole } from "../../logic/format";
 import {
   extrasCards,
@@ -33,10 +33,11 @@ import {
   recapPath,
   scoreFor,
   stoodOut,
+  stoodOutNote,
   tilesFor,
-  winPctDelta,
+  vsAvgText,
+  winPctVs,
   type IconName,
-  type Vs,
 } from "../../logic/recap";
 import { fillRemark } from "../../logic/remarks";
 import { useRemarks, useRerollRemarks, useSettings } from "../../queries";
@@ -49,8 +50,7 @@ export function Overview({ detail, summary, filter, teammate }: { detail: Sessio
       <RecapScorebug detail={detail} summary={summary} />
       <Headline detail={detail} filter={filter} teammate={teammate} />
       <MatchCards matches={detail.matches} matchPath={matchPath} />
-      <PerGame detail={detail} />
-      <StandoutAndPlaylists detail={detail} />
+      <PerGameAndPlaylists detail={detail} />
       {detail.goals.length > 0 && (
         <Section title="Where the goals came from">
           <div className="panel">
@@ -119,26 +119,17 @@ function Remarks({ sessionKey, filter, teammate }: { sessionKey: string; filter:
 function Headline({ detail, filter, teammate }: { detail: SessionDetail; filter: PlaylistFilter; teammate: TeammateFilter }) {
   // Off, the lines aren't fetched either, so no pick is stored for a headline nobody saw.
   const { remarks } = useSettings();
-  const delta = winPctDelta(detail.aggregate, detail.baseline);
+  const winVs = winPctVs(detail.aggregate, detail.baseline);
   const tiles = tilesFor(detail.aggregate, detail.baseline);
   return (
     <div className={styles.sub}>
       {/* Keyed so a reroll's pending or failed state doesn't follow you to another session. */}
       {remarks && <Remarks key={`${detail.key}|${filterValue(filter)}|${teammateValue(teammate) ?? ""}`} sessionKey={detail.key} filter={filter} teammate={teammate} />}
-      {delta && (
-        <p className={styles.delta}>
-          {delta.points === 0 ? (
-            "Level with your 30-day win %"
-          ) : (
-            <span className={delta.points > 0 ? "up" : "down"}><DirArrow dir={delta.points > 0 ? "up" : "down"} /> {Math.abs(delta.points)} pts win % vs your 30-day average</span>
-          )}{" "}
-          <span className="muted">({delta.avg}%)</span>
-        </p>
-      )}
+      {winVs && <p className={styles.delta}>Win % <VsText vs={winVs} /></p>}
       {tiles.length > 0 && (
         <Tiles>
           {tiles.map((t) => (
-            <Tile key={t.id} label={t.label} value={t.value} icon={t.id === "mvps" ? mvpIcon : undefined} vs={t.vs && { dir: t.vs.dir, text: `avg ${t.vs.avg}` }} />
+            <Tile key={t.id} label={t.label} value={t.value} icon={t.id === "mvps" ? mvpIcon : undefined} vs={t.vs && vsAvgText(t.vs.dir, `${String(Math.abs(t.vs.points))} pts`, t.vs.avg)} />
           ))}
         </Tiles>
       )}
@@ -173,64 +164,78 @@ function MatchCards({ matches, matchPath }: { matches: MyMatchWire[]; matchPath:
 
 const ICONS: Record<IconName, string> = { Goal: goalIcon, Assist: assistIcon, Save: saveIcon, Shot: shotIcon, Demolition: demoIcon };
 
-/** "▲ 12%" with the direction in words for screen readers, or "≈ 30-day avg". */
-function VsText({ vs }: { vs: Vs }) {
-  if (vs.dir === "same") return <span className="muted">≈ 30-day avg</span>;
+/**
+ * A stood-out stat's "!": a toggletip. A mouse over the glyph or the note shows it; a click or tap
+ * pins it open until the next click, a click or tap elsewhere, blur or Escape, and Escape also hides
+ * a hovered note. The note is always in the DOM as the button's description; it's laid out against
+ * the card, not the glyph, so it fits the narrowest card.
+ */
+function StoodOutMark({ dir, note }: { dir: "up" | "down"; note: string }) {
+  const [pinned, setPinned] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const shown = pinned || hovered;
+  const tipId = useId();
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!shown) return;
+    const close = () => { setPinned(false); setHovered(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    // Safari doesn't focus a clicked button, so blur alone wouldn't close it there.
+    const onDown = (e: PointerEvent) => { if (!(e.target instanceof Node && ref.current?.contains(e.target))) setPinned(false); };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown);
+    return () => { document.removeEventListener("keydown", onKey); document.removeEventListener("pointerdown", onDown); };
+  }, [shown]);
+  // A touch also sends pointerenter; only a mouse hovers.
+  const hover = (on: boolean) => (e: ReactPointerEvent) => { if (e.pointerType === "mouse") setHovered(on); };
   return (
-    <span className={vs.dir}>
-      <DirArrow dir={vs.dir} /> {Math.abs(vs.pct)}%
+    <span ref={ref} className={styles.mark} onPointerEnter={hover(true)} onPointerLeave={hover(false)}>
+      <button
+        type="button" className={cx(styles.bang, dir)} aria-label="Stood out" aria-describedby={tipId} aria-expanded={shown}
+        onClick={() => { setPinned((o) => !o); }} onBlur={() => { setPinned(false); }}
+      >
+        <span aria-hidden="true">!</span>
+      </button>
+      <span id={tipId} className={cx(styles.tip, shown && styles.open)}>{note}</span>
     </span>
   );
 }
 
-function PerGame({ detail }: { detail: SessionDetail }) {
-  const cards = perGameCards(detail.aggregate, detail.baseline);
-  if (!cards.length) return null;
-  const hasBase = detail.baseline.matches > 0;
+function PerGameCards({ cards, detail }: { cards: ReturnType<typeof perGameCards>; detail: SessionDetail }) {
+  // Their rank in stoodOut()'s order, biggest first; none without a baseline or when nothing moved 10%.
+  const rank = new Map((stoodOut(detail.aggregate, detail.baseline) ?? []).map((s, i) => [s.id, i]));
   return (
-    <Section title={hasBase ? "Per game vs your 30-day average" : "Per game"}>
-      <StatCards>
-        {cards.map((c) => (
+    <StatCards>
+      {cards.map((c) => {
+        const r = rank.get(c.id);
+        return (
           <StatCard
             key={c.id} label={c.label} icon={c.icon && ICONS[c.icon]} value={decimal(c.perGame)} unit=" /game" sub={`${whole(c.total)} total`}
-            vs={c.vs && <><VsText vs={c.vs} />{c.vs.dir !== "same" && <span className="muted"> vs 30-day avg</span>}</>}
+            vs={c.vs && c.avg !== null && <VsText vs={vsAvgText(c.vs.dir, `${String(Math.abs(c.vs.pct))}%`, decimal(c.avg))} />}
+            mark={r !== undefined && c.vs && <StoodOutMark dir={c.vs.pct < 0 ? "down" : "up"} note={stoodOutNote(r, c.vs)} />}
           />
-        ))}
-      </StatCards>
-    </Section>
+        );
+      })}
+    </StatCards>
   );
 }
 
-function StandoutAndPlaylists({ detail }: { detail: SessionDetail }) {
-  const stood = stoodOut(detail.aggregate, detail.baseline);
+/** Per game and by playlist share a row on a wide screen, each alone or stacked otherwise. */
+function PerGameAndPlaylists({ detail }: { detail: SessionDetail }) {
+  const cards = perGameCards(detail.aggregate, detail.baseline);
+  const hasCards = cards.length > 0;
   const rows = playlistRows(detail.byPlaylist);
-  if (stood === null && rows === null) return null;
+  if (!hasCards && rows === null) return null;
   return (
-    <div className={styles.grid2}>
-      {stood !== null && (
-        <Section title="What stood out" className={styles.cell}>
-          <div className="panel">
-            {stood.length === 0 ? (
-              <p className="muted">Close to your 30-day average on every stat.</p>
-            ) : (
-              <ul className={styles.stand}>
-                {stood.map((s) => (
-                  <li key={s.id}>
-                    {s.icon ? <img className={styles.bIco} src={ICONS[s.icon]} alt="" /> : <span />}
-                    <div>
-                      <b className="num">{decimal(s.perGame)} {s.label.toLowerCase()} per game</b>
-                      <div className="num"><VsText vs={s.vs} /> <span className="muted">vs 30-day avg ({decimal(s.avg)})</span></div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+    <div className={cx(styles.side, hasCards && rows !== null && styles.both)}>
+      {hasCards && (
+        <Section title={detail.baseline.matches > 0 ? "Per game vs your 30-day average" : "Per game"} className={styles.cell}>
+          <PerGameCards cards={cards} detail={detail} />
         </Section>
       )}
       {rows !== null && (
         <Section title="By playlist" className={styles.cell}>
-          <div className="panel">
+          <div className={cx("panel", styles.playlists)}>
             <table className="table num">
               <thead><tr><th scope="col">Playlist</th><th scope="col">W–L</th><th scope="col">Win %</th><th scope="col">Goals/g</th></tr></thead>
               <tbody>

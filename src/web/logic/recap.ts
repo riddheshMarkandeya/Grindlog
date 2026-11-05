@@ -6,7 +6,7 @@ import type { FlagReason } from "../../shared/flags";
 import type { AggregateWire, MatchDetail, MyMatchWire, SessionDetail } from "../../shared/schemas/responses";
 import { filterValue } from "../../shared/playlist-filter";
 import { teammateValue, type TeammateFilter } from "../../shared/teammate-filter";
-import { clock, decimal, SPEED_LABEL, speedIn, type Units, whole } from "./format";
+import { clock, decimal, plural, SPEED_LABEL, speedIn, type Units, whole } from "./format";
 
 /** A share as whole percent. */
 export const pct = (share: number) => Math.round(share * 100);
@@ -17,11 +17,31 @@ export function winPctDelta(session: AggregateWire, base: AggregateWire): { poin
   return { points: pct(session.winPct) - pct(base.winPct), avg: pct(base.winPct) };
 }
 
+export type Dir = "up" | "down" | "same";
+export interface VsAvg { dir: Dir; amount: string | null; rest: string }
+
+/**
+ * A comparison with the 30-day average, from text the caller already formatted: "▲ 5 pts" + "vs
+ * 30-day avg (52%)", or with no amount "30-day avg (52%)", and VsText draws the "≈". Pass the amount unsigned; the arrow says which way.
+ */
+export function vsAvgText(dir: Dir, amount: string, avg: string): VsAvg {
+  return dir === "same" ? { dir, amount: null, rest: `30-day avg (${avg})` } : { dir, amount, rest: `vs 30-day avg (${avg})` };
+}
+
+const pointsDir = (points: number): Dir => (points > 0 ? "up" : points < 0 ? "down" : "same");
+
+/** The headline's win % against the 30-day average; null with nothing to compare. */
+export function winPctVs(session: AggregateWire, base: AggregateWire): VsAvg | null {
+  const d = winPctDelta(session, base);
+  return d && vsAvgText(pointsDir(d.points), `${String(Math.abs(d.points))} pts`, `${String(d.avg)}%`);
+}
+
 export interface Tile {
   id: "streak" | "ended" | "shooting" | "mvps";
   label: string;
   value: string;
-  vs?: { avg: string; dir: "up" | "down" | "same" };
+  /** `points` is signed, the shown session % minus the shown average's. */
+  vs?: { avg: string; dir: Dir; points: number };
 }
 
 export const letter = (r: "win" | "loss" | null) => (r === "win" ? "W" : r === "loss" ? "L" : "–");
@@ -29,14 +49,17 @@ export const resultWord = (r: "win" | "loss" | null) => r ?? "no result";
 
 export function tilesFor(a: AggregateWire, base: AggregateWire): Tile[] {
   const tiles: Tile[] = [];
-  if (a.bestWinStreak) tiles.push({ id: "streak", label: "Best streak", value: `W${String(a.bestWinStreak)}` });
-  if (a.endedOn) tiles.push({ id: "ended", label: "Ended on", value: `${letter(a.endedOn.result)}${String(a.endedOn.length)}` });
+  if (a.bestWinStreak) tiles.push({ id: "streak", label: "Best win streak", value: String(a.bestWinStreak) });
+  if (a.endedOn) {
+    const { result, length } = a.endedOn;
+    tiles.push({ id: "ended", label: "Finished on", value: result === "win" ? plural(length, "win") : plural(length, "loss", "losses") });
+  }
   if (a.shootingPct !== null) {
-    const tile: Tile = { id: "shooting", label: "Shooting", value: `${String(pct(a.shootingPct))}%` };
+    const tile: Tile = { id: "shooting", label: "Shooting %", value: `${String(pct(a.shootingPct))}%` };
     if (base.shootingPct !== null) {
-      // Compared as shown, so "40% ▲ avg 40%" can't happen.
-      const d = pct(a.shootingPct) - pct(base.shootingPct);
-      tile.vs = { avg: `${String(pct(base.shootingPct))}%`, dir: d > 0 ? "up" : d < 0 ? "down" : "same" };
+      // Compared as shown, so "40% ▲ vs 30-day avg (40%)" can't happen.
+      const points = pct(a.shootingPct) - pct(base.shootingPct);
+      tile.vs = { avg: `${String(pct(base.shootingPct))}%`, dir: pointsDir(points), points };
     }
     tiles.push(tile);
   }
@@ -56,7 +79,7 @@ export const PER_GAME: readonly { id: StatId; label: string; icon: IconName | nu
   { id: "demos", label: "Demos", icon: "Demolition" },
 ];
 
-export interface Vs { pct: number; dir: "up" | "down" | "same" }
+export interface Vs { pct: number; dir: Dir }
 
 /** Whole-percent change against an average; null without one or at zero, where no ratio is fair. */
 export function vsAverage(value: number, avg: number | null): Vs | null {
@@ -82,6 +105,9 @@ export const STOOD_OUT_MIN_PCT = 10;
 
 export interface StoodOut { id: StatId; label: string; icon: IconName | null; perGame: number; avg: number; vs: Vs }
 
+// One per rank; also the cap on how many stats stand out.
+const RANK = ["biggest", "2nd-biggest", "3rd-biggest"] as const;
+
 /** Up to three stats furthest from the average, biggest first; null with no baseline, [] when none moved enough. */
 export function stoodOut(a: AggregateWire, base: AggregateWire): StoodOut[] | null {
   if (base.matches === 0) return null;
@@ -91,7 +117,12 @@ export function stoodOut(a: AggregateWire, base: AggregateWire): StoodOut[] | nu
       return vs === null || avg === null || Math.abs(vs.pct) < STOOD_OUT_MIN_PCT ? [] : [{ id, label, icon, perGame, avg, vs }];
     })
     .sort((x, y) => Math.abs(y.vs.pct) - Math.abs(x.vs.pct))
-    .slice(0, 3);
+    .slice(0, RANK.length);
+}
+
+/** What a stood-out card's mark explains: its place in `stoodOut()`'s order (0–2), the change, and the rule. */
+export function stoodOutNote(rank: number, vs: Vs): string {
+  return `Your ${RANK[rank] ?? RANK[2]} change from your 30-day average this session: ${vs.pct < 0 ? "down" : "up"} ${String(Math.abs(vs.pct))}%. Up to ${String(RANK.length)} stats ${String(STOOD_OUT_MIN_PCT)}% or more off average are marked.`;
 }
 
 export interface PlaylistRow { playlistId: number | null; name: string; wins: number | null; losses: number | null; winPct: number | null; goalsPerGame: number | null }
@@ -149,7 +180,7 @@ export const HIGHLIGHTS: readonly (readonly [event: string, label: string])[] = 
   ["OvertimeGoal", "Overtime goals"],
   ["Savior", "Savior"],
   ["EpicSave", "Epic saves"],
-  ["AerialGoal", "Aerial goals"],
+  ["AerialGoal", "Aerial goal awards"],
   ["LongGoal", "Long goal awards"],
   ["BicycleHit", "Bicycle hits"],
   ["Playmaker", "Playmaker"],

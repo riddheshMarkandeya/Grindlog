@@ -113,7 +113,9 @@ test.describe("Seasons", () => {
     const added = row(page, "Seasons", "E2E");
     await expect(added.getByRole("status")).toHaveText("✓ Saved");
     await expect(added).toContainText("current");
-    await expect(added).toContainText("still running");
+    // The "current" badge says it's running; the dates don't repeat it.
+    await expect(added).toContainText("From ");
+    await expect(added).not.toContainText("still running");
     await expect(added.getByRole("button", { name: "Edit" })).toBeFocused();
     await expect(row(page, "Seasons", "S24")).not.toContainText("current");
 

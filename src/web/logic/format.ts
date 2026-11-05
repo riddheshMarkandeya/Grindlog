@@ -63,5 +63,7 @@ export const whole = (n: number): string => WHOLE.format(Math.round(n) || 0);
 /** "1 win", "2 wins"; `many` for a plural that isn't one plus "s". */
 export const plural = (n: number, one: string, many = `${one}s`): string => `${whole(n)} ${n === 1 ? one : many}`;
 
+/** Where decimal() stops showing decimals. */
+export const WHOLE_FROM = 100;
 /** Whole from 100, else up to 2 decimals with trailing zeros dropped: "12,345", "413", "1.04", "1.5". */
-export const decimal = (v: number): string => (v >= 100 ? whole(v) : String(Math.round(v * 100) / 100));
+export const decimal = (v: number): string => (v >= WHOLE_FROM ? whole(v) : String(Math.round(v * 100) / 100));

@@ -59,7 +59,7 @@ const NO_VALUE = "–";
 // The 8th tile: the first of these that happened. Statfeed counts are absent rather than 0, and
 // extras are null when not computed; a 0 is passed over too, so the card shows something that happened.
 const EIGHTH: readonly { id: string; label: string; of: (a: AggregateWire) => number | null | undefined }[] = [
-  { id: "aerialGoals", label: "Aerial goals", of: (a) => a.statfeed.AerialGoal },
+  { id: "aerialGoals", label: "Aerial goal awards", of: (a) => a.statfeed.AerialGoal },
   { id: "woodwork", label: "Crossbar hits", of: (a) => a.woodworkHits },
   { id: "aerialTouches", label: "Aerial touches", of: (a) => a.aerialTouches },
   { id: "epicSaves", label: "Epic saves", of: (a) => a.statfeed.EpicSave },
@@ -90,7 +90,7 @@ export function shareCard({ detail, summary, filter, name, mood, units, teammate
     return { id, label, value: v === null ? NO_VALUE : show(v), sub: v === null ? null : sub };
   };
   const tiles = [
-    fixed("streak", "Best streak", a.bestWinStreak, (n) => `W${String(n)}`),
+    fixed("streak", "Best win streak", a.bestWinStreak),
     fixed("goals", "Goals", a.totals.goals),
     fixed("assists", "Assists", a.totals.assists),
     fixed("saves", "Saves", a.totals.saves),

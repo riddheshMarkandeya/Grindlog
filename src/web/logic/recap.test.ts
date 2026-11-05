@@ -15,9 +15,12 @@ import {
   scoreboardTeams,
   scoreFor,
   stoodOut,
+  stoodOutNote,
   tilesFor,
   vsAverage,
+  vsAvgText,
   winPctDelta,
+  winPctVs,
 } from "./recap";
 
 const KMH = { clock: "24h", speed: "kmh" } as const;
@@ -33,6 +36,30 @@ const agg = (over: Partial<AggregateWire>): AggregateWire => ({
   ...over,
 });
 const none = agg({ matches: 0, wins: null, losses: null, winPct: null, mvps: null, shootingPct: null, bestWinStreak: null, bestLossStreak: null, endedOn: null });
+
+describe("vsAvgText", () => {
+  test("up or down: the amount, then the average it's against", () => {
+    expect(vsAvgText("up", "5 pts", "52%")).toEqual({ dir: "up", amount: "5 pts", rest: "vs 30-day avg (52%)" });
+    expect(vsAvgText("down", "12%", "3.2")).toEqual({ dir: "down", amount: "12%", rest: "vs 30-day avg (3.2)" });
+  });
+  test("same: no amount; the ≈ is drawn by the caller", () => {
+    expect(vsAvgText("same", "0 pts", "40%")).toEqual({ dir: "same", amount: null, rest: "30-day avg (40%)" });
+    // A per-game stat under 3% off is "same", so it shows no amount either.
+    const vs = vsAverage(1.024, 1);
+    expect(vs && vsAvgText(vs.dir, `${String(Math.abs(vs.pct))}%`, "1").amount).toBeNull();
+  });
+});
+
+describe("winPctVs", () => {
+  test("points against the 30-day win %, either way, or level with it", () => {
+    expect(winPctVs(agg({ winPct: 0.57 }), agg({ winPct: 0.52 }))).toEqual({ dir: "up", amount: "5 pts", rest: "vs 30-day avg (52%)" });
+    expect(winPctVs(agg({ winPct: 0.4 }), agg({ winPct: 0.523 }))).toEqual({ dir: "down", amount: "12 pts", rest: "vs 30-day avg (52%)" });
+    expect(winPctVs(agg({ winPct: 0.52 }), agg({ winPct: 0.521 }))).toEqual({ dir: "same", amount: null, rest: "30-day avg (52%)" });
+  });
+  test("nothing to compare: null", () => {
+    expect(winPctVs(agg({}), none)).toBeNull();
+  });
+});
 
 describe("winPctDelta", () => {
   test("points against the 30-day win %", () => {
@@ -52,23 +79,26 @@ test("a result's letter and word, a dash for no result", () => {
 });
 
 describe("tilesFor", () => {
-  test("streak, ended on, shooting against the average, your MVPs", () => {
+  test("streak, finished on, shooting against the average, your MVPs", () => {
     expect(tilesFor(agg({}), agg({ shootingPct: 0.3 }))).toEqual([
-      { id: "streak", label: "Best streak", value: "W3" },
-      { id: "ended", label: "Ended on", value: "W2" },
-      { id: "shooting", label: "Shooting", value: "40%", vs: { avg: "30%", dir: "up" } },
+      { id: "streak", label: "Best win streak", value: "3" },
+      { id: "ended", label: "Finished on", value: "2 wins" },
+      { id: "shooting", label: "Shooting %", value: "40%", vs: { avg: "30%", dir: "up", points: 10 } },
       { id: "mvps", label: "MVPs", value: "×2" },
     ]);
   });
 
   test("a tile with nothing to show is left out, never a zero", () => {
-    expect(tilesFor(agg({ bestWinStreak: 0, mvps: 0, shootingPct: null, endedOn: { result: "loss", length: 4 } }), none)).toEqual([{ id: "ended", label: "Ended on", value: "L4" }]);
+    expect(tilesFor(agg({ bestWinStreak: 0, mvps: 0, shootingPct: null, endedOn: { result: "loss", length: 4 } }), none)).toEqual([{ id: "ended", label: "Finished on", value: "4 losses" }]);
+    expect(tilesFor(agg({ endedOn: { result: "loss", length: 1 } }), none).find((t) => t.id === "ended")?.value).toBe("1 loss");
+    expect(tilesFor(agg({ endedOn: { result: "win", length: 1 } }), none).find((t) => t.id === "ended")?.value).toBe("1 win");
     expect(tilesFor(none, none)).toEqual([]);
   });
 
   test("shooting without a baseline has no comparison; level with it is 'same'", () => {
-    expect(tilesFor(agg({}), none).find((t) => t.id === "shooting")).toEqual({ id: "shooting", label: "Shooting", value: "40%" });
-    expect(tilesFor(agg({}), agg({ shootingPct: 0.401 })).find((t) => t.id === "shooting")?.vs).toEqual({ avg: "40%", dir: "same" });
+    expect(tilesFor(agg({}), none).find((t) => t.id === "shooting")).toEqual({ id: "shooting", label: "Shooting %", value: "40%" });
+    expect(tilesFor(agg({}), agg({ shootingPct: 0.401 })).find((t) => t.id === "shooting")?.vs).toEqual({ avg: "40%", dir: "same", points: 0 });
+    expect(tilesFor(agg({}), agg({ shootingPct: 0.45 })).find((t) => t.id === "shooting")?.vs).toEqual({ avg: "45%", dir: "down", points: -5 });
   });
 });
 
@@ -234,6 +264,14 @@ describe("stoodOut", () => {
   });
 });
 
+describe("stoodOutNote", () => {
+  test("its rank by size, the change, and the rule", () => {
+    expect(stoodOutNote(0, { pct: 79, dir: "up" })).toBe("Your biggest change from your 30-day average this session: up 79%. Up to 3 stats 10% or more off average are marked.");
+    expect(stoodOutNote(1, { pct: -12, dir: "down" })).toBe("Your 2nd-biggest change from your 30-day average this session: down 12%. Up to 3 stats 10% or more off average are marked.");
+    expect(stoodOutNote(2, { pct: 10, dir: "up" })).toMatch(/^Your 3rd-biggest change .*: up 10%\./);
+  });
+});
+
 describe("playlistRows", () => {
   test("one row per playlist, named; win % null without a decided match", () => {
     expect(playlistRows([
@@ -302,5 +340,6 @@ describe("highlights", () => {
       { event: "LowFive", label: "Low fives", count: 1 },
     ]);
     expect(highlights({})).toEqual([]);
+    expect(highlights({ AerialGoal: 1 })).toEqual([{ event: "AerialGoal", label: "Aerial goal awards", count: 1 }]);
   });
 });
