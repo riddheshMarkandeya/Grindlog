@@ -7,14 +7,18 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { dataDir, SUPERVISOR_EXE, TRACKER_EXE } from "../src/server/paths";
 import { DASHBOARD_HOST, DASHBOARD_PORT } from "../src/shared/constants";
+import { version as appVersion } from "../package.json";
 import { killImage, stopTracker } from "./stop";
 
 const TASK_NAME = "RLTracker";
 const SHORTCUT = "Grindlog.url";
 // The shortcut's name from before the rename.
 const LEGACY_SHORTCUT = "RL Tracker.url";
+const PRODUCT_NAME = "Grindlog";
 const REPO = join(import.meta.dirname, "..");
 const SERVER_DIR = join(REPO, "src", "server");
+// Absolute, because the builds run with no cwd.
+const EXE_ICON = join(REPO, "src", "web", "public", "favicon.ico");
 const DASHBOARD_URL = `http://${DASHBOARD_HOST}:${String(DASHBOARD_PORT)}/`;
 
 const xmlEscape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -41,6 +45,28 @@ export function taskXml({ userId, exe, workDir }: { userId: string; exe: string;
 /** A Start menu Internet Shortcut: it opens the URL in the default browser and never runs the tracker. */
 export function shortcutFile(url: string, iconFile: string): string {
   return `[InternetShortcut]\r\nURL=${url}\r\nIconFile=${iconFile}\r\nIconIndex=0\r\n`;
+}
+
+/** The `bun` arguments that compile an entry. Task Manager's Processes tab shows the description. */
+export function compileArgs({ entry, outfile, description, icon, version }: { entry: string; outfile: string; description: string; icon: string; version: string }): string[] {
+  return [
+    "build",
+    "--compile",
+    "--windows-hide-console",
+    "--windows-icon",
+    icon,
+    "--windows-title",
+    PRODUCT_NAME,
+    "--windows-publisher",
+    PRODUCT_NAME,
+    "--windows-description",
+    description,
+    "--windows-version",
+    `${version}.0`,
+    entry,
+    "--outfile",
+    outfile,
+  ];
 }
 
 class StepFailed extends Error {}
@@ -82,7 +108,7 @@ async function stopInstalled(bin: string): Promise<void> {
   // it loses nothing. The supervisor goes first so it can't start the tracker again.
   console.log("Ending the leftover background processes.");
   for (const exe of [SUPERVISOR_EXE, TRACKER_EXE]) killImage(exe);
-  if (!(await waitUnlocked(exes, 10_000))) throw new StepFailed(`${bin} is still in use; end ${SUPERVISOR_EXE} and ${TRACKER_EXE} in Task Manager and try again.`);
+  if (!(await waitUnlocked(exes, 10_000))) throw new StepFailed(`${bin} is still in use; end ${SUPERVISOR_EXE} and ${TRACKER_EXE} in Task Manager's Details tab and try again.`);
 }
 
 /** Moves `from` over `to`, retrying while antivirus still holds the fresh exe. */
@@ -197,16 +223,16 @@ async function install(): Promise<void> {
   // Build beside the installed pair while it keeps recording, and stop it only once both built, so
   // a failed build leaves it intact and running.
   const builds = [
-    { entry: join(SERVER_DIR, "supervisor.ts"), exe: join(bin, SUPERVISOR_EXE), fresh: join(bin, "rltracker-supervisor.new.exe") },
-    { entry: join(SERVER_DIR, "main.ts"), exe: join(bin, TRACKER_EXE), fresh: join(bin, "rltracker.new.exe") },
+    { entry: join(SERVER_DIR, "supervisor.ts"), exe: join(bin, SUPERVISOR_EXE), fresh: join(bin, "grindlog-supervisor.new.exe"), description: `${PRODUCT_NAME} supervisor` },
+    { entry: join(SERVER_DIR, "main.ts"), exe: join(bin, TRACKER_EXE), fresh: join(bin, "grindlog.new.exe"), description: PRODUCT_NAME },
   ];
   const web = join(bin, "web");
   const webFresh = join(bin, "web.new");
   let swapFailed: StepFailed | null = null;
   try {
-    for (const { entry, exe, fresh } of builds) {
+    for (const { entry, exe, fresh, description } of builds) {
       console.log(`Building ${exe}`);
-      run([process.execPath, "build", "--compile", "--windows-hide-console", entry, "--outfile", fresh]);
+      run([process.execPath, ...compileArgs({ entry, outfile: fresh, description, icon: EXE_ICON, version: appVersion })]);
     }
     // Its own build, not the repo's dist/, which may be stale.
     console.log(`Building the dashboard into ${web}`);

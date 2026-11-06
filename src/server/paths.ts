@@ -12,8 +12,8 @@ export function dataDir(env: NodeJS.ProcessEnv = process.env): string {
 }
 
 /** The installed exes, side by side in `<dataDir>\bin`. */
-export const TRACKER_EXE = "rltracker.exe";
-export const SUPERVISOR_EXE = "rltracker-supervisor.exe";
+export const TRACKER_EXE = "grindlog.exe";
+export const SUPERVISOR_EXE = "grindlog-supervisor.exe";
 
 /** The dashboard's port, which also guards a single instance. RLTRACKER_PORT overrides it (tests, dev). */
 export function dashboardPort(env: Record<string, string | undefined> = process.env): number {

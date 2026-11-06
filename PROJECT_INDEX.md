@@ -2,7 +2,7 @@
 
 Grindlog is a personal Rocket League stats tracker: a local Windows tracker first, with a web or
 mobile app maybe later. It was called RL Tracker, and internal ids keep that name until the friends
-release's steps 3 and 4.
+release's step 4.
 
 ## Code layout and commands
 - `src/server/` (Bun process: `main.ts` entry, `host.ts` HTTP server and shutdown endpoint,
@@ -49,7 +49,7 @@ release's steps 3 and 4.
   `127.0.0.1:5173` with `/api/` proxied to the dev tracker; `bun run web:build` builds `dist/`.
   `bun run e2e` builds `dist/` and runs Playwright in the installed Chrome (`RLT_E2E_KEEP=1` keeps
   the temp data dir and its `tracker.log`). Bun lives at `~/.bun/bin/bun` and may not be on PATH.
-- Background: `bun run install-autostart` compiles `rltracker-supervisor.exe` and `rltracker.exe`
+- Background: `bun run install-autostart` compiles `grindlog-supervisor.exe` and `grindlog.exe`
   and the dashboard (`bin\web`, which the tracker serves) into `%LOCALAPPDATA%\RLTracker\bin\`,
   registers the `RLTracker` logon task and adds a Start menu shortcut to
   `http://127.0.0.1:49100/`. It runs that snapshot, not the repo. `bun run deploy` ships code

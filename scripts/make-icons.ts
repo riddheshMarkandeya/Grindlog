@@ -1,5 +1,5 @@
 // Renders the icon SVGs in the installed Chrome and packs them into favicon.ico, for the browser tab,
-// the Start menu shortcut and, later, the exes. `bun run icons`; the output is committed.
+// the Start menu shortcut and the exes. `bun run icons`; the output is committed.
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Browser } from "@playwright/test";
