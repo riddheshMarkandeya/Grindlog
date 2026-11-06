@@ -1,7 +1,8 @@
 # Project index
 
-Personal Rocket League stats tracker: a local Windows tracker first, with a web or mobile app
-maybe later.
+Grindlog is a personal Rocket League stats tracker: a local Windows tracker first, with a web or
+mobile app maybe later. It was called RL Tracker, and internal ids keep that name until the friends
+release's steps 3 and 4.
 
 ## Code layout and commands
 - `src/server/` (Bun process: `main.ts` entry, `host.ts` HTTP server and shutdown endpoint,
@@ -25,7 +26,9 @@ maybe later.
   `src/shared/` (`constants.ts`, `result.ts` your W/L, `playlists.ts` ID map, `goal-range.ts`
   close/mid/long, `periods.ts` local days and periods, `playlist-filter.ts` filter groups, `schemas/` API params
   and response shapes),
-  `scripts/` (standalone `capture.ts`; `stop.ts`, `autostart.ts`, `replay.ts` fake Stats API,
+  `scripts/` (standalone `capture.ts`; `make-icons.ts` packs `src/web/assets/icon.svg` and
+  `icon-small.svg` into `src/web/public/favicon.ico` (`bun run icons`, output committed);
+  `stop.ts`, `autostart.ts`, `replay.ts` fake Stats API,
   `import-capture.ts` (also writes records), `recompute.ts`, `make-fixture.ts`, `definitions.ts`,
   `rules-diff.ts`), `test/fixtures/`
   (anonymised capture excerpts), `test/e2e/` (Playwright on Node: `fixtures.ts` starts
@@ -81,6 +84,11 @@ maybe later.
   Task Scheduler doesn't restart a crashed task.
 
 ## Plans
+- `docs/plans/2026-11-05-friends-release-map.md`: the friends release map, the ordered steps to shipping
+  and each one's status. Start here for what's next.
+- `docs/reviews/2026-11-05-name-and-icon.md`: name and icon review summary (2 deferred, 2 disputed).
+- `docs/plans/2026-11-05-name-and-icon.md`: friends release step 2, the rename to Grindlog and the
+  app icon (B3), review log.
 - `docs/plans/2026-11-03-display-drift.md`: display drift plan (audit of display drift and data
   sense across every page; WP-A colour roles and three number bugs, WP-B the big-number face and
   StatCard, WP-C the shared Section heading and global panel/table/muted/up/down), review log.

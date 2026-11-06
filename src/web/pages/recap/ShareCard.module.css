@@ -71,4 +71,5 @@
 .callout { margin-top: 8px; padding: 6px 10px; border: 1px solid var(--accent); border-radius: 8px; font-size: 12px; color: var(--ink2); }
 .callout b { color: var(--accent); }
 .bottom { display: flex; justify-content: flex-end; margin-top: 6px; }
-.footer { white-space: nowrap; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.footer { display: flex; align-items: center; gap: var(--s1); white-space: nowrap; font-size: 10px; font-weight: 600; letter-spacing: .02em; color: var(--muted); }
+.footer img { display: block; width: 12px; height: 12px; }

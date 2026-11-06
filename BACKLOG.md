@@ -80,7 +80,27 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   `prototype/recap-stood-out` branch, never merge) was liked as a stood-out mark (user, 2026-11-04).
   Look at where flat-but-fun details fit the dashboard. Trigger: a UI polish pass.
 
+- [ ] **[refactor, Med, Standard]** Internal rename to grindlog: the user-visible name changed on
+  2026-11-05, the ids didn't. Exe names (`rltracker*.exe`, `SUPERVISOR_EXE`, `TRACKER_EXE`) → friends
+  release step 3. Data dir `%LOCALAPPDATA%\RLTracker` and task `RLTracker`, with installer migration, plus
+  the `RLTRACKER_*` env vars, `X-RLTracker-*` headers and package name → step 4. Also step 4, and a
+  grep for "rltracker" misses some: the `rlt-theme` localStorage key (a blind rename resets the saved
+  theme, so migrate it), the `rlt-events` worker name, the `[rlt]` log tag, `RLT_E2E_KEEP`, the
+  `rlt-e2e-` prefix and the `rltracker-*` temp names. `LEGACY_SHORTCUT` in `autostart.ts` goes once
+  the installer exists: only the developer's machine ever had that file. Steps:
+  `docs/plans/2026-11-05-friends-release-map.md`. Record: `docs/plans/2026-11-05-name-and-icon.md`.
+
 ## Watch list
+- [ ] **[bug (latent), Low, Standard]** Trigger: `autostart.ts` logs "has non-ASCII characters", or a
+  friend's Start menu shows a generic icon. The `.url` is written as UTF-8 and Windows is expected to
+  read it in the system code page, so a non-ASCII profile path may break `IconFile`. Reasoned from
+  the format, not seen. Fix: the `[InternetShortcut.W]` section, or a `.lnk` from the step 4 installer.
+  Record: `docs/plans/2026-11-05-name-and-icon.md`.
+- [ ] **[bug (latent), Low, Standard]** Trigger: an install reports "the dashboard was not updated"
+  with EPERM or EBUSY on `bin\web`. The shortcut's `IconFile` points inside the folder the install
+  renames, so a shell handle on `favicon.ico` could block the swap. Not seen. Fix: a stable icon path
+  outside `web`, such as `bin\grindlog.ico`, which step 3 may want for the exes anyway. Record:
+  `docs/plans/2026-11-05-name-and-icon.md`.
 - [ ] **[bug (latent), Low, Standard]** Trigger: the Friends landing e2e or the shell "redirect is
   pending" e2e flakes, or a header click is seen undone after `/` → `/recap`. `<Navigate>` replaces
   from a passive effect, so a click landing between the redirect's commit and that effect can

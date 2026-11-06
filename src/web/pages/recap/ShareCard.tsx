@@ -7,6 +7,7 @@ import { filterValue, type PlaylistFilter } from "../../../shared/playlist-filte
 import { teammateValue, type TeammateFilter } from "../../../shared/teammate-filter";
 import type { SessionDetail, SessionSummary } from "../../../shared/schemas/responses";
 import { cx } from "../../components/cx";
+import icon from "../../assets/icon.svg";
 import { plural } from "../../logic/format";
 import { formLine, LINE_MIN, PAD, shareCard, shareFilename, shareTeammate, type ShareCardView } from "../../logic/share-card";
 import { useMatchDetail, useRemarks, useSettings } from "../../queries";
@@ -196,7 +197,7 @@ function Card({ view, cardRef }: { view: ShareCardView; cardRef: RefObject<HTMLD
         ))}
       </div>
       {view.stood && <div className={styles.callout}><b>{view.stood.label}:</b> {view.stood.text}</div>}
-      <div className={styles.bottom}><div className={styles.footer} data-part="footer">RL Tracker</div></div>
+      <div className={styles.bottom}><div className={styles.footer} data-part="footer"><img src={icon} alt="" />Grindlog</div></div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-# RL Tracker: project rules
+# Grindlog: project rules
 
 These add to the global `~/.claude/CLAUDE.md`.
 

@@ -9,6 +9,7 @@
     "recompute": "bun run scripts/recompute.ts",
     "rules-diff": "bun run scripts/rules-diff.ts",
     "definitions": "bun run scripts/definitions.ts",
+    "icons": "bun run scripts/make-icons.ts",
     "deploy": "bun run check && bun run e2e && bun run install-autostart && bun run recompute",
     "install-autostart": "bun run scripts/autostart.ts install",
     "uninstall-autostart": "bun run scripts/autostart.ts uninstall",

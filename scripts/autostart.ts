@@ -4,12 +4,15 @@
 // `bun run install-autostart` / `bun run uninstall-autostart`.
 import { closeSync, existsSync, mkdirSync, openSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { dataDir, SUPERVISOR_EXE, TRACKER_EXE } from "../src/server/paths";
 import { DASHBOARD_HOST, DASHBOARD_PORT } from "../src/shared/constants";
 import { killImage, stopTracker } from "./stop";
 
 const TASK_NAME = "RLTracker";
+const SHORTCUT = "Grindlog.url";
+// The shortcut's name from before the rename.
+const LEGACY_SHORTCUT = "RL Tracker.url";
 const REPO = join(import.meta.dirname, "..");
 const SERVER_DIR = join(REPO, "src", "server");
 const DASHBOARD_URL = `http://${DASHBOARD_HOST}:${String(DASHBOARD_PORT)}/`;
@@ -20,7 +23,7 @@ const xmlEscape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").
 export function taskXml({ userId, exe, workDir }: { userId: string; exe: string; workDir: string }): string {
   return `<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
-  <RegistrationInfo><Description>RL Tracker: records Rocket League matches in the background.</Description></RegistrationInfo>
+  <RegistrationInfo><Description>Grindlog: records Rocket League matches in the background.</Description></RegistrationInfo>
   <Triggers><LogonTrigger><Enabled>true</Enabled><UserId>${xmlEscape(userId)}</UserId></LogonTrigger></Triggers>
   <Principals><Principal id="Author"><UserId>${xmlEscape(userId)}</UserId><LogonType>InteractiveToken</LogonType><RunLevel>LeastPrivilege</RunLevel></Principal></Principals>
   <Settings>
@@ -36,8 +39,8 @@ export function taskXml({ userId, exe, workDir }: { userId: string; exe: string;
 }
 
 /** A Start menu Internet Shortcut: it opens the URL in the default browser and never runs the tracker. */
-export function shortcutFile(url: string): string {
-  return `[InternetShortcut]\r\nURL=${url}\r\n`;
+export function shortcutFile(url: string, iconFile: string): string {
+  return `[InternetShortcut]\r\nURL=${url}\r\nIconFile=${iconFile}\r\nIconIndex=0\r\n`;
 }
 
 class StepFailed extends Error {}
@@ -79,7 +82,7 @@ async function stopInstalled(bin: string): Promise<void> {
   // it loses nothing. The supervisor goes first so it can't start the tracker again.
   console.log("Ending the leftover background processes.");
   for (const exe of [SUPERVISOR_EXE, TRACKER_EXE]) killImage(exe);
-  if (!(await waitUnlocked(exes, 10_000))) throw new StepFailed(`${bin} is still in use; close RL Tracker in Task Manager and try again.`);
+  if (!(await waitUnlocked(exes, 10_000))) throw new StepFailed(`${bin} is still in use; end ${SUPERVISOR_EXE} and ${TRACKER_EXE} in Task Manager and try again.`);
 }
 
 /** Moves `from` over `to`, retrying while antivirus still holds the fresh exe. */
@@ -136,27 +139,56 @@ async function swapWeb(fresh: string, web: string): Promise<void> {
   removeLeftover(old);
 }
 
-/** The Start menu shortcut, or null when APPDATA is unset. */
-function shortcutPath(): string | null {
+/** The Start menu's Programs folder, or null when APPDATA is unset. */
+function startMenuDir(): string | null {
   const appData = process.env.APPDATA;
-  return appData ? join(appData, "Microsoft", "Windows", "Start Menu", "Programs", "RL Tracker.url") : null;
+  return appData ? join(appData, "Microsoft", "Windows", "Start Menu", "Programs") : null;
+}
+
+/** Best-effort, like writing one: a shortcut left behind only costs deleting it by hand. */
+function removeShortcut(path: string): void {
+  if (!existsSync(path)) return;
+  try {
+    rmSync(path, { force: true });
+    console.log(`Removed the Start menu shortcut ${path}`);
+  } catch (err) {
+    console.log(`Could not remove the Start menu shortcut ${path} (${(err as Error).message}); delete it by hand.`);
+  }
+}
+
+/** Why the shortcut would show a generic icon, or null. */
+export function iconIssue(iconFile: string, exists: boolean): string | null {
+  // A failed swap keeps the old build, which may predate the icon.
+  if (!exists) return `${iconFile} is missing, so the shortcut shows a generic icon until the next install.`;
+  // Windows is expected to read a .url in the system code page, and this one is written as UTF-8.
+  if (/[^\x20-\x7e]/.test(iconFile)) return `${iconFile} has non-ASCII characters, so the shortcut may show a generic icon.`;
+  return null;
 }
 
 /** Best-effort: by now the tracker is installed and running, so a missing shortcut only costs a lookup of the URL. */
-function writeShortcut(): void {
-  const path = shortcutPath();
-  if (path === null) {
+export function writeShortcut(iconFile: string): void {
+  const dir = startMenuDir();
+  if (dir === null) {
     console.log(`Could not create the Start menu shortcut (APPDATA is not set); the dashboard is at ${DASHBOARD_URL}`);
     return;
   }
+  const issue = iconIssue(iconFile, existsSync(iconFile));
+  if (issue !== null) console.log(issue);
+  const path = join(dir, SHORTCUT);
   try {
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, shortcutFile(DASHBOARD_URL));
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path, shortcutFile(DASHBOARD_URL, iconFile));
     console.log(`Added the Start menu shortcut ${path}`);
+    removeShortcut(join(dir, LEGACY_SHORTCUT));
   } catch (err) {
     // Only filesystem calls above; any failure degrades the same way.
     console.log(`Could not create the Start menu shortcut (${(err as Error).message}); the dashboard is at ${DASHBOARD_URL}`);
   }
+}
+
+export function removeShortcuts(): void {
+  const dir = startMenuDir();
+  if (dir !== null) for (const name of [SHORTCUT, LEGACY_SHORTCUT]) removeShortcut(join(dir, name));
 }
 
 async function install(): Promise<void> {
@@ -209,9 +241,9 @@ async function install(): Promise<void> {
     rmSync(xmlPath, { force: true });
   }
   run(["schtasks", "/Run", "/TN", TASK_NAME]);
-  writeShortcut();
-  if (swapFailed !== null) throw new StepFailed(`RL Tracker is running again, but the dashboard was not updated: ${swapFailed.message}`);
-  console.log(`RL Tracker is installed in ${bin} and running; it starts at each logon. The dashboard is at ${DASHBOARD_URL}`);
+  writeShortcut(join(web, "favicon.ico"));
+  if (swapFailed !== null) throw new StepFailed(`Grindlog is running again, but the dashboard was not updated: ${swapFailed.message}`);
+  console.log(`Grindlog is installed in ${bin} and running; it starts at each logon. The dashboard is at ${DASHBOARD_URL}`);
   console.log("Stop it: bun run stop. Remove it: bun run uninstall-autostart. After code changes, run bun run deploy.");
 }
 
@@ -226,15 +258,7 @@ async function uninstall(): Promise<void> {
     console.log((err as Error).message);
   }
   await stopInstalled(bin);
-  const shortcut = shortcutPath();
-  if (shortcut !== null && existsSync(shortcut)) {
-    try {
-      rmSync(shortcut, { force: true });
-      console.log("Removed the Start menu shortcut.");
-    } catch (err) {
-      console.log(`Could not remove the Start menu shortcut ${shortcut} (${(err as Error).message}); delete it by hand.`);
-    }
-  }
+  removeShortcuts();
   try {
     rmSync(bin, { recursive: true, force: true });
     console.log(`Removed ${bin}. Your data in ${dataDir()} is kept.`);

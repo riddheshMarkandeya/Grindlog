@@ -59,8 +59,14 @@ test("the card opens on the session with its name, record and tiles, fits, and p
 });
 
 test("Download saves a 1080×1440 PNG named for the session's start and filter", async ({ page }) => {
+  const failed = warnings(page, "share/export_failed");
   await page.goto("/recap/e2e-seed-won?filter=13");
   await openCard(page);
+  // Inlined, because html-to-image caches a failed fetch and every later export would fail until a reload.
+  const footer = shareDialog(page).locator("[data-part=footer]");
+  await expect(footer).toHaveText("Grindlog");
+  await expect(footer.locator("img")).toHaveAttribute("src", /^data:image\/svg/);
+  await expect(footer.locator("img")).not.toHaveJSProperty("naturalWidth", 0);
   // A short label stays on one line.
   expect(await filterLines(page)).toBe(1);
   // No fill: small caps from CSS while the text stays as written.
@@ -75,6 +81,7 @@ test("Download saves a 1080×1440 PNG named for the session's start and filter",
   // IHDR's width and height, big-endian, right after the chunk's type.
   expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([1080, 1440]);
   await expect(shareDialog(page).getByText("Saved")).toBeVisible();
+  expect(failed).toEqual([]);
 });
 
 test("Copy hands the clipboard a 1080×1440 PNG", async ({ page }) => {

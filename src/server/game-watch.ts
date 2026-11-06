@@ -59,7 +59,7 @@ async function detectGame(): Promise<boolean> {
 }
 
 const TOAST_TIMEOUT_MS = 10_000;
-const TOAST_TITLE = "RL Tracker isn't getting data";
+const TOAST_TITLE = "Grindlog isn't getting data";
 const TOAST_BODY = "Rocket League is running but its Stats API is off. Set PacketSendRate above 0 in TAGame\\Config\\TAStatsAPI.ini, then restart the game.";
 // PowerShell's own AppUserModelID: a toast needs a registered app, and this one always is.
 const POWERSHELL_APP_ID = String.raw`{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe`;

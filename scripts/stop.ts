@@ -9,12 +9,12 @@ export type StopOutcome = { kind: "status"; status: number } | { kind: "refused"
 export function describeStopResult(outcome: StopOutcome): { message: string; exitCode: number } {
   switch (outcome.kind) {
     case "status":
-      return outcome.status === 202 ? { message: "RL Tracker is stopping.", exitCode: 0 } : { message: `Stop request failed: HTTP ${String(outcome.status)}.`, exitCode: 1 };
+      return outcome.status === 202 ? { message: "Grindlog is stopping.", exitCode: 0 } : { message: `Stop request failed: HTTP ${String(outcome.status)}.`, exitCode: 1 };
     case "refused":
-      return { message: "RL Tracker is not running.", exitCode: 1 };
+      return { message: "Grindlog is not running.", exitCode: 1 };
     case "reset":
       // The tracker answers 202 before tearing down, so a lost answer most likely means it stopped first.
-      return { message: "The connection closed before an answer; RL Tracker is probably stopping.", exitCode: 0 };
+      return { message: "The connection closed before an answer; Grindlog is probably stopping.", exitCode: 0 };
     case "error":
       return { message: `Stop request failed: ${outcome.message}`, exitCode: 1 };
   }
@@ -82,13 +82,13 @@ export async function stopTracker(port: number, wait: boolean, deps: { request?:
   // A supervisor sleeping between crash restarts would bring the tracker back. Only the installed
   // port has one; a dev run on another port must not end it.
   if (notRunning && port === DASHBOARD_PORT && end()) {
-    return { message: "RL Tracker wasn't running; ended its supervisor, which was waiting to restart it.", exitCode: 0, notRunning };
+    return { message: "Grindlog wasn't running; ended its supervisor, which was waiting to restart it.", exitCode: 0, notRunning };
   }
   const result = { ...describeStopResult(outcome), notRunning };
   if (!wait || result.exitCode !== 0) return result;
   return (await waitForPortFree(port))
-    ? { message: "RL Tracker stopped.", exitCode: 0, notRunning }
-    : { message: `RL Tracker still holds port ${String(port)} after 30 s.`, exitCode: 1, notRunning };
+    ? { message: "Grindlog stopped.", exitCode: 0, notRunning }
+    : { message: `Grindlog still holds port ${String(port)} after 30 s.`, exitCode: 1, notRunning };
 }
 
 if (import.meta.main) {
