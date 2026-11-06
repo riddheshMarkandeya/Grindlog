@@ -64,9 +64,9 @@ function insertMatch(guid: string, ts: number, events: readonly (string | [strin
     });
   });
 }
-/** A closed match no playlist was seen in, so it is flagged. */
-function flaggedMatch(guid: string, ts: number) {
-  const state: [string, unknown] = ["UpdateState", { Players: [], Game: {} }];
+/** A closed match that fails a check: by default no playlist was seen in it. */
+function flaggedMatch(guid: string, ts: number, game: Record<string, unknown> = {}) {
+  const state: [string, unknown] = ["UpdateState", { Players: [], Game: game }];
   insertMatch(guid, ts, ["MatchCreated", "MatchInitialized", state, state, state, ["MatchEnded", { WinnerTeamNum: 0 }], "MatchDestroyed"]);
 }
 
@@ -116,6 +116,14 @@ describe("runRetention", () => {
     expect(decision("F")).toMatchObject({ status: "exempt", outputs: null });
     expect(JSON.parse(String(decision("F")?.flags))).toContain("playlist_present");
     expect(logger.lines.find((l) => l.event === "exempt")?.fields).toMatchObject({ guid: "F" });
+  });
+
+  test("an old flagged match in an ignored playlist thins like an unflagged one", async () => {
+    // With a playlist seen, the negative clock is what flags it.
+    flaggedMatch("F", OLD, { PlaylistId: 73, TimeSeconds: -1 });
+    const result = await run();
+    expect(result).toMatchObject({ status: "done", exempt: 0, thinned: 1 });
+    expect(decision("F")).toMatchObject({ status: "thinned" });
   });
 
   test("an exempt match is re-checked only when the rule versions changed", async () => {

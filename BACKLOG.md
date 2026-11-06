@@ -94,6 +94,12 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   still `/recap`, with a red e2e that clicks a tab as `/api/sessions/latest` resolves.
 
 ## Watch list
+- [ ] **[tooling, Low, Standard]** Trigger: a rules-diff report saying "removed: N in an ignored
+  playlist" while the same run's recompute skipped or failed an ignored-playlist match. `diffRecords`
+  counts every stored ignored-playlist match missing from the recompute as removed. A skipped or
+  failed one actually keeps its record, which the report's skip and fail counts show. No stored
+  freeplay record is left after the 2026-11-05 deploy, so this needs an un-ignore or a manual
+  insert. Fix: pass recompute's ignored guids into the diff. Record: `ignored_playlist` commit body.
 - [ ] **[a11y, Low, Standard]** Trigger: a report that a Settings section link, below 768px,
   leaves its heading partly under the sticky section row. The jump offset is a fixed
   `scroll-margin-top: 56px` (`Settings.module.css`, `.section h2`), and the row scrolls sideways at

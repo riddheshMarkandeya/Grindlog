@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { migrate } from "../db/migrate";
 import { trackerMigrations } from "../db/migrations";
 import { openDb, type Db } from "../db/sqlite";
+import { ignoredPlaylist } from "../../shared/playlists";
 import { createLogger, type Logger } from "../log";
 import { createRawStore } from "../recorder/store";
 import { RULES, type Rule } from "../rules/registry";
@@ -39,7 +40,7 @@ export interface ColumnMove {
 
 export interface RecordsDiff {
   moved: ColumnMove[];
-  /** Rows by table that only one side has, outside the kept matches. */
+  /** Rows by table that only one side has, outside the kept and ignored matches. */
   onlyBase: Record<string, number>;
   onlyNext: Record<string, number>;
   /**
@@ -55,6 +56,11 @@ export interface RecordsDiff {
   unversioned: number;
   /** Base matches the recompute didn't write (skipped, or no raw events left); their record stands. */
   kept: string[];
+  /**
+   * Base matches in an ignored playlist the recompute didn't write: it removes their record, unless
+   * it skipped or failed them, which its own counts show.
+   */
+  ignored: string[];
   /**
    * Matches, sorted, whose stored values changed while no rule changed version, was added or was
    * removed: a rule changed without a bump, or what moved has no rule yet.
@@ -140,19 +146,21 @@ function moveOf({ b, n, guidOf, reshaped, changed }: TableRows, table: string, c
 
 /** Compares two trackers' records, `base` as stored and `next` as recomputed. */
 export function diffRecords(base: Db, next: Db, rules: readonly Rule[] = RULES): RecordsDiff {
-  const diff: RecordsDiff = { moved: [], onlyBase: {}, onlyNext: {}, reshaped: {}, flags: {}, ruleVersions: {}, unversioned: 0, kept: [], unbumped: [], toReview: [] };
+  const diff: RecordsDiff = { moved: [], onlyBase: {}, onlyNext: {}, reshaped: {}, flags: {}, ruleVersions: {}, unversioned: 0, kept: [], ignored: [], unbumped: [], toReview: [] };
   const baseMatches = keyed(base, "matches", ["guid"]);
   const nextMatches = keyed(next, "matches", ["guid"]);
   const kept = new Set<string>();
   const touched = new Set<string>();
 
-  // Per base match: kept if it wasn't recomputed; else which rules changed version, and its flags.
+  // Per base match: kept if it wasn't recomputed (ignored if its playlist is); else which rules
+  // changed version, and its flags.
   const changed: Changed = new Map();
   for (const [k, b] of baseMatches) {
     const guid = String(b.guid);
     const n = nextMatches.get(k);
     if (!n) {
-      kept.add(guid);
+      if (ignoredPlaylist(typeof b.playlist_id === "number" ? b.playlist_id : null) !== undefined) diff.ignored.push(guid);
+      else kept.add(guid);
       continue;
     }
     const rulesChanged = changedRules(parseVersions(b.rule_versions), parseVersions(n.rule_versions));
@@ -172,6 +180,7 @@ export function diffRecords(base: Db, next: Db, rules: readonly Rule[] = RULES):
     }
   }
   diff.kept = [...kept];
+  const ignored = new Set(diff.ignored);
 
   const owners = ownersByColumn(rules);
   for (const { name, key } of TABLES) {
@@ -186,7 +195,7 @@ export function diffRecords(base: Db, next: Db, rules: readonly Rule[] = RULES):
     }
     const b = name === "matches" ? baseMatches : keyed(base, name, key);
     const guidOf = (r: Row) => String(r[key[0] ?? ""]);
-    const onlyBase = [...b].filter(([k, r]) => !n.has(k) && !kept.has(guidOf(r))).map(([, r]) => guidOf(r));
+    const onlyBase = [...b].filter(([k, r]) => !n.has(k) && !kept.has(guidOf(r)) && !ignored.has(guidOf(r))).map(([, r]) => guidOf(r));
     const onlyNext = [...n].filter(([k]) => !b.has(k)).map(([, r]) => guidOf(r));
     if (onlyBase.length) diff.onlyBase[name] = onlyBase.length;
     if (onlyNext.length) diff.onlyNext[name] = onlyNext.length;
@@ -217,7 +226,7 @@ export function diffRecords(base: Db, next: Db, rules: readonly Rule[] = RULES):
 
 /** Whether any stored value would change; rule versions alone don't count. */
 export const hasChanges = (d: RecordsDiff) =>
-  d.moved.length > 0 || Object.keys(d.onlyBase).length > 0 || Object.keys(d.onlyNext).length > 0 || Object.keys(d.flags).length > 0;
+  d.moved.length > 0 || d.ignored.length > 0 || Object.keys(d.onlyBase).length > 0 || Object.keys(d.onlyNext).length > 0 || Object.keys(d.flags).length > 0;
 
 export interface RulesDiffReport {
   diff: RecordsDiff;
@@ -302,6 +311,7 @@ export function formatReport({ diff, recompute, kept, thinned, scratchDir }: Rul
   const skipped = Object.entries(recompute.skipped).map(([k, v]) => `${k} ${String(v)}`);
   out.push(`recomputed ${String(recompute.written)}, failed ${String(recompute.failed)}${skipped.length ? `, skipped: ${skipped.join(", ")}` : ""}`);
   if (kept.skipped + kept.noRaw) out.push(`kept as stored: ${String(kept.skipped)} not recomputed (skipped or failed), ${String(kept.noRaw)} with no raw events`);
+  if (diff.ignored.length) out.push(`removed: ${String(diff.ignored.length)} in an ignored playlist`);
   if (thinned) out.push(`thinned: ${String(thinned)} matches (car stats and camera frozen at thinning)`);
   if (scratchDir) out.push(`a match failed to recompute: see recompute_failed in ${join(scratchDir, "tracker.log")}`);
   if (!hasChanges(diff)) out.push("no change");

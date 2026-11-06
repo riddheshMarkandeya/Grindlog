@@ -1,8 +1,9 @@
 // Rebuilds match records from raw.db, through the same read the live recorder uses, so a fixed
 // rule or a new stat reaches every match in raw.db. A match retention thinned recomputes from its
 // kept events, with its dense outputs (car stats, camera) from the snapshot taken when it was
-// thinned. It never deletes a record: anything it skips keeps its record. Safe to run beside the
-// background tracker: each match is its own transaction, and the live match is skipped as still open.
+// thinned. It never deletes a record, except one in an ignored playlist: anything it skips keeps its
+// record. Safe to run beside the background tracker: each match is its own transaction, and the
+// live match is skipped as still open.
 import type { Db } from "../db/sqlite";
 import type { Logger } from "../log";
 import { readableAs, readMatch } from "../recorder/read-match";
@@ -17,7 +18,7 @@ export interface RecomputeOptions {
   now?: () => number;
 }
 
-export type SkipReason = "open" | "lobby" | "lobby_has_record" | "trimmed";
+export type SkipReason = "open" | "lobby" | "lobby_has_record" | "trimmed" | "ignored_playlist";
 
 export interface RecomputeResult {
   written: number;
@@ -33,8 +34,11 @@ export function recomputeAll({ raw, tracker, logger, now }: RecomputeOptions): R
   const store = createRawStore(raw);
   const writer = createRecordWriter({ tracker, logger, now });
   const result: RecomputeResult = { written: 0, skipped: {}, failed: 0, ms: 0 };
-  const skip = (guid: string, reason: SkipReason, level: "info" | "warn" = "info") => {
+  const tally = (reason: SkipReason) => {
     result.skipped[reason] = (result.skipped[reason] ?? 0) + 1;
+  };
+  const skip = (guid: string, reason: SkipReason, level: "info" | "warn" = "info") => {
+    tally(reason);
     logger[level](C, "recompute_skipped", { guid, reason });
   };
 
@@ -60,8 +64,12 @@ export function recomputeAll({ raw, tracker, logger, now }: RecomputeOptions): R
         }
         continue;
       }
-      writer.save(toRecord(readMatch(store, guid, r.via).summary));
-      result.written++;
+      if (writer.save(toRecord(readMatch(store, guid, r.via).summary)) === "ignored") {
+        // The writer has logged the match and removed any record of it.
+        tally("ignored_playlist");
+      } else {
+        result.written++;
+      }
     } catch (err) {
       // Broad on purpose: one match's bad data or failed write must not stop the rest.
       result.failed++;

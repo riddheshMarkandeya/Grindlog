@@ -93,7 +93,8 @@ function main(): void {
       // A failed write is logged by the recorder as hook_failed; recompute can rebuild it.
       onMatchFinished: (s) => {
         const record = toRecord(s);
-        writer.save(record);
+        // An ignored playlist's match changed nothing a page shows.
+        if (writer.save(record) !== "written") return;
         // Startup recovery finishes matches before the API exists; no page is open then.
         parts.api?.matchEnded(record.match.guid);
       },

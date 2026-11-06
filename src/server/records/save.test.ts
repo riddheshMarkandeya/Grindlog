@@ -217,6 +217,34 @@ describe("record writer", () => {
     });
   });
 
+  describe("an ignored playlist (Online Freeplay, 73)", () => {
+    const tables = ["matches", "match_players", "match_player_statfeed", "match_goals"];
+
+    test("keeps no record and no guess, and says so", () => {
+      const { writer, fields } = setup();
+      expect(writer.save(record("G", { playlistId: 73 }))).toBe("ignored");
+      for (const t of tables) expect(count(t)).toBe(0);
+      expect(myIds()).toEqual([]);
+      expect(fields("ignored_playlist")).toEqual([{ guid: "G", playlistId: 73, name: "Online Freeplay", removed: false }]);
+      expect(fields("written")).toEqual([]);
+      expect(fields("unknown_playlist")).toEqual([]);
+    });
+
+    test("removes a record made before, and only that match's", () => {
+      const { writer, fields } = setup();
+      writer.save(record("G"));
+      writer.save(record("Other"));
+      expect(writer.save(record("G", { playlistId: 73 }))).toBe("ignored");
+      expect(storage.tracker.all("SELECT guid FROM matches")).toEqual([{ guid: "Other" }]);
+      for (const t of tables.slice(1)) expect(storage.tracker.all(`SELECT DISTINCT match_guid FROM ${t}`)).toEqual([{ match_guid: "Other" }]);
+      expect(fields("ignored_playlist")).toEqual([{ guid: "G", playlistId: 73, name: "Online Freeplay", removed: true }]);
+    });
+
+    test("an ordinary match is written", () => {
+      expect(setup().writer.save(record("G"))).toBe("written");
+    });
+  });
+
   test("an unmapped playlist id is logged once per writer, with the arena and team sizes", () => {
     const { writer, fields } = setup();
     writer.save(record("G", { playlistId: 999, arena: "new_p" }));

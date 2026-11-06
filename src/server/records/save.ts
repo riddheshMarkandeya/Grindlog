@@ -1,9 +1,10 @@
-// Writes match records to tracker.db, one transaction per match, and adds the camera's player as
-// a pending guess at "you". Write errors are not caught here: live, the recorder's hook handler
-// logs them and the raw events stay for recompute; recompute catches them per match.
+// Writes match records to tracker.db, or removes the record of a match in an ignored playlist, one
+// transaction per match, and adds the camera's player as a pending guess at "you". Write errors
+// are not caught here: live, the recorder's hook handler logs them and the raw events stay for
+// recompute; recompute catches them per match.
 import type { Db } from "../db/sqlite";
 import type { Logger } from "../log";
-import { playlistInfo } from "../../shared/playlists";
+import { ignoredPlaylist, playlistInfo } from "../../shared/playlists";
 import { PLAYER_EXTRAS } from "../recorder/extras";
 import type { MatchRecord } from "./record";
 
@@ -49,6 +50,13 @@ const ADD_GUESS = `
 
 const cameraName = ({ match, players }: MatchRecord) => players.find((p) => p.primaryId === match.cameraPrimaryId)?.name ?? null;
 
+/** A match's rows outside its matches row: no FK cascades, so each table is cleared by hand. */
+function deleteRows(tracker: Db, guid: string): void {
+  tracker.run("DELETE FROM match_players WHERE match_guid = ?", guid);
+  tracker.run("DELETE FROM match_player_statfeed WHERE match_guid = ?", guid);
+  tracker.run("DELETE FROM match_goals WHERE match_guid = ?", guid);
+}
+
 export function createRecordWriter({ tracker, logger, now = Date.now }: RecordWriterOptions) {
   /** Unmapped playlist ids already reported this run. */
   const unknownPlaylists = new Set<number | null>();
@@ -85,9 +93,7 @@ export function createRecordWriter({ tracker, logger, now = Date.now }: RecordWr
       JSON.stringify(m.checkFlags),
       JSON.stringify(m.ruleVersions),
     );
-    tracker.run("DELETE FROM match_players WHERE match_guid = ?", m.guid);
-    tracker.run("DELETE FROM match_player_statfeed WHERE match_guid = ?", m.guid);
-    tracker.run("DELETE FROM match_goals WHERE match_guid = ?", m.guid);
+    deleteRows(tracker, m.guid);
     for (const p of players) {
       const extras = PLAYER_EXTRAS.map((e) => p.extras[e.column] ?? null);
       tracker.run(INSERT_PLAYER, m.guid, p.playerKey, p.primaryId, p.name, p.isBot, p.teamNum, p.teamsSeen, p.presentAtEnd, p.score, p.goals, p.shots, p.assists, p.saves, p.touches, p.demos, ...extras);
@@ -103,8 +109,21 @@ export function createRecordWriter({ tracker, logger, now = Date.now }: RecordWr
     return tracker.run(ADD_GUESS, m.cameraPrimaryId, cameraName(record), now(), m.guid).changes > 0;
   }
 
+  /** Removes every row of a guid, the matches row included. Returns whether a record was there. */
+  function remove(guid: string): boolean {
+    deleteRows(tracker, guid);
+    return tracker.run("DELETE FROM matches WHERE guid = ?", guid).changes > 0;
+  }
+
   return {
-    save(record: MatchRecord): void {
+    save(record: MatchRecord): "written" | "ignored" {
+      const { guid, playlistId } = record.match;
+      const ignoredAs = ignoredPlaylist(playlistId);
+      if (ignoredAs !== undefined) {
+        const removed = tracker.transaction(() => remove(guid));
+        logger.info(C, "ignored_playlist", { guid, playlistId, name: ignoredAs, removed });
+        return "ignored";
+      }
       const started = performance.now();
       const guessed = tracker.transaction(() => write(record));
       const { match: m } = record;
@@ -120,6 +139,7 @@ export function createRecordWriter({ tracker, logger, now = Date.now }: RecordWr
       });
       if (guessed) logger.info(C, "pending_guess", { guid: m.guid, primaryId: m.cameraPrimaryId, name: cameraName(record) });
       reportUnknownPlaylist(record);
+      return "written";
     },
   };
 }

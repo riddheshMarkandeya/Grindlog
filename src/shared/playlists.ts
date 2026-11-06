@@ -72,6 +72,12 @@ export const PLAYLISTS: Readonly<Record<number, Playlist>> = {
   70: p("Dropshot Rumble (2v2)", "ltm"),
 };
 
+// Not games: no match record is kept for these, and recompute removes one made before.
+export const IGNORED_PLAYLISTS: Readonly<Record<number, string>> = { 73: "Online Freeplay" };
+
+/** The name of an ignored playlist, or undefined for any other id. */
+export const ignoredPlaylist = (id: number | null): string | undefined => (id === null ? undefined : IGNORED_PLAYLISTS[id]);
+
 export type PlaylistInfo = Playlist | { name: string; group: null; ranked: null };
 
 /** The playlist for an id; an unmapped one is named by its id, with no group or ranked flag. */

@@ -1,5 +1,6 @@
 import { isDeepStrictEqual } from "node:util";
 import { RETENTION_DAYS } from "../../shared/constants";
+import { ignoredPlaylist } from "../../shared/playlists";
 import type { Logger } from "../log";
 import type { CloseVia } from "../recorder/lifecycle";
 import { readableAs, readMatch } from "../recorder/read-match";
@@ -144,7 +145,10 @@ export async function runRetention(raw: Db, opts: RetentionOptions): Promise<Ret
       logger.error(C, "thin_failed", { guid, err });
       return;
     }
-    if (summary.flags.length) {
+    // Thinned anyway: freeplay goals never pass the last-touch check, so exempting an ignored
+    // playlist would keep every freeplay whole forever.
+    const ignored = ignoredPlaylist(summary.playlistId) !== undefined;
+    if (summary.flags.length && !ignored) {
       raw.run(
         "INSERT OR REPLACE INTO retention_matches (match_guid, status, decided_at, rule_versions, flags) VALUES (?, 'exempt', ?, ?, ?)",
         guid,
@@ -178,7 +182,14 @@ export async function runRetention(raw: Db, opts: RetentionOptions): Promise<Ret
     });
     counts.thinned++;
     counts.states += drop.size;
-    logger.info(C, "thinned", { guid, before: states.length, after: states.length - drop.size, kb: Math.round(bytes / 1024), ms: Math.round(performance.now() - t0) });
+    logger.info(C, "thinned", {
+      guid,
+      before: states.length,
+      after: states.length - drop.size,
+      kb: Math.round(bytes / 1024),
+      ms: Math.round(performance.now() - t0),
+      ...(summary.flags.length ? { ignoredPlaylistFlags: summary.flags } : {}),
+    });
   }
 
   try {

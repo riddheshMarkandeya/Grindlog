@@ -10,7 +10,7 @@ import { memoryLogger, readFixture } from "../testing";
 import { RECORDED_RULE_VERSIONS } from "../rules/registry";
 import { toRecord } from "./record";
 import { recomputeAll } from "./recompute";
-import { createRecordWriter } from "./save";
+import { createRecordWriter, type RecordWriter } from "./save";
 
 let dir: string;
 let storage: Storage;
@@ -27,17 +27,22 @@ const now = () => 42;
 const FIXTURES = ["completed", "early-end", "overtime-leavers", "joined-in-progress", "left-early", "left-countdown", "private-series"];
 const TABLES = ["matches", "match_players", "match_player_statfeed", "match_goals", "my_ids"];
 
-/** Records the fixtures live, with the hook saving each match the way main does. */
-function recordLive(names: readonly string[]): void {
+/** Records the fixtures live, with the hook saving each match the way main does. Returns what each save did. */
+function recordLive(names: readonly string[], edit: (raw: string) => string = (raw) => raw): ReturnType<RecordWriter["save"]>[] {
   const writer = createRecordWriter({ tracker: storage.tracker, logger: memoryLogger(), now });
+  const saved: ReturnType<RecordWriter["save"]>[] = [];
   const onMatchFinished = (s: MatchSummary) => {
-    writer.save(toRecord(s));
+    saved.push(writer.save(toRecord(s)));
   };
   const recorder = createRecorder({ raw: storage.raw, logger: memoryLogger(), onMatchFinished });
   for (const name of names) {
-    feed(recorder, readFixture(name));
+    feed(
+      recorder,
+      readFixture(name).map((l) => ({ ...l, raw: edit(l.raw) })),
+    );
     recorder.flush();
   }
+  return saved;
 }
 
 const snapshot = () => Object.fromEntries(TABLES.map((t) => [t, storage.tracker.all(`SELECT * FROM ${t} ORDER BY 1, 2, 3`)]));
@@ -102,6 +107,24 @@ describe("recomputeAll", () => {
     expect(result.skipped).toMatchObject({ lobby_has_record: 1 });
     expect(storage.tracker.get("SELECT guid FROM matches WHERE guid = ?", lobby)).toEqual({ guid: lobby });
     expect(logger.lines.find((l) => l.fields.reason === "lobby_has_record")).toMatchObject({ level: "warn", fields: { guid: lobby } });
+  });
+
+  describe("a match in an ignored playlist (Online Freeplay, 73)", () => {
+    const rows = () => TABLES.slice(0, 4).map((t) => storage.tracker.all(`SELECT 1 FROM ${t}`).length);
+
+    test("keeps no record when it ends live", () => {
+      expect(recordLive(["completed"], (raw) => raw.replaceAll('PlaylistId\\":13', 'PlaylistId\\":73'))).toEqual(["ignored"]);
+      expect(rows()).toEqual([0, 0, 0, 0]);
+    });
+
+    test("recompute removes the record made before it was ignored", () => {
+      expect(recordLive(["completed"])).toEqual(["written"]);
+      expect(rows().every((n) => n > 0)).toBe(true);
+      storage.raw.run(`UPDATE events SET data = replace(data, '"PlaylistId":13', '"PlaylistId":73')`);
+      const result = recomputeAll({ raw: storage.raw, tracker: storage.tracker, logger: memoryLogger(), now });
+      expect(result).toMatchObject({ written: 0, skipped: { ignored_playlist: 1 }, failed: 0 });
+      expect(rows()).toEqual([0, 0, 0, 0]);
+    });
   });
 
   test("refreshes each match's rule versions, including one recorded before they were stored", () => {

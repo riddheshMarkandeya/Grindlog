@@ -40,10 +40,11 @@ function insert(d: Db, table: string, row: Record<string, Param>): void {
 }
 
 /** One match with two players and a goal; `versions` null leaves rule_versions out (an older schema). */
-function seed(d: Db, guid: string, over: { flags?: string[]; versions?: Record<string, number> | null; aerial?: [number, number]; winner?: number } = {}): void {
-  const { flags = [], versions = VERSIONS, aerial = [2, 0], winner = 0 } = over;
+function seed(d: Db, guid: string, over: { flags?: string[]; versions?: Record<string, number> | null; aerial?: [number, number]; winner?: number; playlist?: number } = {}): void {
+  const { flags = [], versions = VERSIONS, aerial = [2, 0], winner = 0, playlist = 13 } = over;
   insert(d, "matches", {
     guid,
+    playlist_id: playlist,
     started_at: 1,
     ended_at: 2,
     end_kind: "completed",
@@ -128,6 +129,18 @@ describe("diffRecords", () => {
     expect(diff.kept).toEqual(["OLD"]);
     expect(diff.onlyBase).toEqual({});
     expect(hasChanges(diff)).toBe(false);
+  });
+
+  test("a base match in an ignored playlist that recompute didn't write was removed, not kept", () => {
+    const [base, next] = [tracker("base"), tracker("next")];
+    seed(base, "A");
+    seed(base, "FP", { playlist: 73 });
+    seed(next, "A");
+    const diff = diffRecords(base, next, RULES);
+    expect(diff).toMatchObject({ ignored: ["FP"], kept: [], onlyBase: {} });
+    const text = formatReport({ diff, recompute: { written: 1, skipped: { ignored_playlist: 1 }, failed: 0, ms: 0 }, kept: { skipped: 0, noRaw: 0 }, thinned: 0, scratchDir: null });
+    expect(text).toContain("removed: 1 in an ignored playlist");
+    expect(text).not.toContain("no change");
   });
 
   describe("bump guard", () => {
