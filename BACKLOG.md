@@ -4,9 +4,7 @@ Tags: `[type, priority, effort]` — type bug/refactor/feature/performance/test-
 priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
 
 - [ ] **[misc, Med, Trivial]** v1 roadmap (`docs/plans/2026-10-16-v1-roadmap.md`): every work package
-  is deployed (WP9, the last, on 2026-11-02). Left: add S25 in Settings › Seasons when it starts; check
-  the Friends page by eye on real data (its look, the duo remark line on ↻, the share card's "· with
-  <nick>", the HEAD-TO-HEAD label wrapping beside a long name). Open items from the work packages:
+  is deployed (WP9, the last, on 2026-11-02). Left: add S25 in Settings › Seasons when it starts. Open items from the work packages:
   - **[design, Low, Trivial]** Add back the themes midnight, dusk, steel and daylight (values in the
     `prototype/settings-layout` tokens; each needs a `tokens.css` block, and the token test covers
     it). Daylight has the real cost: every chart gets checked in light mode, and so does the WP6c
@@ -20,7 +18,8 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   - **[design, Low, Trivial]** Check the goal map's top/bottom against a goal you remember:
     +X is assumed to be blue's left, which nothing has verified. A wrong guess mirrors the map top
     to bottom; left/right (your goal) is confirmed by real data. Fix it in `toScreen`, which has
-    the tests. Record: `docs/plans/2026-10-27-wp6a-b-overview-sections.md`.
+    the tests. Record: `docs/plans/2026-10-27-wp6a-b-overview-sections.md`. The user plans to save a
+    replay of a goal to check this: last touched on the scorer's left, its mark should be in the top half.
   - **[feature, Low, Standard]** Per-tier and per-trigger remark switches: deferred from v1
     (user, 2026-10-28, simplest settings first). WP8a ships only the master and mood-line
     switches, which change what's shown and not the pick; clock and speed go through
@@ -88,6 +87,20 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   `rlt-e2e-` prefix and the `rltracker-*` temp names. `LEGACY_SHORTCUT` in `autostart.ts` goes once
   the installer exists: only the developer's machine ever had that file. Steps:
   `docs/plans/2026-11-05-friends-release-map.md`. Record: `docs/plans/2026-11-05-name-and-icon.md`.
+
+- [ ] **[feature, Med, Standard]** After the friends release map: set up new seasons automatically, and
+  keep them editable. Source the user found: `ggseason.com/blog/rocket-league-all-seasons-dates/`, captured
+  in `HARs/`, with a season table of number, name, start and end. Not trivial, because:
+  - It would be this local-only app's first outbound request, which friends should be told about.
+  - It scrapes a third party's HTML, so a page change needs a sanity check and a logged failure. A plain
+    script fetch got a 200 on 2026-11-06, but the site is behind Cloudflare and that may change.
+  - A fetch must not overwrite an edit or bring back a deleted season, so rows need to record their source.
+  - The table gains a season only once it has launched. S25's December 9 is only "reported", in the prose.
+  The user prefers a simpler route, to settle when this is picked up: a season file in the GitHub repo that
+  every install fetches, which needs no scraping or release, though it is still an outbound request and
+  the row-source rule still applies. Or ship the list in the app and add each season by migration in a
+  release, once step 4's update path exists. Also: the seed has S23 starting 2026-06-09 and that page says June 10,
+  so check which is right, since it decides which season a match on that day counts in.
 
 ## Watch list
 - [ ] **[bug (latent), Low, Standard]** Trigger: "Couldn't make the image" again on the share card. It

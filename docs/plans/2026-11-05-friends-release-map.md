@@ -14,8 +14,8 @@ docs and an update path. Polish comes after their feedback, not before.
 | # | Step | Status | Plan or next action |
 |---|---|---|---|
 | 1 | Pre-friends backlog fixes | Done (`4531ee4`) | `docs/reviews/2026-11-05-pre-friends-fixes.md`. The goal-map orientation check by eye is still the user's. |
-| 2 | Name and app icon | Done | `docs/plans/2026-11-05-name-and-icon.md`. Start menu and tab icon checks by eye are still the user's. |
-| 3 | Task Manager names | Done | Section below. Task Manager and Explorer icon checks by eye are still the user's. |
+| 2 | Name and app icon | Done | `docs/plans/2026-11-05-name-and-icon.md`. |
+| 3 | Task Manager names | Done | Section below. |
 | 4 | Distribution | Next | `/wayfinder`, multi-session. |
 | 5 | Docs | Open | No plan yet. |
 | → | **Ship to friends** | | |
