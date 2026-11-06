@@ -60,19 +60,11 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   (`eventNameOf`/`matchGuidOf`), hardcoded URL and reconnect loop; reuse `parseFrame`,
   `statsApiUrl` and maybe `startStatsClient`, or retire it now the recorder stores raw events.
   Record: Review log in `docs/plans/2026-10-19-wp3a-recorder.md`.
-- [ ] **[design, Low, Trivial]** Drop the totals row from the recap's Matches & numbers table
-  (`src/web/pages/recap/Matches.tsx`, the `<tfoot>`, and the header comment that mentions it). The
-  user doesn't want totals there, as on the Friends page's match-by-match table (user, 2026-10-28,
-  Friends prototype review).
 - [ ] **[design, Low, Standard]** Controls drift: about six button styles, two segmented controls
   (Trends `.xmode` buttons, Settings `.seg` radios, plus Friends' own `.seg`), two `.link` rules,
   and Trends `.picks button` against the match page's `.chip`. One shared set, as the display-drift
   work did for panels and tables. On the way, `PeriodControls.tsx:45` uses `styles.controls`,
   which no CSS defines. Record: `docs/plans/2026-11-03-display-drift.md`.
-- [ ] **[ui, Low, Standard]** Narrow-width wraps, seen in the display-drift browser pass (2026-11-04),
-  the same at c181ae7: the Overview By playlist "W–L" header wraps at 320 and 768px, and at 320 its
-  cells do too ("0–" over "1") (`pages/recap/Overview.tsx:235`). Record:
-  `docs/plans/2026-11-03-display-drift.md`.
 - [ ] **[design, Low, Standard]** Trends data line: the line, dots and sparklines use `--accent`,
   which the colour rule in `src/web/styles/tokens.css` now keeps for selection and focus; on oled
   the accent is white, the same as the text. Choose a data colour (a new token, checked on every
@@ -87,13 +79,15 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
 - [ ] **[idea, Low, TBD]** Playful UI touches: the flat peeling corner (variant L on the
   `prototype/recap-stood-out` branch, never merge) was liked as a stood-out mark (user, 2026-11-04).
   Look at where flat-but-fun details fit the dashboard. Trigger: a UI polish pass.
-- [ ] **[bug, Low, Standard]** A nav click while `/recap` is still loading the latest session is
-  undone: `RecapIndex`'s `<Navigate>` to that session fires after the click and replaces `/friends`
-  (seen in the Friends landing e2e, 2026-11-04, about 1 run in 6; the trace shows the click at
-  `/recap`). The e2e now waits for the recap first. Fix: redirect only while the location is
-  still `/recap`, with a red e2e that clicks a tab as `/api/sessions/latest` resolves.
 
 ## Watch list
+- [ ] **[bug (latent), Low, Standard]** Trigger: the Friends landing e2e or the shell "redirect is
+  pending" e2e flakes, or a header click is seen undone after `/` → `/recap`. `<Navigate>` replaces
+  from a passive effect, so a click landing between the redirect's commit and that effect can
+  still be overwritten; `useTransitions={false}` only closed the transition window. Fix: a redirect
+  that checks `window.location.pathname` in its effect, at the 5 replace-after-async sites
+  (`RecapPage` ×3, `TrendsPage`, `App` `/`) plus `FriendPage`'s mutation `onSuccess`. Record:
+  `useTransitions` commit body.
 - [ ] **[tooling, Low, Standard]** Trigger: a rules-diff report saying "removed: N in an ignored
   playlist" while the same run's recompute skipped or failed an ignored-playlist match. `diffRecords`
   counts every stored ignored-playlist match missing from the recompute as removed. A skipped or

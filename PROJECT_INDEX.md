@@ -84,6 +84,8 @@ maybe later.
 - `docs/plans/2026-11-03-display-drift.md`: display drift plan (audit of display drift and data
   sense across every page; WP-A colour roles and three number bugs, WP-B the big-number face and
   StatCard, WP-C the shared Section heading and global panel/table/muted/up/down), review log.
+- `docs/reviews/2026-11-05-pre-friends-fixes.md`: pre-friends backlog fixes review summary (one
+  finding deferred to the Watch list).
 - `docs/reviews/2026-11-03-wp-a-display-drift.md`: WP-A review summary (4 rounds).
 - `docs/reviews/2026-11-04-wp-c-display-drift.md`: WP-C review summary.
 - `docs/plans/2026-11-02-wp9b-friends-page.md`: WP9b plan (the Friends page: suggestion banners,

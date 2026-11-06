@@ -42,8 +42,6 @@ test.afterEach(({ consoleErrors }) => {
 
 test("the landing: a card per friend with both records, a row per suggestion", async ({ page }) => {
   await page.goto("/");
-  // A click before the start page's redirect to the latest session lands is undone by it.
-  await expect(h1(page)).toHaveText(/^Recap: /);
   await page.getByRole("link", { name: "Friends", exact: true }).click();
   await expect(h1(page)).toHaveText("Friends");
   await expect(h1(page)).toHaveClass("visually-hidden");

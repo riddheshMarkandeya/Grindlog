@@ -2,7 +2,7 @@
 // (chip 1–0), then a replay of the completed fixture, which the camera player loses (chip 1–1).
 // Serial: the replay is one-shot.
 import AxeBuilder from "@axe-core/playwright";
-import type { Page } from "@playwright/test";
+import type { Page, Route } from "@playwright/test";
 import { expect, test } from "./fixtures";
 
 test.describe.configure({ mode: "serial" });
@@ -36,6 +36,25 @@ test("before the match: redirect, live status, chip, navigation, deep link, not 
 
   await page.goto("/no-such-page");
   await expect(page.getByText("There's no page here.")).toBeVisible();
+});
+
+test("a header click while the start page's redirect is pending is kept", async ({ page }) => {
+  // The slowed page is the race window: the click's navigation is still rendering when the held
+  // latest session lands.
+  test.setTimeout(60_000);
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 10 });
+  const held = new Promise<Route>((resolve) => void page.route("**/api/sessions/latest?*", resolve, { times: 1 }));
+  await page.goto("/");
+  const latest = await held;
+  const landed = page.waitForResponse("**/api/sessions/latest?*");
+  await page.getByRole("link", { name: "Friends", exact: true }).click();
+  await latest.continue();
+  await landed;
+  // Two frames: React commits whatever the landed data renders, so a redirect would have run.
+  await page.evaluate("new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))");
+  await expect(page).toHaveURL(/\/friends$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Friends");
 });
 
 test("axe: every page in every theme has no violations", async ({ page }) => {

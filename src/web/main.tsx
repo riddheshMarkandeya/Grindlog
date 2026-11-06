@@ -14,7 +14,9 @@ if (!root) throw new Error("index.html has no #root");
 createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      {/* Location state follows history at once rather than in a transition, so a redirect that lands
+          while a click's navigation is still rendering can't replace the page the click went to. */}
+      <BrowserRouter useTransitions={false}>
         <App />
       </BrowserRouter>
     </QueryClientProvider>

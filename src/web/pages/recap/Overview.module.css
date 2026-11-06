@@ -39,8 +39,8 @@
 /* Per game | by playlist: the row carries the space after Matches, so its cells drop the section margin. */
 .side { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3) var(--s5); align-items: start; margin-top: var(--s6); }
 .cell { margin: 0; }
-/* Narrow beside Per game: names may wrap, the short headings ("W–L", "Win %") mustn't. */
-.playlists thead th { white-space: nowrap; }
+/* Narrow beside Per game: names may wrap, the short headings and values ("W–L", "3–1") mustn't. */
+.playlists :is(thead th, td) { white-space: nowrap; }
 @media (min-width: 900px) {
   .both { grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); }
   /* Three to a row beside the table, so the six cards never split 4 + 2. */

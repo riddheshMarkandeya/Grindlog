@@ -1,5 +1,5 @@
-// Matches & numbers: every match of the session under the filter, with a totals row. Each row opens
-// its match page; the table's box is capped and keeps its header and totals in view.
+// Matches & numbers: every match of the session under the filter. Each row opens its match page;
+// the table's box is capped and keeps its header in view.
 import { Link } from "react-router";
 import type { PlaylistFilter } from "../../../shared/playlist-filter";
 import type { TeammateFilter } from "../../../shared/teammate-filter";
@@ -64,12 +64,6 @@ export function Matches({ detail, filter, teammate }: { detail: SessionDetail; f
                 );
               })}
             </tbody>
-            <tfoot>
-              <tr>
-                <th scope="row" colSpan={4}>Total</th>
-                {COLS.map(([k]) => <td key={k}>{shown(a.totals[k])}</td>)}
-              </tr>
-            </tfoot>
           </table>
         </div>
         <p className={styles.note}>Click a row to open the match.</p>

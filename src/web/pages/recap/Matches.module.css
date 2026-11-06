@@ -1,12 +1,10 @@
-/* Every match in a capped box whose header and totals row stay in view. */
+/* Every match in a capped box whose header stays in view. */
 .first { margin-top: var(--s4); }
 .box { max-height: 70vh; overflow: auto; }
 .matches { font-size: 13px; }
 .matches :is(th, td) { white-space: nowrap; }
-/* Not tfoot: its Total spans the four, so its cells 2-4 are stat columns. */
-.matches :is(thead, tbody) :is(th, td):nth-child(-n+4) { text-align: left; }
+.matches :is(th, td):nth-child(-n+4) { text-align: left; }
 .matches thead th { position: sticky; top: 0; z-index: 2; background: var(--surf); }
-.matches tfoot :is(th, td) { position: sticky; bottom: 0; z-index: 2; background: var(--surf); font-weight: 700; border-top: 2px solid var(--line); border-bottom: 0; }
 
 /* The # link stretches over its row, so the whole row opens the match. */
 .matches tbody tr { position: relative; }

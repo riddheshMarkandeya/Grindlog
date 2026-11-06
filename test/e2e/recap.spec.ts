@@ -223,6 +223,9 @@ test("By playlist sits beside Per game at 1024px, its six cards 3 to a row; unde
   const [per2, list2] = [await box("Per game vs your 30-day average"), await box("By playlist")];
   expect(list2.y).toBeGreaterThan(per2.y);
   expect(list2.x).toBeCloseTo(per2.x, 0);
+  // A W–L value stays on one line in the narrow column.
+  const byPlaylist = page.locator("section").filter({ has: page.getByRole("heading", { name: "By playlist", exact: true }) });
+  await expect(byPlaylist.getByRole("row", { name: /Ranked Doubles/ }).getByRole("cell").first()).toHaveCSS("white-space", "nowrap");
 });
 
 test("at 320px a two-digit scorebug and the full Overview fit without a sideways scroll", async ({ page }) => {
@@ -299,7 +302,7 @@ test("the playlist filter: in the URL, only what was played, and notes when noth
   await expect(page.getByText("This session isn't here any more.")).toBeVisible();
 });
 
-test("Matches & numbers: every match with totals in a capped box; a row opens its match", async ({ page }) => {
+test("Matches & numbers: every match in a capped box; a row opens its match", async ({ page }) => {
   await page.goto("/recap/e2e-long-00");
   await numbersTab(page).click();
   await expect(page).toHaveURL(/\/recap\/e2e-long-00\/matches(\?filter=everything)?$/);
@@ -307,10 +310,8 @@ test("Matches & numbers: every match with totals in a capped box; a row opens it
   await expect(page.getByRole("heading", { name: "Every match · 26 matches · 17–9" })).toBeVisible();
   const table = page.getByRole("table");
   await expect(table.locator("tbody tr")).toHaveCount(26);
-  // # Time Playlist Result | Score G …: the totals row's goals are the Overview's 29.
-  await expect(table.locator("tfoot td").nth(1)).toHaveText("29");
   await expect(table.locator("thead th").first()).toHaveCSS("position", "sticky");
-  await expect(table.locator("tfoot th")).toHaveCSS("position", "sticky");
+  await expect(table.locator("tfoot")).toHaveCount(0);
 
   // A row opens its match; focus goes to that match in the side list, which keeps it in view.
   await page.getByRole("link", { name: /^Match 26,/ }).click();
