@@ -16,7 +16,7 @@ const ROOT = join(import.meta.dirname, "..", "..", "..");
 let dir: string;
 let tracker: Db;
 beforeAll(() => {
-  dir = mkdtempSync(join(tmpdir(), "rltracker-registry-"));
+  dir = mkdtempSync(join(tmpdir(), "grindlog-registry-"));
   tracker = openDb(join(dir, "tracker.db"));
   migrate(tracker, "tracker", trackerMigrations, { logger: memoryLogger() });
 });

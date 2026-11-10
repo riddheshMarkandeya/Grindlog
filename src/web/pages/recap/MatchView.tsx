@@ -138,7 +138,7 @@ function Scoreboard({ guid }: { guid: string }) {
 
   // Unseen in real data: a player with no team. They're listed apart; the warn says where.
   useEffect(() => {
-    if (noTeam > 0) console.warn("[rlt] recap/player_no_team", { guid, count: noTeam });
+    if (noTeam > 0) console.warn("[grindlog] recap/player_no_team", { guid, count: noTeam });
   }, [guid, noTeam]);
 
   if (full.isError && !data) return <p className={styles.meta}>Couldn't load the scoreboard.</p>;
@@ -194,7 +194,7 @@ function NotInView({ detail, filter, teammate, guid }: Filters) {
   // Tells a stale link (another session, or gone) from a filter that leaves the match out, and both
   // from a lookup that failed.
   useEffect(() => {
-    if (!full.isPending) console.warn("[rlt] recap/match_not_in_view", { session: detail.key, guid, filter: f, sessionKey: elsewhere, status });
+    if (!full.isPending) console.warn("[grindlog] recap/match_not_in_view", { session: detail.key, guid, filter: f, sessionKey: elsewhere, status });
   }, [detail.key, guid, f, elsewhere, status, full.isPending]);
 
   if (full.isPending) return <div className={styles.loading} role="status"><span className="visually-hidden">Looking for this match…</span></div>;

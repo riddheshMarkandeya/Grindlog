@@ -1,13 +1,13 @@
 # Project index
 
 Grindlog is a personal Rocket League stats tracker: a local Windows tracker first, with a web or
-mobile app maybe later. It was called RL Tracker, and internal ids keep that name until the friends
-release's step 4.
+mobile app maybe later. It was called RL Tracker; the internal ids moved to grindlog in step 4's package 1.
 
 ## Code layout and commands
 - `src/server/` (Bun process: `main.ts` entry, `host.ts` HTTP server and shutdown endpoint,
-  `supervisor.ts` restart loop (its own exe), `game-watch.ts` game detection and toast,
-  `exit-codes.ts`, `log.ts` logger, `paths.ts` data dir and port, `storage.ts` opens both DBs, `maintenance.ts` schedules retention and backups; `db/`: `sqlite.ts` driver seam, `migrate.ts`, `migrations.ts`,
+  `grindlog.ts` the compiled entry (`--supervisor` runs `supervisor.ts`'s restart loop over the same
+  exe, bare runs `main.ts`), `game-watch.ts` game detection and toast, `exit-codes.ts`, `log.ts`
+  logger, `paths.ts` per-channel `identity()` (data dir, port, exe, task, shortcut) and paths from it, `storage.ts` opens both DBs, `maintenance.ts` schedules retention and backups; `db/`: `sqlite.ts` driver seam, `migrate.ts`, `migrations.ts`,
   `backup.ts`, `retention.ts`; `recorder/`: Stats API client, lifecycle, raw store, dedup,
   summary, checks, `play.ts` live-play view, `extras.ts` stat registry, `read-match.ts`, `thin.ts`
   which old UpdateStates retention deletes); `records/`: `record.ts` summary → rows, `save.ts` writer,
@@ -23,12 +23,13 @@ release's step 4.
   tabs from a SharedWorker (`worker.ts`, in-page fallback in `client.ts`), `live.ts` header state,
   `useLiveEvents.ts` refetch on events; `logic/` pure header logic; `components/` header and empty
   state; `styles/tokens.css` themes carbon, slate, oled; `pages/` placeholders until WP6+),
-  `src/shared/` (`constants.ts`, `result.ts` your W/L, `playlists.ts` ID map, `goal-range.ts`
+  `src/shared/` (`channel.ts` the baked dev/prod channel and `APP_NAME`, `constants.ts`, `result.ts` your W/L, `playlists.ts` ID map, `goal-range.ts`
   close/mid/long, `periods.ts` local days and periods, `playlist-filter.ts` filter groups, `schemas/` API params
   and response shapes),
   `scripts/` (standalone `capture.ts`; `make-icons.ts` packs `src/web/assets/icon.svg` and
   `icon-small.svg` into `src/web/public/favicon.ico` (`bun run icons`, output committed);
-  `stop.ts`, `autostart.ts`, `replay.ts` fake Stats API,
+  `stop.ts`, `autostart.ts`, `move-data.ts` (`bun run move-data <from> <to> [--copy]`: a verified
+  copy of a data dir without `bin`; a move keeps the source as `<to>.pre-move-backup`), `replay.ts` fake Stats API,
   `import-capture.ts` (also writes records), `recompute.ts`, `make-fixture.ts`, `definitions.ts`,
   `rules-diff.ts`), `test/fixtures/`
   (anonymised capture excerpts), `test/e2e/` (Playwright on Node: `fixtures.ts` starts
@@ -43,21 +44,24 @@ release's step 4.
   the data dir), ADR if past the gate, `bun run definitions`, `bun run deploy`.
 - `STATS_API_URL` points `bun run start` at a replay: `bun run scripts/replay.ts <file> --port P`.
 - `bun run check` = typecheck + lint (zero warnings) + tests (Vitest under Bun);
-  `bun run start` runs the server from source on the real data dir and port 49100;
+  `bun run start` runs the server from source on the dev install's data dir and port 49102;
   `bun run dev` runs it beside the background one (`.dev-data/`, port 49101); `bun run stop`
-  stops it (`RLTRACKER_PORT=49101` for dev). `bun run web:dev` serves `src/web` on
+  stops it (`GRINDLOG_PORT=49101` for dev). `bun run web:dev` serves `src/web` on
   `127.0.0.1:5173` with `/api/` proxied to the dev tracker; `bun run web:build` builds `dist/`.
-  `bun run e2e` builds `dist/` and runs Playwright in the installed Chrome (`RLT_E2E_KEEP=1` keeps
-  the temp data dir and its `tracker.log`). Bun lives at `~/.bun/bin/bun` and may not be on PATH.
-- Background: `bun run install-autostart` compiles `grindlog-supervisor.exe` and `grindlog.exe`
-  and the dashboard (`bin\web`, which the tracker serves) into `%LOCALAPPDATA%\RLTracker\bin\`,
-  registers the `RLTracker` logon task and adds a Start menu shortcut to
-  `http://127.0.0.1:49100/`. It runs that snapshot, not the repo. `bun run deploy` ships code
+  `bun run e2e` builds `dist/` and runs Playwright in the installed Chrome (`GRINDLOG_E2E_KEEP=1` keeps
+  the temp data dir and its logs). Bun lives at `~/.bun/bin/bun` and may not be on PATH.
+- Channel: every source run and the CLI install are the dev channel (`GrindlogDev`, port 49102,
+  `grindlog-dev.exe`, task `GrindlogDev`, "Grindlog Dev" with a Dev badge). Only a build with
+  `GRINDLOG_CHANNEL=prod` baked in (`--define`, never read at runtime) is prod (`Grindlog`, 49100,
+  `grindlog.exe`), so a friend's install and the developer's share no data, port, task or exe.
+- Background: `bun run install-autostart` compiles `grindlog-dev.exe` and the dashboard (`bin\web`,
+  which the tracker serves) into `%LOCALAPPDATA%\GrindlogDev\bin\`, registers the `GrindlogDev`
+  logon task (`grindlog-dev.exe --supervisor`) and adds the `Grindlog Dev` Start menu shortcut to
+  `http://127.0.0.1:49102/`. It runs that snapshot, not the repo. `bun run deploy` ships code
   changes: check, e2e, then install-autostart (builds while the old one records, then swaps and
   restarts), then recompute. `uninstall-autostart` removes the task, shortcut and `bin`.
-- Data and logs: `%LOCALAPPDATA%\RLTracker\` (`tracker.log` and `supervisor.log`, 5 × 5 MB, JSON
-  lines);
-  `RLTRACKER_DATA_DIR` overrides it for tests and dev runs. Also `tracker.db` (settings, seasons,
+- Data and logs: `%LOCALAPPDATA%\GrindlogDev\` (`logs\tracker.log` and `logs\supervisor.log`,
+  5 × 5 MB, JSON lines); `GRINDLOG_DATA_DIR` overrides it for tests and dev runs. Also `tracker.db` (settings, seasons,
   IDs, match records; backed up to `backups/`, 7 kept), `raw.db` (raw events; after 90 days a
   match's UpdateStates are thinned to the scoreboard changes, with its car stats and camera
   snapshotted in `retention_matches`; a flagged match is kept whole, as is one whose thinned
@@ -84,6 +88,10 @@ release's step 4.
   Task Scheduler doesn't restart a crashed task.
 
 ## Plans
+- `docs/reviews/2026-11-10-wp1-rename-identity.md`: step 4 package 1 review summary (3 rounds, 1 deferred,
+  1 disputed).
+- `docs/plans/2026-11-09-wp1-rename-identity.md`: step 4 package 1, grindlog ids, the dev/prod channel,
+  one exe, the logs dir and the data move to `GrindlogDev`; review log.
 - `docs/plans/2026-11-06-distribution-map.md`: the wayfinder map for friends release step 4: installer, tray,
   auto-update, releases and the dev/prod split (frozen 2026-11-09; its Decisions so far is the design, built as seven BACKLOG work packages).
 - `docs/plans/2026-11-05-friends-release-map.md`: the friends release map, the ordered steps to shipping

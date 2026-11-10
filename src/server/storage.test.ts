@@ -12,7 +12,7 @@ let storage: Storage | undefined;
 const now = () => new Date("2026-10-16T12:00:00.000Z");
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "rltracker-storage-"));
+  dir = mkdtempSync(join(tmpdir(), "grindlog-storage-"));
 });
 afterEach(() => {
   storage?.close();

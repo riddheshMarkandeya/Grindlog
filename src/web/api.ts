@@ -37,7 +37,7 @@ async function errorCode(res: Response): Promise<string> {
 }
 
 function noAnswer(path: string, deps: ApiDeps, error: unknown): ApiError {
-  deps.warn("[rlt] api/network", { path, error: String(error) });
+  deps.warn("[grindlog] api/network", { path, error: String(error) });
   return new ApiError(0, "network");
 }
 
@@ -51,7 +51,7 @@ async function request(path: string, deps: ApiDeps, init: RequestInit = {}): Pro
     throw noAnswer(path, deps, error);
   }
   if (res.ok) return res;
-  deps.warn("[rlt] api/failed", { path, status: res.status });
+  deps.warn("[grindlog] api/failed", { path, status: res.status });
   throw new ApiError(res.status, await errorCode(res));
 }
 
@@ -64,12 +64,12 @@ async function parseBody<S extends z.ZodType>(res: Response, path: string, schem
     // The timeout also covers reading the body.
     if (error instanceof DOMException && error.name === "TimeoutError") throw noAnswer(path, deps, error);
     // A 2xx that isn't JSON: e.g. a dev server answering an unknown path with index.html.
-    deps.warn("[rlt] api/bad_body", { path, status: res.status });
+    deps.warn("[grindlog] api/bad_body", { path, status: res.status });
     throw new ApiError(res.status, "bad_body");
   }
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
-    deps.warn("[rlt] api/bad_shape", { path, issues: parsed.error.issues.map((i) => i.path.join(".")) });
+    deps.warn("[grindlog] api/bad_shape", { path, issues: parsed.error.issues.map((i) => i.path.join(".")) });
     throw new ApiError(res.status, "bad_shape");
   }
   return parsed.data;

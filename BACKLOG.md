@@ -40,11 +40,6 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   display is the reliable signal (`statsConfig()` carries the same diagnosis). WP8 has no toast switch, dropped
   2026-10-28 (user, simplest settings first). An urgent/priority toast is still untried. Record: Verification results in
   `docs/plans/2026-10-19-wp3b-background-process.md`.
-- [ ] **[bug, Low, Trivial]** Install: if replacing an exe fails after the tracker is stopped
-  (antivirus holding the fresh `.new.exe` past `replace`'s 10 s), install throws before
-  `schtasks /Run`, so nothing records until the next logon. Restart the task anyway, as the
-  dashboard swap already does, then report. Record: Review log in
-  `docs/plans/2026-10-21-wp5b-b-harness-install.md`.
 - [ ] **[refactor, Low, Standard]** `scripts/capture.ts` keeps its own envelope parse
   (`eventNameOf`/`matchGuidOf`), hardcoded URL and reconnect loop; reuse `parseFrame`,
   `statsApiUrl` and maybe `startStatsClient`, or retire it now the recorder stores raw events.
@@ -76,13 +71,11 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
 - Friends release step 4, distribution: seven build work packages, in order, each planned in its own session. The
   design is the frozen map `docs/plans/2026-11-06-distribution-map.md` ("Decisions so far"; each package's scope is
   under "Build work packages").
-  - [ ] **[refactor, Med, Substantial]** 1. Rename, identity and data move: the internal rename to grindlog (list and
-    closing checks under "Dev and prod identity"), the dev/prod channel, `grindlog.exe` as tracker plus supervisor,
-    logs to `<data>\logs\`, and the one-off script moving `%LOCALAPPDATA%\RLTracker` and task `RLTracker` to
-    `GrindlogDev`. Fold-in: the install exe-replace bug. Next up.
   - [ ] **[feature, Med, Substantial]** 2. Release-aware app: starts with the detached-spawn spike; then baked version,
     `/api/status` version and process ID, recompute on version change, dashboard reload, log rotation, `--open`,
-    `--quit`, "Start with Windows".
+    `--quit`, "Start with Windows". Next up. With `--quit` in place, `stop.ts` and `stopInstalled` end a sleeping
+    supervisor through it instead of `killExe`'s path-filtered kill (deferred from package 1's review,
+    `docs/reviews/2026-11-10-wp1-rename-identity.md`).
   - [ ] **[feature, Med, Substantial]** 3. Tray and process model: `grindlog-tray.exe`, supervisor-managed, quit
     protocol, icon states, menu, toasts; decision file corrects the supervisor-autostart Limit.
   - [ ] **[feature, Med, Standard]** 4. Stats API setup card: the one-click ini write, decimal `parseStatsIni`, the
@@ -136,7 +129,7 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
 - [ ] **[bug (latent), Low, Standard]** Trigger: "Couldn't make the image" again on the share card. It
   showed once on 2026-11-06 at the end of a live session, then cleared by itself. The same card exported
   fine in the same Chrome, and in a clean one, so there is no repro. Next time, before retrying, read
-  `[rlt] share/export_failed` in that tab's console, since the error goes nowhere else: `empty blob` means
+  `[grindlog] share/export_failed` in that tab's console, since the error goes nowhere else: `empty blob` means
   the canvas gave nothing back, and anything else is the SVG step of `toBlob`.
 - [ ] **[bug (latent), Low, Standard]** Trigger: `autostart.ts` logs "has non-ASCII characters", or a
   friend's Start menu shows a generic icon. The `.url` is written as UTF-8 and Windows is expected to
@@ -204,7 +197,7 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   on each request just for one year's ticks, plus the first day and total. Read only the year's
   range for the ticks, and get the first day and total from a cheap count. Record:
   `docs/plans/2026-10-27-wp7a-trends-page.md` (Review log).
-- [ ] **[design, Low, Standard]** Trigger: a `[rlt] share/null_stat` warn in the browser console.
+- [ ] **[design, Low, Standard]** Trigger: a `[grindlog] share/null_stat` warn in the browser console.
   A share card tile (streak, goals, assists, saves, shots, MVPs, demos) got a null stat and shows
   "–"; a session with a played match shouldn't give one. Then fit the handling to that session.
   Record: `docs/plans/2026-10-27-wp6c-share-card.md`.
@@ -216,11 +209,11 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   remark is inert: the Demolish statfeed's victim (`SecondaryTarget`) is in raw events but not
   recorded; a `statfeed_counts` bump plus a recompute would add it. Record:
   `docs/plans/2026-10-27-wp6b-remarks.md`.
-- [ ] **[design, Low, Standard]** Trigger: a `[rlt] recap/player_no_team` warn in the browser
+- [ ] **[design, Low, Standard]** Trigger: a `[grindlog] recap/player_no_team` warn in the browser
   console. A scoreboard player with a null team is listed under "Unknown team" (none in real data
   on 2026-10-27). Then fit the handling to that match. Record:
   `docs/plans/2026-10-27-wp6a-c-matches-and-match-page.md`.
-- [ ] **[design, Low, Standard]** Trigger: a `[rlt] recap/goal_no_team` warn in the browser
+- [ ] **[design, Low, Standard]** Trigger: a `[grindlog] recap/goal_no_team` warn in the browser
   console. A match with goals but a null `me.teamNum` can't be oriented, so its goals are left off
   the goal map and its counts (0 of 76 player rows had a null team). Then fit the handling to that
   match. Record: `docs/plans/2026-10-27-wp6a-b-overview-sections.md`.

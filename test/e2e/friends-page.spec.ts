@@ -24,7 +24,7 @@ const add = (page: Page, name: string) => suggested(page).filter({ hasText: name
 /** Kim and Lee as friends, through the API so no test counts on another's adds; already a friend is fine. */
 async function pairUp(request: APIRequestContext) {
   for (const id of [KIM, LEE]) {
-    const res = await request.post(`/api/friends?id=${encodeURIComponent(id)}`, { headers: { "X-RLTracker-Request": "1" } });
+    const res = await request.post(`/api/friends?id=${encodeURIComponent(id)}`, { headers: { "X-Grindlog-Request": "1" } });
     expect(res.ok() || res.status() === 409, id).toBe(true);
   }
 }

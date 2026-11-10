@@ -9,7 +9,7 @@ test.use({ seed: "settings" });
 
 const THEMES = ["carbon", "slate", "oled"] as const;
 const DEFAULTS = "theme=carbon&clock=24h&speed=kmh&startPage=recap&recapFilter=everything&trendsFilter=ranked&rollingWindow=20&remarks=true&moodLine=true";
-const HEADER = { "X-RLTracker-Request": "1" };
+const HEADER = { "X-Grindlog-Request": "1" };
 // The one failed save a test brings about on purpose.
 const SAVE_FAILED = /^Failed to load resource: .* 500 .*\/api\/settings/;
 

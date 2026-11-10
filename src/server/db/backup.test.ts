@@ -10,7 +10,7 @@ let dir: string;
 let backups: string;
 const open: Db[] = [];
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "rltracker-backup-"));
+  dir = mkdtempSync(join(tmpdir(), "grindlog-backup-"));
   backups = join(dir, "backups");
 });
 afterEach(() => {

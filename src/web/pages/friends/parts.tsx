@@ -16,7 +16,7 @@ export function WlBar({ w, l }: { w: number; l: number }) {
 
 /** Logged on every failed friends write, with the server's code. */
 export function warnFailed(action: string, error: unknown) {
-  console.warn("[rlt] friends/save_failed", { action, code: error instanceof ApiError ? error.code : String(error) });
+  console.warn("[grindlog] friends/save_failed", { action, code: error instanceof ApiError ? error.code : String(error) });
 }
 
 export const recordLabel = (r: { w: number; l: number }) => `${String(r.w)} won, ${String(r.l)} lost`;
@@ -24,7 +24,7 @@ export const recordLabel = (r: { w: number; l: number }) => `${String(r.w)} won,
 /** Focus moved by code, logged so a jump the user didn't expect can be traced. */
 export function focusTo(el: HTMLElement | null | undefined, to: string, page: string) {
   if (!el) return;
-  console.debug("[rlt] friends/focus", { to, page });
+  console.debug("[grindlog] friends/focus", { to, page });
   el.focus();
 }
 

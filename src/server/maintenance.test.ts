@@ -16,7 +16,7 @@ const yieldFn = () => Promise.resolve();
 let dir: string;
 let storage: Storage;
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "rltracker-maintenance-"));
+  dir = mkdtempSync(join(tmpdir(), "grindlog-maintenance-"));
   storage = openStorage({ dir, logger: memoryLogger(), now: () => NOW });
 });
 afterEach(() => {

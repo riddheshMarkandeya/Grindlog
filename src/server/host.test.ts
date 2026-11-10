@@ -36,7 +36,7 @@ describe("startHost", () => {
     // Only setTimeout is faked, so fetch and serve still run for real; the deferred onShutdown can't race the response.
     vi.useFakeTimers({ toFake: ["setTimeout"] });
     const { url, logger, shutdowns } = start();
-    const res = await fetch(url("/api/shutdown"), { method: "POST", headers: { "X-RLTracker-Shutdown": "1" } });
+    const res = await fetch(url("/api/shutdown"), { method: "POST", headers: { "X-Grindlog-Shutdown": "1" } });
     expect(res.status).toBe(202);
     expect(shutdowns()).toBe(0);
     vi.runAllTimers();
@@ -46,7 +46,7 @@ describe("startHost", () => {
 
   test("a foreign Host header (DNS rebinding) is refused, even with the shutdown header", async () => {
     const { url, logger, shutdowns } = start();
-    const res = await fetch(url("/api/shutdown"), { method: "POST", headers: { Host: "evil.example:80", "X-RLTracker-Shutdown": "1" } });
+    const res = await fetch(url("/api/shutdown"), { method: "POST", headers: { Host: "evil.example:80", "X-Grindlog-Shutdown": "1" } });
     expect(res.status).toBe(403);
     await Bun.sleep(10);
     expect(shutdowns()).toBe(0);
@@ -74,7 +74,7 @@ describe("startHost", () => {
     });
     expect(await (await fetch(url("/api/status"))).text()).toBe("mounted");
     expect((await fetch(url("/api/status"), { headers: { Host: "evil.example:80" } })).status).toBe(403);
-    expect((await fetch(url("/api/shutdown"), { method: "POST", headers: { "X-RLTracker-Shutdown": "1" } })).status).toBe(202);
+    expect((await fetch(url("/api/shutdown"), { method: "POST", headers: { "X-Grindlog-Shutdown": "1" } })).status).toBe(202);
     vi.runAllTimers();
     expect(shutdowns()).toBe(1);
     expect(seen).toEqual(["/api/status"]);

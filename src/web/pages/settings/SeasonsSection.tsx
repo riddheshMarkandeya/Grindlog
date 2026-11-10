@@ -179,7 +179,7 @@ function Table({ seasons, del }: { seasons: Season[]; del: ReturnType<typeof use
         showErrors(conflictError(clash.data, seasons, editing.draft));
         return;
       }
-      console.warn("[rlt] seasons/save_failed", { action: editing.id === null ? "add" : "edit", code: codeOf(error) });
+      console.warn("[grindlog] seasons/save_failed", { action: editing.id === null ? "add" : "edit", code: codeOf(error) });
       setEditing((e) => e && { ...e, failed: true });
     }
   }
@@ -191,7 +191,7 @@ function Table({ seasons, del }: { seasons: Season[]; del: ReturnType<typeof use
       await del.mutateAsync(row.id);
       focusNext.current = next ? editOf(next.id) : ADD;
     } catch (error) {
-      console.warn("[rlt] seasons/save_failed", { action: "delete", code: codeOf(error) });
+      console.warn("[grindlog] seasons/save_failed", { action: "delete", code: codeOf(error) });
       setDeleteFailed(row.id);
     }
   }

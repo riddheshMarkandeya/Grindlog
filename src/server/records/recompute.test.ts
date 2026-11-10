@@ -15,7 +15,7 @@ import { createRecordWriter, type RecordWriter } from "./save";
 let dir: string;
 let storage: Storage;
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "rltracker-recompute-"));
+  dir = mkdtempSync(join(tmpdir(), "grindlog-recompute-"));
   storage = openStorage({ dir, logger: memoryLogger() });
 });
 afterEach(() => {

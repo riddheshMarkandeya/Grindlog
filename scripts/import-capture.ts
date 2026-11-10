@@ -1,7 +1,7 @@
 // Imports captures into the data dir through the recorder, with each file's own times, so later
 // work packages can run on real sessions: raw.db gets the events and tracker.db the match
 // records. Files are fed in the order given.
-// `bun run scripts/import-capture.ts <file>...`; RLTRACKER_DATA_DIR picks another data dir.
+// `bun run scripts/import-capture.ts <file>...`; GRINDLOG_DATA_DIR picks another data dir.
 import { readFileSync } from "node:fs";
 import { log } from "../src/server/log";
 import { feed, readCapture } from "../src/server/recorder/feed";
@@ -22,7 +22,7 @@ try {
   // A guid already in raw.db would be reopened and its events stored twice.
   const existing = storage.raw.get<{ n: number }>("SELECT COUNT(*) AS n FROM events")?.n ?? 0;
   if (existing > 0) {
-    console.error(`raw.db in ${storage.dir} already has ${String(existing)} events; import into an empty data dir (RLTRACKER_DATA_DIR)`);
+    console.error(`raw.db in ${storage.dir} already has ${String(existing)} events; import into an empty data dir (GRINDLOG_DATA_DIR)`);
     process.exit(1);
   }
   const summaries: MatchSummary[] = [];

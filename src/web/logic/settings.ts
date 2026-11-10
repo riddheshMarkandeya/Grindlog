@@ -9,7 +9,7 @@ export const sectionDefaults = (section: SectionId): SettingsPatch => Object.fro
 export const patchQuery = (patch: SettingsPatch): string => new URLSearchParams(Object.entries(patch).map(([k, v]) => [k, String(v)])).toString();
 
 /** The theme kept in the browser too, so index.html can apply it before the first paint. index.html reads this key. */
-export const THEME_KEY = "rlt-theme";
+export const THEME_KEY = "grindlog-theme";
 
 export function rememberTheme(theme: Settings["theme"]): void {
   try {

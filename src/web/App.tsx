@@ -24,7 +24,7 @@ function useTheme() {
   }, [theme]);
   useEffect(() => {
     // The pages carry on with the defaults.
-    if (error) console.warn("[rlt] settings/load_failed", { error: String(error) });
+    if (error) console.warn("[grindlog] settings/load_failed", { error: String(error) });
   }, [error]);
 }
 

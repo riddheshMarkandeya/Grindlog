@@ -48,7 +48,7 @@ const T0 = Date.UTC(2026, 9, 10, 18);
 const MIN = 60_000;
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "rltracker-api-"));
+  dir = mkdtempSync(join(tmpdir(), "grindlog-api-"));
   storage = openStorage({ dir, logger: memoryLogger() });
   storage.tracker.run("INSERT INTO my_ids (primary_id, name, status, added_at) VALUES (?, 'me', 'confirmed', 1)", ME);
   const writer = createRecordWriter({ tracker: storage.tracker, logger: memoryLogger(), now: () => 1 });

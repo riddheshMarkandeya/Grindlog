@@ -7,7 +7,7 @@ import { serveStatic } from "./static";
 let root: string;
 let dist: string;
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), "rltracker-static-"));
+  root = mkdtempSync(join(tmpdir(), "grindlog-static-"));
   dist = join(root, "dist");
   mkdirSync(join(dist, "assets"), { recursive: true });
   writeFileSync(join(dist, "index.html"), "<html>app</html>");

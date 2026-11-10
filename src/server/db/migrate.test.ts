@@ -18,7 +18,7 @@ const db = (name = "t.db", busyTimeoutMs?: number) => {
 const tables = (d: Db) => d.all<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").map((r) => r.name);
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "rltracker-migrate-"));
+  dir = mkdtempSync(join(tmpdir(), "grindlog-migrate-"));
 });
 afterEach(() => {
   for (const d of open.splice(0)) d.close();

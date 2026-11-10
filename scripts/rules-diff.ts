@@ -1,6 +1,6 @@
 // Recomputes every stored match under the working tree's rules into a scratch DB and reports what
 // would change. The data dir gets only `rules/diff_*` log lines and the empty WAL side files a
-// read-only open leaves. `bun run rules-diff`; RLTRACKER_DATA_DIR picks another data dir.
+// read-only open leaves. `bun run rules-diff`; GRINDLOG_DATA_DIR picks another data dir.
 import { log } from "../src/server/log";
 import { dataDir } from "../src/server/paths";
 import { formatReport, runRulesDiff } from "../src/server/records/rules-diff";

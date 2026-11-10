@@ -18,7 +18,7 @@ import { diffRecords, formatReport, hasChanges, runRulesDiff, TABLES } from "./r
 let dir: string;
 const open: Db[] = [];
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "rltracker-rules-diff-"));
+  dir = mkdtempSync(join(tmpdir(), "grindlog-rules-diff-"));
 });
 afterEach(() => {
   for (const d of open.splice(0)) d.close();
@@ -346,7 +346,7 @@ describe("runRulesDiff", () => {
       storage.close();
     }
   }
-  const scratchDirs = () => readdirSync(tmpdir()).filter((d) => d.startsWith("rltracker-rules-diff-") && !dir.endsWith(d));
+  const scratchDirs = () => readdirSync(tmpdir()).filter((d) => d.startsWith("grindlog-rules-diff-") && !dir.endsWith(d));
 
   test("a thinned match recomputes to its stored record, and the report counts it", { timeout: 30_000 }, async () => {
     recordInto(["completed"]);

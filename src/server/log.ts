@@ -1,6 +1,6 @@
 import { appendFileSync, existsSync, mkdirSync, renameSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { dataDir } from "./paths";
+import { logsDir } from "./paths";
 
 export type Level = "info" | "warn" | "error";
 /** `ts`, `level`, `cat` and `event` are the logger's own keys; same-named fields are ignored. */
@@ -169,5 +169,5 @@ export function createLogger(opts: LoggerOptions): Logger {
   return { info: at("info"), warn: at("warn"), error: at("error") };
 }
 
-/** The app's logger, writing to the data dir. */
-export const log = createLogger({ dir: dataDir() });
+/** The app's logger, writing to the data dir's logs folder. */
+export const log = createLogger({ dir: logsDir() });

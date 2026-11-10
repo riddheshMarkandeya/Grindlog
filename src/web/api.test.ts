@@ -21,7 +21,7 @@ describe("getJson", () => {
     const warn = vi.fn();
     const err = await getJson("/api/x", schema, { fetchFn: reply(200, { n: "one" }), warn }).catch((e: unknown) => e);
     expect(err).toMatchObject({ status: 200, code: "bad_shape" });
-    expect(warn).toHaveBeenCalledWith("[rlt] api/bad_shape", { path: "/api/x", issues: ["n"] });
+    expect(warn).toHaveBeenCalledWith("[grindlog] api/bad_shape", { path: "/api/x", issues: ["n"] });
   });
 
   test("an unreachable tracker throws ApiError network and logs it", async () => {
@@ -29,7 +29,7 @@ describe("getJson", () => {
     const err = await getJson("/api/x", schema, { fetchFn: unreachable(), warn }).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ApiError);
     expect(err).toMatchObject({ status: 0, code: "network" });
-    expect(warn).toHaveBeenCalledWith("[rlt] api/network", { path: "/api/x", error: "TypeError: Failed to fetch" });
+    expect(warn).toHaveBeenCalledWith("[grindlog] api/network", { path: "/api/x", error: "TypeError: Failed to fetch" });
   });
 
   test("a 2xx body that isn't JSON throws ApiError bad_body and logs it", async () => {
@@ -37,7 +37,7 @@ describe("getJson", () => {
     const fetchFn = vi.fn(() => Promise.resolve(new Response("<!doctype html>", { status: 200 })));
     const err = await getJson("/api/x", schema, { fetchFn, warn }).catch((e: unknown) => e);
     expect(err).toMatchObject({ status: 200, code: "bad_body" });
-    expect(warn).toHaveBeenCalledWith("[rlt] api/bad_body", { path: "/api/x", status: 200 });
+    expect(warn).toHaveBeenCalledWith("[grindlog] api/bad_body", { path: "/api/x", status: 200 });
   });
 
   test("the timeout firing while the body streams is no answer, not a bad body", async () => {
@@ -45,7 +45,7 @@ describe("getJson", () => {
     const timedOut = { ok: true, status: 200, json: () => Promise.reject(new DOMException("timed out", "TimeoutError")) } as unknown as Response;
     const err = await getJson("/api/x", schema, { fetchFn: vi.fn(() => Promise.resolve(timedOut)), warn }).catch((e: unknown) => e);
     expect(err).toMatchObject({ status: 0, code: "network" });
-    expect(warn).toHaveBeenCalledWith("[rlt] api/network", { path: "/api/x", error: "TimeoutError: timed out" });
+    expect(warn).toHaveBeenCalledWith("[grindlog] api/network", { path: "/api/x", error: "TimeoutError: timed out" });
   });
 });
 
@@ -60,14 +60,14 @@ describe("post", () => {
     const warn = vi.fn();
     const err = await post("/api/shutdown", {}, { fetchFn: unreachable(), warn }).catch((e: unknown) => e);
     expect(err).toMatchObject({ status: 0, code: "network" });
-    expect(warn).toHaveBeenCalledWith("[rlt] api/network", { path: "/api/shutdown", error: "TypeError: Failed to fetch" });
+    expect(warn).toHaveBeenCalledWith("[grindlog] api/network", { path: "/api/shutdown", error: "TypeError: Failed to fetch" });
   });
 
   test("a non-2xx throws ApiError and logs it", async () => {
     const warn = vi.fn();
     const err = await post("/api/sessions/break", {}, { fetchFn: reply(403, { error: "forbidden" }), warn }).catch((e: unknown) => e);
     expect(err).toMatchObject({ status: 403 });
-    expect(warn).toHaveBeenCalledWith("[rlt] api/failed", { path: "/api/sessions/break", status: 403 });
+    expect(warn).toHaveBeenCalledWith("[grindlog] api/failed", { path: "/api/sessions/break", status: 403 });
   });
 });
 
@@ -82,7 +82,7 @@ describe("postJson", () => {
     const warn = vi.fn();
     const err = await postJson("/api/x", {}, schema, { fetchFn: reply(200, {}), warn }).catch((e: unknown) => e);
     expect(err).toMatchObject({ status: 200, code: "bad_shape" });
-    expect(warn).toHaveBeenCalledWith("[rlt] api/bad_shape", { path: "/api/x", issues: ["n"] });
+    expect(warn).toHaveBeenCalledWith("[grindlog] api/bad_shape", { path: "/api/x", issues: ["n"] });
   });
 });
 

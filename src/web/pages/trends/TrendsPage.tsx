@@ -31,7 +31,7 @@ function useTrendsState(): TrendsState {
   const { state, bad } = useMemo(() => parseTrends(new URLSearchParams(query), trendsFilter), [query, trendsFilter]);
   const badKey = bad.join(",");
   useEffect(() => {
-    if (badKey) console.warn("[rlt] trends/bad_param", { params: badKey, query });
+    if (badKey) console.warn("[grindlog] trends/bad_param", { params: badKey, query });
   }, [badKey, query]);
   return state;
 }
@@ -65,7 +65,7 @@ export function TrendsPage() {
   const missingWith = teammateValue(state.teammate);
   useEffect(() => {
     if (resetTo === null) return;
-    console.info("[rlt] trends/with_reset", { with: missingWith });
+    console.info("[grindlog] trends/with_reset", { with: missingWith });
     void navigate(resetTo, { replace: true });
   }, [resetTo, missingWith, navigate]);
 
@@ -74,13 +74,13 @@ export function TrendsPage() {
   const rolling = period.data?.rolling.length;
   const [mode, auto, withData] = [chart?.mode, chart?.auto, chart?.withData];
   useEffect(() => {
-    if (mode !== undefined) console.debug("[rlt] trends/chart", { mode, auto, withData, rolling });
+    if (mode !== undefined) console.debug("[grindlog] trends/chart", { mode, auto, withData, rolling });
   }, [mode, auto, withData, rolling]);
   // A day with matches but no session to open has no link; the server's fallback should rule it out.
   // Joined, so the effect's dependency is a value that only changes when the days do.
   const orphans = period.data?.bucket === "day" ? period.data.buckets.filter((b) => b.stats.matches > 0 && b.session === null).map((b) => b.day).join(",") : "";
   useEffect(() => {
-    if (orphans) console.warn("[rlt] trends/day_no_session", { days: orphans.split(",") });
+    if (orphans) console.warn("[grindlog] trends/day_no_session", { days: orphans.split(",") });
   }, [orphans]);
 
   // The filter's options are the period's playlists; kept from the last load, so the select stays
@@ -97,7 +97,7 @@ export function TrendsPage() {
     const at = document.activeElement;
     const lost = at === document.body || (at instanceof HTMLButtonElement && at.disabled);
     if (!lost || !titleRef.current) return;
-    console.debug("[rlt] trends/focus", { to: "title", path: shown });
+    console.debug("[grindlog] trends/focus", { to: "title", path: shown });
     titleRef.current.focus();
   }, [shown]);
 

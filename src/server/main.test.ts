@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { SHUTDOWN_HEADER } from "../shared/constants";
 import { EXIT_CONFIG_INVALID, EXIT_OK, EXIT_PORT_TAKEN, EXIT_START_FAILED } from "./exit-codes";
+import { logsDir } from "./paths";
 import { freePort } from "./testing";
 
 const MAIN = join(import.meta.dirname, "main.ts");
@@ -22,7 +23,7 @@ describe("main as a process", () => {
   const children: ReturnType<typeof Bun.spawn>[] = [];
 
   beforeEach(async () => {
-    dir = mkdtempSync(join(tmpdir(), "rltracker-main-"));
+    dir = mkdtempSync(join(tmpdir(), "grindlog-main-"));
     port = await freePort();
   });
   afterEach(async () => {
@@ -36,7 +37,7 @@ describe("main as a process", () => {
   const spawnMain = (dataDir: string, env: Record<string, string> = {}) => {
     const child = Bun.spawn([process.execPath, MAIN], {
       // Port 9 (discard) has nothing listening, so the client just keeps waiting.
-      env: { ...process.env, RLTRACKER_DATA_DIR: dataDir, RLTRACKER_PORT: String(port), STATS_API_URL: "ws://127.0.0.1:9", ...env },
+      env: { ...process.env, GRINDLOG_DATA_DIR: dataDir, GRINDLOG_PORT: String(port), STATS_API_URL: "ws://127.0.0.1:9", ...env },
       stdout: "ignore",
       stderr: "ignore",
     });
@@ -44,7 +45,7 @@ describe("main as a process", () => {
     return child;
   };
   const events = (dataDir: string) => {
-    const file = join(dataDir, "tracker.log");
+    const file = join(logsDir({ GRINDLOG_DATA_DIR: dataDir }), "tracker.log");
     if (!existsSync(file)) return [];
     // The child may be mid-append: only text before the last "\n" is whole lines.
     return readFileSync(file, "utf8")
@@ -82,7 +83,7 @@ describe("main as a process", () => {
   });
 
   test("an invalid port setting exits 4, which the supervisor doesn't retry", async () => {
-    const child = spawnMain(dir, { RLTRACKER_PORT: "not-a-port" });
+    const child = spawnMain(dir, { GRINDLOG_PORT: "not-a-port" });
     expect(await child.exited).toBe(EXIT_CONFIG_INVALID);
     expect(has(dir, "app/config_invalid")).toBe(true);
   });

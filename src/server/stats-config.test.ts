@@ -183,7 +183,7 @@ describe("parseEpicManifest", () => {
 describe("checkStatsConfig", () => {
   let root: string;
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), "rltracker-statscfg-"));
+    root = mkdtempSync(join(tmpdir(), "grindlog-statscfg-"));
   });
   afterEach(() => {
     rmSync(root, { recursive: true, force: true });
@@ -335,7 +335,7 @@ describe("checkStatsConfig", () => {
 describe("findUserConfigDir", () => {
   let root: string;
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), "rltracker-userdir-"));
+    root = mkdtempSync(join(tmpdir(), "grindlog-userdir-"));
   });
   afterEach(() => {
     rmSync(root, { recursive: true, force: true });

@@ -67,7 +67,7 @@ export function createHub({ openSource, setTimer, warn }: HubOptions): { connect
       // error status (the tracker's 503 while starting, or a dev proxy 5xx while it is down).
       if (current.readyState !== SOURCE_CLOSED) return;
       current.close();
-      warn("[rlt] events/reopen", { inMs: backoffMs });
+      warn("[grindlog] events/reopen", { inMs: backoffMs });
       setTimer(open, backoffMs);
       backoffMs = Math.min(backoffMs * 2, BACKOFF_MAX_MS);
     });
@@ -97,12 +97,12 @@ function parse(name: keyof SseEvents, data: unknown, warn: HubOptions["warn"]): 
   try {
     json = JSON.parse(String(data));
   } catch {
-    warn("[rlt] events/bad_json", { name });
+    warn("[grindlog] events/bad_json", { name });
     return undefined;
   }
   const parsed = sseEvents[name].safeParse(json);
   if (!parsed.success) {
-    warn("[rlt] events/bad_payload", { name, issues: parsed.error.issues.map((i) => i.path.join(".")) });
+    warn("[grindlog] events/bad_payload", { name, issues: parsed.error.issues.map((i) => i.path.join(".")) });
     return undefined;
   }
   return { type: name, data: parsed.data } as HubMessage;

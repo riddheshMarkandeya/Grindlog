@@ -15,7 +15,7 @@ function startInPage(): void {
   const channel = new MessageChannel();
   channel.port2.onmessage = deliver;
   browserHub().connect(channel.port1);
-  console.info("[rlt] events/path", { via: "in_page" });
+  console.info("[grindlog] events/path", { via: "in_page" });
 }
 
 function start(): void {
@@ -23,20 +23,20 @@ function start(): void {
     startInPage();
     return;
   }
-  const worker = new SharedWorker(new URL("./worker.ts", import.meta.url), { type: "module", name: "rlt-events" });
+  const worker = new SharedWorker(new URL("./worker.ts", import.meta.url), { type: "module", name: "grindlog-events" });
   worker.port.onmessage = deliver;
   // A worker that fails to load would leave the header on "connecting…" for good. Fall back once:
   // a later error must not start a second stream.
   worker.addEventListener(
     "error",
     (event) => {
-      console.warn("[rlt] events/worker_failed", { message: event.message });
+      console.warn("[grindlog] events/worker_failed", { message: event.message });
       worker.port.close();
       startInPage();
     },
     { once: true },
   );
-  console.info("[rlt] events/path", { via: "shared_worker" });
+  console.info("[grindlog] events/path", { via: "shared_worker" });
 }
 
 /**

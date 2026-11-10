@@ -12,7 +12,7 @@ let dir: string;
 let storage: Storage;
 let logger: ReturnType<typeof memoryLogger>;
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "rltracker-ids-"));
+  dir = mkdtempSync(join(tmpdir(), "grindlog-ids-"));
   logger = memoryLogger();
   storage = openStorage({ dir, logger: memoryLogger() });
 });

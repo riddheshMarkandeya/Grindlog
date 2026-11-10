@@ -28,7 +28,7 @@ export function GoalMap({ matches, goals, viewKey, hrefFor }: { matches: MyMatch
   // refetch makes a new array, so the dependency is its JSON and the effect reads it back from that.
   const skippedKey = JSON.stringify(skipped);
   useEffect(() => {
-    for (const s of JSON.parse(skippedKey) as typeof skipped) console.warn("[rlt] recap/goal_no_team", s);
+    for (const s of JSON.parse(skippedKey) as typeof skipped) console.warn("[grindlog] recap/goal_no_team", s);
   }, [viewKey, skippedKey]);
 
   return (

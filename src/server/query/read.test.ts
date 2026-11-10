@@ -10,7 +10,7 @@ import { createQueryReader } from "./read";
 let dir: string;
 let storage: Storage;
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "rltracker-read-"));
+  dir = mkdtempSync(join(tmpdir(), "grindlog-read-"));
   storage = openStorage({ dir, logger: memoryLogger() });
 });
 afterEach(() => {

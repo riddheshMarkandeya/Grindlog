@@ -17,7 +17,7 @@ afterAll(() => {
 
 /** The summaries the recorder hands its hook for a fixture. */
 function summariesOf(name: string): MatchSummary[] {
-  const dir = mkdtempSync(join(tmpdir(), "rltracker-record-"));
+  const dir = mkdtempSync(join(tmpdir(), "grindlog-record-"));
   dirs.push(dir);
   const storage = openStorage({ dir, logger: memoryLogger() });
   const out: MatchSummary[] = [];

@@ -16,7 +16,7 @@ let storage: Storage;
 let logger: ReturnType<typeof memoryLogger>;
 let now = 0;
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "rltracker-friends-"));
+  dir = mkdtempSync(join(tmpdir(), "grindlog-friends-"));
   logger = memoryLogger();
   storage = openStorage({ dir, logger: memoryLogger() });
   storage.tracker.run("INSERT INTO my_ids (primary_id, name, status, added_at) VALUES (?, 'me', 'confirmed', 1)", ME);

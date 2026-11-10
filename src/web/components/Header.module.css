@@ -6,6 +6,11 @@
 }
 .brand { display: inline-flex; align-items: center; gap: var(--s2); font-weight: 700; letter-spacing: .02em; }
 .brand img { display: block; width: 20px; height: 20px; }
+/* Shaped like the session chip, but smaller and quieter: a label on the brand, not a control. */
+.channel {
+  font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--ink2); background: var(--surf2);
+  border: 1px solid var(--line); border-radius: 999px; padding: 0 8px;
+}
 .topnav { display: flex; gap: var(--s4); margin-right: auto; margin-left: var(--s5); }
 .tab {
   color: var(--ink2); text-decoration: none; font-weight: 600; padding: 6px 2px;

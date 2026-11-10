@@ -23,7 +23,7 @@ function IdLine({ row }: { row: IdRow }) {
   const answer = (status: IdAnswer) => {
     m.mutate(
       { id: row.primaryId, status },
-      { onError: (error) => { console.warn("[rlt] ids/save_failed", { code: codeOf(error) }); } },
+      { onError: (error) => { console.warn("[grindlog] ids/save_failed", { code: codeOf(error) }); } },
     );
   };
   // The clicked button is gone once the answer lands (and a working Retry disappears), so focus

@@ -259,7 +259,7 @@ export function runRulesDiff({ dir, logger }: { dir: string; logger: Logger }): 
     const store = createRawStore(raw);
     const rawGuids = new Set(store.matches().map((m) => m.guid));
     logger.info(C, "diff_started", { dir, matches: rawGuids.size });
-    scratchDir = mkdtempSync(join(tmpdir(), "rltracker-rules-diff-"));
+    scratchDir = mkdtempSync(join(tmpdir(), "grindlog-rules-diff-"));
     // Recompute, the writer and the migration log here, so the data dir's log gets no line about the scratch DB.
     const scratchLogger = createLogger({ dir: scratchDir, echo: false });
     // A throwaway DB: no fsync per recomputed match.

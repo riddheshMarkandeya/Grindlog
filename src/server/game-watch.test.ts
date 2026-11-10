@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { initialWatchState, parseTasklist, startGameWatch, step, type GameWatch, type WatchState } from "./game-watch";
+import { initialWatchState, parseTasklist, startGameWatch, step, TOAST_TITLE, type GameWatch, type WatchState } from "./game-watch";
 import type { ConfigCheck } from "./stats-config";
 import { memoryLogger } from "./testing";
 
@@ -143,5 +143,11 @@ describe("startGameWatch", () => {
     await vi.waitFor(() => {
       expect(detect.mock.calls.length).toBeGreaterThan(polls + 2);
     });
+  });
+});
+
+describe("TOAST_TITLE", () => {
+  test("names this build's app, so a dev toast says it came from the dev install", () => {
+    expect(TOAST_TITLE).toBe("Grindlog Dev isn't getting data");
   });
 });

@@ -27,7 +27,7 @@ function useRecapFilter(): Filter {
   // Memoized, so effects that depend on the filter run when it changes, not on every render.
   const { filter, bad } = useMemo(() => parseFilter(raw, fallback), [raw, fallback]);
   useEffect(() => {
-    if (bad) console.warn("[rlt] recap/bad_filter", { value: raw });
+    if (bad) console.warn("[grindlog] recap/bad_filter", { value: raw });
   }, [bad, raw]);
   return filter;
 }
@@ -37,7 +37,7 @@ function useRecapTeammate(): Teammate {
   const raw = params.get("with");
   const { teammate, bad } = useMemo(() => parseTeammate(raw), [raw]);
   useEffect(() => {
-    if (bad) console.warn("[rlt] recap/bad_with", { value: raw });
+    if (bad) console.warn("[grindlog] recap/bad_with", { value: raw });
   }, [bad, raw]);
   return teammate;
 }
@@ -73,7 +73,7 @@ export function RecapIndex() {
   const latest = useLatestSession(filter, teammate);
   const reset = latest.data?.session === null && teammate !== "anyone";
   useEffect(() => {
-    if (reset) console.info("[rlt] recap/with_reset", { with: teammateValue(teammate), reason: "no_session" });
+    if (reset) console.info("[grindlog] recap/with_reset", { with: teammateValue(teammate), reason: "no_session" });
   }, [reset, teammate]);
 
   if (latest.data?.session) return <Navigate to={recapPath(latest.data.session.key, filter, "overview", teammate)} replace />;
@@ -124,7 +124,7 @@ export function RecapSession({ view }: { view: SessionView }) {
     if (!reset) return;
     // Runs before the focus effect below, so `seen` still holds the filter before this load.
     resetByFilter.current = seen.current !== null && seen.current.filter !== shownFilter;
-    console.info("[rlt] recap/with_reset", { with: shownWith, session, reason: reset });
+    console.info("[grindlog] recap/with_reset", { with: shownWith, session, reason: reset });
     void navigate(recapPath(session, filter, here, "anyone"), { replace: true });
   }, [reset, shownWith, shownFilter, session, filter, here, navigate]);
 
@@ -157,7 +157,7 @@ export function RecapSession({ view }: { view: SessionView }) {
       const rail = view === "match" ? current("rail") : null;
       [to, target] = rail ? ["rail", rail] : ["tab", current("tabs")];
     }
-    console.debug("[rlt] recap/focus", { to, navigation, session, filter: shownFilter, with: shownWith, view });
+    console.debug("[grindlog] recap/focus", { to, navigation, session, filter: shownFilter, with: shownWith, view });
     target?.focus();
   }, [ready, session, shownFilter, shownWith, navigation, view, guid]);
 

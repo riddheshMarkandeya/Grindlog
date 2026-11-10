@@ -43,7 +43,7 @@ const OLD = cutoff - 10 * DAY;
 let dir: string;
 let storage: Storage;
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "rltracker-retention-"));
+  dir = mkdtempSync(join(tmpdir(), "grindlog-retention-"));
   storage = openStorage({ dir, logger: memoryLogger(), now });
 });
 afterEach(() => {

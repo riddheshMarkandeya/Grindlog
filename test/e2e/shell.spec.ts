@@ -15,6 +15,14 @@ test.afterEach(({ consoleErrors }) => {
   expect(consoleErrors).toEqual([]);
 });
 
+test("a dev build says so, in the header and the tab title, so it isn't mistaken for a friend's install; a prod build doesn't", async ({ page }) => {
+  // The web build takes its channel from this variable, as vite.config.ts reads it.
+  const prod = process.env.GRINDLOG_CHANNEL === "prod";
+  await page.goto("/");
+  await expect(page.getByRole("banner").getByText("Dev", { exact: true })).toHaveCount(prod ? 0 : 1);
+  await expect(page).toHaveTitle(prod ? "Grindlog" : "Grindlog Dev");
+});
+
 test("before the match: redirect, live status, chip, navigation, deep link, not found", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/\/recap\/e2e-seed-won(\?filter=everything)?$/);

@@ -1,14 +1,15 @@
 {
-  "name": "rl-tracker",
+  "name": "grindlog",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "bun run src/server/main.ts",
-    "dev": "RLTRACKER_DATA_DIR=.dev-data RLTRACKER_PORT=49101 bun run src/server/main.ts",
+    "dev": "GRINDLOG_DATA_DIR=.dev-data GRINDLOG_PORT=49101 bun run src/server/main.ts",
     "stop": "bun run scripts/stop.ts",
     "recompute": "bun run scripts/recompute.ts",
     "rules-diff": "bun run scripts/rules-diff.ts",
+    "move-data": "bun run scripts/move-data.ts",
     "definitions": "bun run scripts/definitions.ts",
     "icons": "bun run scripts/make-icons.ts",
     "deploy": "bun run check && bun run e2e && bun run install-autostart && bun run recompute",

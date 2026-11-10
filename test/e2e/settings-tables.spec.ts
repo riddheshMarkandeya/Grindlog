@@ -11,7 +11,7 @@ import { expect, test } from "./fixtures";
 
 test.use({ seed: "tables" });
 
-const HEADER = { "X-RLTracker-Request": "1" };
+const HEADER = { "X-Grindlog-Request": "1" };
 const SEED = [
   [1, "S22", "2026-03-11"],
   [2, "S23", "2026-06-09"],

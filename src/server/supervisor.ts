@@ -1,9 +1,9 @@
-// The process Task Scheduler starts: it runs the tracker exe hidden and restarts it after a crash,
+// The process Task Scheduler starts: it runs the tracker hidden and restarts it after a crash,
 // which Task Scheduler itself doesn't do once a task has launched. It stays idle otherwise.
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
 import { EXIT_CONFIG_INVALID, EXIT_OK, EXIT_PORT_TAKEN, EXIT_START_FAILED } from "./exit-codes";
 import { createLogger, type Logger } from "./log";
-import { dataDir, TRACKER_EXE } from "./paths";
+import { logsDir } from "./paths";
 
 const RESTART_MIN_MS = 5_000;
 const RESTART_MAX_MS = 5 * 60_000;
@@ -64,10 +64,11 @@ export async function runSupervisor(opts: SupervisorOptions): Promise<number> {
   }
 }
 
-if (import.meta.main) {
-  // The tracker exe sits next to this one, so the task needs no paths beyond the supervisor's own.
-  const bin = dirname(process.execPath);
+/** The installed exe's supervisor role: runs this same exe, bare, as the tracker. */
+export function superviseSelf(): void {
+  // Only works compiled: from source, execPath is bare bun.exe, which would start a Bun REPL.
+  const exe = process.execPath;
   // Its own file: two processes rotating one log would race.
-  const logger = createLogger({ dir: dataDir(), fileName: "supervisor.log" });
-  void runSupervisor({ cmd: [join(bin, TRACKER_EXE)], cwd: bin, logger }).then(() => process.exit(EXIT_OK));
+  const logger = createLogger({ dir: logsDir(), fileName: "supervisor.log" });
+  void runSupervisor({ cmd: [exe], cwd: dirname(exe), logger }).then(() => process.exit(EXIT_OK));
 }

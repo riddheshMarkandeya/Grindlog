@@ -19,7 +19,7 @@ export function useSave(onSaved?: () => void) {
     m.mutate(patch, {
       onSuccess: () => onSaved?.(),
       onError: (error) => {
-        console.warn("[rlt] settings/save_failed", { keys: Object.keys(patch), code: codeOf(error) });
+        console.warn("[grindlog] settings/save_failed", { keys: Object.keys(patch), code: codeOf(error) });
         onFailed?.();
       },
     });

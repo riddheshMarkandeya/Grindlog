@@ -21,7 +21,7 @@ afterAll(() => {
 let dir: string;
 let storage: Storage;
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "rltracker-pages-"));
+  dir = mkdtempSync(join(tmpdir(), "grindlog-pages-"));
   storage = openStorage({ dir, logger: memoryLogger() });
   storage.tracker.run("INSERT INTO my_ids (primary_id, name, status, added_at) VALUES (?, 'me', 'confirmed', 1)", ME);
 });

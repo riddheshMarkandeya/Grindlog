@@ -12,7 +12,7 @@ let dir: string;
 let storage: Storage;
 let store: RawStore;
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "rltracker-store-"));
+  dir = mkdtempSync(join(tmpdir(), "grindlog-store-"));
   storage = openStorage({ dir, logger: memoryLogger() });
   store = createRawStore(storage.raw);
 });

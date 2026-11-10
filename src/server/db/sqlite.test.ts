@@ -6,7 +6,7 @@ import { openDb } from "./sqlite";
 
 let dir: string;
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "rltracker-sqlite-"));
+  dir = mkdtempSync(join(tmpdir(), "grindlog-sqlite-"));
 });
 afterEach(() => {
   rmSync(dir, { recursive: true, force: true });

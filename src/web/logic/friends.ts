@@ -127,7 +127,7 @@ export function namedPairs<P extends { ids: readonly string[] }>(data: { friends
   return data.pairs.flatMap((pair) => {
     const [a, b] = pair.ids.map((id) => names.get(id));
     if (a !== undefined && b !== undefined) return [{ pair, a, b }];
-    console.warn("[rlt] friends/pair_unnamed", { ids: pair.ids });
+    console.warn("[grindlog] friends/pair_unnamed", { ids: pair.ids });
     return [];
   });
 }

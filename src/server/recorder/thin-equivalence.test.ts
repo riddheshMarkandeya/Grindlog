@@ -28,7 +28,7 @@ const recordOf = (guid: string) => {
 
 // Every fixture recorded, read, thinned and read again: slow under the full parallel suite.
 beforeAll(async () => {
-  dir = mkdtempSync(join(tmpdir(), "rltracker-thin-eq-"));
+  dir = mkdtempSync(join(tmpdir(), "grindlog-thin-eq-"));
   storage = openStorage({ dir, logger: memoryLogger() });
   store = createRawStore(storage.raw);
   const recorder = createRecorder({ raw: storage.raw, logger: memoryLogger(), onMatchFinished: () => undefined });

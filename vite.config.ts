@@ -4,6 +4,9 @@ import { defineConfig } from "vite";
 export default defineConfig({
   root: "src/web",
   plugins: [react()],
+  // Always defined, so the bundle never relies on how the bundler treats `typeof` on an undeclared
+  // global. The release build sets GRINDLOG_CHANNEL=prod; every other build is dev.
+  define: { GRINDLOG_CHANNEL: JSON.stringify(process.env.GRINDLOG_CHANNEL === "prod" ? "prod" : "dev") },
   build: { outDir: "../../dist", emptyOutDir: true },
   // The events SharedWorker is a module worker.
   worker: { format: "es" },

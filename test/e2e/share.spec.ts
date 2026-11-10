@@ -15,11 +15,11 @@ test.afterEach(({ consoleErrors }) => {
   expected = null;
 });
 
-/** The page's `[rlt] <event>` warnings, from now on. */
+/** The page's `[grindlog] <event>` warnings, from now on. */
 const warnings = (page: Page, event: string) => {
   const seen: string[] = [];
   page.on("console", (msg) => {
-    if (msg.type() === "warning" && msg.text().startsWith(`[rlt] ${event}`)) seen.push(msg.text());
+    if (msg.type() === "warning" && msg.text().startsWith(`[grindlog] ${event}`)) seen.push(msg.text());
   });
   return seen;
 };

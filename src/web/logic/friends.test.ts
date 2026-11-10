@@ -119,7 +119,7 @@ describe("pairs", () => {
     const kx = { ids: ["k", "x"] as const, n: 4 };
     expect(namedPairs({ friends, pairs: [kl, kx] })).toEqual([{ pair: kl, a: "Kim", b: "Lee" }]);
     expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn).toHaveBeenCalledWith("[rlt] friends/pair_unnamed", { ids: ["k", "x"] });
+    expect(warn).toHaveBeenCalledWith("[grindlog] friends/pair_unnamed", { ids: ["k", "x"] });
     warn.mockRestore();
   });
 });

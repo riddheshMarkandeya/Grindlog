@@ -42,7 +42,7 @@ describe("decide", () => {
 describe("runSupervisor with a real child", () => {
   let dir: string;
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "rltracker-sup-"));
+    dir = mkdtempSync(join(tmpdir(), "grindlog-sup-"));
   });
   afterEach(() => {
     rmSync(dir, { recursive: true, force: true });

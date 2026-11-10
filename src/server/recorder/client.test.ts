@@ -44,7 +44,7 @@ describe("startStatsClient against a replayed stream", () => {
   let dir: string;
   let storage: Storage;
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "rltracker-client-"));
+    dir = mkdtempSync(join(tmpdir(), "grindlog-client-"));
     storage = openStorage({ dir, logger: memoryLogger() });
   });
   afterEach(() => {

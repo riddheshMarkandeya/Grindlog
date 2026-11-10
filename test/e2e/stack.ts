@@ -3,7 +3,7 @@
 // installed path, a gated replay of the completed fixture, and the real tracker. Protocol: prints
 // `ready {"url","dataDir"}` on stdout; the stdin line `go` releases the replay; stdin EOF tears
 // everything down.
-// RLT_E2E_KEEP=1 keeps the temp dir (and its tracker.log).
+// GRINDLOG_E2E_KEEP=1 keeps the temp dir (and its logs/tracker.log).
 import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,6 +11,7 @@ import { createInterface } from "node:readline";
 import { startReplayServer } from "../../scripts/replay";
 import { describeStopResult, requestStop } from "../../scripts/stop";
 import { createLogger } from "../../src/server/log";
+import { logsDir } from "../../src/server/paths";
 import type { MatchRecord } from "../../src/server/records/record";
 import { createRecordWriter } from "../../src/server/records/save";
 import { openStorage } from "../../src/server/storage";
@@ -32,7 +33,7 @@ const say = (msg: string, fields: Record<string, unknown> = {}) => {
 
 function logTail(dir: string, lines = 30): string {
   try {
-    return readFileSync(join(dir, "tracker.log"), "utf8").trimEnd().split("\n").slice(-lines).join("\n");
+    return readFileSync(join(logsDir({ GRINDLOG_DATA_DIR: dir }), "tracker.log"), "utf8").trimEnd().split("\n").slice(-lines).join("\n");
   } catch (err) {
     return `(no tracker.log: ${(err as Error).message})`;
   }
@@ -93,7 +94,8 @@ const HAT_TRICK: Parameters<typeof record>[2] = {
  * longest label.
  */
 function seed(dir: string, mode: Seed): void {
-  const logger = createLogger({ dir });
+  // The tracker's own log file, so a run leaves one log, not two.
+  const logger = createLogger({ dir: logsDir({ GRINDLOG_DATA_DIR: dir }) });
   const storage = openStorage({ dir, logger });
   try {
     storage.tracker.run("INSERT INTO my_ids (primary_id, name, status, added_at) VALUES (?, 'me', 'confirmed', ?)", ME, Date.now());
@@ -196,9 +198,9 @@ function seedShare(storage: ReturnType<typeof openStorage>, logger: ReturnType<t
   }
 }
 
-/** Removes the temp data dir unless RLT_E2E_KEEP=1. Never throws: it runs on the failure paths too. */
+/** Removes the temp data dir unless GRINDLOG_E2E_KEEP=1. Never throws: it runs on the failure paths too. */
 function removeDir(dir: string): void {
-  if (process.env.RLT_E2E_KEEP === "1") {
+  if (process.env.GRINDLOG_E2E_KEEP === "1") {
     say("kept the data dir", { dataDir: dir });
     return;
   }
@@ -213,7 +215,7 @@ async function main(): Promise<void> {
   const dist = join(REPO, "dist");
   if (!existsSync(join(dist, "index.html"))) throw new Error(`${dist}\\index.html is missing; run vite build first (bun run e2e does)`);
 
-  const dir = mkdtempSync(join(tmpdir(), "rlt-e2e-"));
+  const dir = mkdtempSync(join(tmpdir(), "grindlog-e2e-"));
   try {
     // The installed path, so the tracker's default staticDir is what's served.
     cpSync(dist, join(dir, "bin", "web"), { recursive: true });
@@ -233,13 +235,13 @@ async function main(): Promise<void> {
   const url = `http://${DASHBOARD_HOST}:${String(port)}`;
   say("starting", { dataDir: dir, trackerPort: port, replayPort: replay.port });
 
-  const env: Record<string, string | undefined> = { ...process.env, RLTRACKER_DATA_DIR: dir, RLTRACKER_PORT: String(port), STATS_API_URL: `ws://127.0.0.1:${String(replay.port)}` };
-  delete env.RLTRACKER_STATIC_DIR;
+  const env: Record<string, string | undefined> = { ...process.env, GRINDLOG_DATA_DIR: dir, GRINDLOG_PORT: String(port), STATS_API_URL: `ws://127.0.0.1:${String(replay.port)}` };
+  delete env.GRINDLOG_STATIC_DIR;
   const started = Date.now();
   const tracker = Bun.spawn([process.execPath, "run", join(REPO, "src", "server", "main.ts")], { cwd: REPO, env, stdout: "ignore", stderr: "inherit" });
 
   let tearingDown = false;
-  // The log tail is printed before the dir goes; RLT_E2E_KEEP=1 keeps the whole log.
+  // The log tail is printed before the dir goes; GRINDLOG_E2E_KEEP=1 keeps the whole log.
   const fail = (msg: string, fields: Record<string, unknown>) => {
     say(msg, fields);
     console.log(logTail(dir));

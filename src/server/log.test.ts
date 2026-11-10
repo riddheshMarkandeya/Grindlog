@@ -14,7 +14,7 @@ const fixedNow = () => new Date("2026-10-16T12:00:00.000Z");
 let dir: string;
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "rltracker-log-"));
+  dir = mkdtempSync(join(tmpdir(), "grindlog-log-"));
 });
 afterEach(() => {
   rmSync(dir, { recursive: true, force: true });

@@ -15,7 +15,7 @@ import type { MatchSummary } from "./summary";
 let dir: string;
 let storage: Storage;
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "rltracker-recorder-"));
+  dir = mkdtempSync(join(tmpdir(), "grindlog-recorder-"));
   storage = openStorage({ dir, logger: memoryLogger() });
 });
 afterEach(() => {

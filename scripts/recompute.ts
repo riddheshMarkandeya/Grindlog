@@ -1,5 +1,5 @@
 // Rebuilds every match record from raw.db. Safe while the tracker runs.
-// `bun run recompute`; RLTRACKER_DATA_DIR picks another data dir.
+// `bun run recompute`; GRINDLOG_DATA_DIR picks another data dir.
 import { log } from "../src/server/log";
 import { recomputeAll } from "../src/server/records/recompute";
 import { openStorage } from "../src/server/storage";

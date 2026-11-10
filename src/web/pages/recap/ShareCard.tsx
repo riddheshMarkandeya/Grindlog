@@ -26,7 +26,7 @@ export function ShareButton(props: Props) {
   const [open, setOpen] = useState(false);
   const titleId = useId();
   const show = () => {
-    console.debug("[rlt] share/open", { key: props.detail.key, filter: filterValue(props.filter), with: teammateValue(props.teammate), matches: props.summary.matches });
+    console.debug("[grindlog] share/open", { key: props.detail.key, filter: filterValue(props.filter), with: teammateValue(props.teammate), matches: props.summary.matches });
     dialog.current?.showModal();
     setOpen(true);
   };
@@ -70,17 +70,17 @@ function ShareDialog({ detail, summary, filter, teammate, titleId, onClose }: Pr
   // Keyed on what's missing, so a refetch with the same gap doesn't warn again.
   const nullKey = view.nullStats.join(",");
   useEffect(() => {
-    if (nullKey) console.warn("[rlt] share/null_stat", { key: detail.key, filter: f, stats: nullKey.split(",") });
+    if (nullKey) console.warn("[grindlog] share/null_stat", { key: detail.key, filter: f, stats: nullKey.split(",") });
   }, [nullKey, detail.key, f]);
   const noName = ready && name === null;
   const nameError = match.error ? errorText(match.error) : null;
   useEffect(() => {
-    if (noName) console.warn("[rlt] share/no_name", { key: detail.key, guid, error: nameError });
+    if (noName) console.warn("[grindlog] share/no_name", { key: detail.key, guid, error: nameError });
   }, [noName, detail.key, guid, nameError]);
   // A failed refetch that leaves the cached mood on the card isn't a missing mood.
   const moodError = remarks.isError && !remarks.data ? errorText(remarks.error) : null;
   useEffect(() => {
-    if (moodError !== null) console.warn("[rlt] share/no_mood", { key: detail.key, filter: f, error: moodError });
+    if (moodError !== null) console.warn("[grindlog] share/no_mood", { key: detail.key, filter: f, error: moodError });
   }, [moodError, detail.key, f]);
 
   // Always 3×, whatever the screen's own pixel ratio.
@@ -112,11 +112,11 @@ function ShareDialog({ detail, summary, filter, teammate, titleId, onClose }: Pr
         a.click();
         setTimeout(() => { URL.revokeObjectURL(url); }, 1000);
       }
-      console.info("[rlt] share/export", { kind, ms: Math.round(performance.now() - t0), bytes: (await png).size });
+      console.info("[grindlog] share/export", { kind, ms: Math.round(performance.now() - t0), bytes: (await png).size });
       setStatus(kind === "copy" ? "Copied" : "Saved");
     } catch (e) {
       const [step, error] = await png.then(() => [kind === "copy" ? "clipboard" : "save", e] as const, (r: unknown) => ["render", r] as const);
-      console.warn("[rlt] share/export_failed", { kind, step, error: errorText(error), ms: Math.round(performance.now() - t0) });
+      console.warn("[grindlog] share/export_failed", { kind, step, error: errorText(error), ms: Math.round(performance.now() - t0) });
       setStatus(FAILED[step]);
     } finally {
       setBusy(false);

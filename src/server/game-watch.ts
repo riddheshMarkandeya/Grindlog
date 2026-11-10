@@ -1,5 +1,6 @@
 // Tells "the game is closed" apart from "the game is running with its Stats API off", which the
 // WebSocket alone can't: both look like a refused connection.
+import { APP_NAME } from "../shared/channel";
 import type { Logger } from "./log";
 import { runCommand, runPowerShell } from "./powershell";
 import type { ConnectionStatus, StatsClient } from "./recorder/client";
@@ -59,7 +60,7 @@ async function detectGame(): Promise<boolean> {
 }
 
 const TOAST_TIMEOUT_MS = 10_000;
-const TOAST_TITLE = "Grindlog isn't getting data";
+export const TOAST_TITLE = `${APP_NAME} isn't getting data`;
 const TOAST_BODY = "Rocket League is running but its Stats API is off. Set PacketSendRate above 0 in TAGame\\Config\\TAStatsAPI.ini, then restart the game.";
 // PowerShell's own AppUserModelID: a toast needs a registered app, and this one always is.
 const POWERSHELL_APP_ID = String.raw`{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe`;
