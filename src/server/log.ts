@@ -65,13 +65,16 @@ function writeConsole(stream: NodeJS.WriteStream, text: string): void {
   }
 }
 
+/** Every log file rotates at 5 MiB and keeps 5 files: at most 25 MiB per process role on a friend's disk. */
+export const LOG_ROTATION = { maxBytes: 5 * 1024 * 1024, maxFiles: 5 };
+
 /**
  * Structured JSON-lines logger, tagged by category and event, that never throws once created.
  * Writes <dir>/<fileName>, rotating to .1 ... .(maxFiles-1) once a file would pass maxBytes.
  * Failures go to stderr once per streak, as log_write_failed or log_rotate_failed.
  */
 export function createLogger(opts: LoggerOptions): Logger {
-  const { dir, fileName = "tracker.log", maxBytes = 5 * 1024 * 1024, maxFiles = 5 } = opts;
+  const { dir, fileName = "tracker.log", maxBytes = LOG_ROTATION.maxBytes, maxFiles = LOG_ROTATION.maxFiles } = opts;
   if (!Number.isInteger(maxFiles) || maxFiles < 2) throw new RangeError(`maxFiles must be an integer >= 2, got ${String(maxFiles)}`);
   if (!(maxBytes > 0)) throw new RangeError(`maxBytes must be > 0, got ${String(maxBytes)}`);
   const now = opts.now ?? (() => new Date());

@@ -1,12 +1,9 @@
 // Stops the running tracker (background or dev) through its shutdown endpoint.
 // `bun run stop [--wait]`; GRINDLOG_PORT picks which instance (a dev run is on 49101).
-import { connect } from "node:net";
 import { join } from "node:path";
-import { APP_NAME } from "../src/shared/channel";
+import { killExe, requestStop, waitForPortFree, type StopOutcome } from "../src/server/control";
 import { dashboardPort, dataDir, identity } from "../src/server/paths";
-import { DASHBOARD_HOST, SHUTDOWN_HEADER } from "../src/shared/constants";
-
-export type StopOutcome = { kind: "status"; status: number } | { kind: "refused" } | { kind: "reset" } | { kind: "error"; message: string };
+import { APP_NAME } from "../src/shared/channel";
 
 export function describeStopResult(outcome: StopOutcome): { message: string; exitCode: number } {
   switch (outcome.kind) {
@@ -22,73 +19,15 @@ export function describeStopResult(outcome: StopOutcome): { message: string; exi
   }
 }
 
-export async function requestStop(port: number): Promise<StopOutcome> {
-  try {
-    const res = await fetch(`http://${DASHBOARD_HOST}:${String(port)}/api/shutdown`, {
-      method: "POST",
-      headers: { [SHUTDOWN_HEADER]: "1" },
-      signal: AbortSignal.timeout(10_000),
-    });
-    return { kind: "status", status: res.status };
-  } catch (err) {
-    const code = (err as { code?: unknown }).code;
-    if (code === "ECONNREFUSED") return { kind: "refused" };
-    if (code === "ECONNRESET") return { kind: "reset" };
-    return { kind: "error", message: err instanceof Error ? err.message : String(err) };
-  }
-}
-
-/** Whether anything accepts connections on the port. */
-function portInUse(port: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const socket = connect(port, DASHBOARD_HOST);
-    socket.once("connect", () => {
-      socket.destroy();
-      resolve(true);
-    });
-    socket.once("error", () => {
-      resolve(false);
-    });
-  });
-}
-
-/** Polls until nothing listens on the port; false if it's still taken after `timeoutMs`. */
-export async function waitForPortFree(port: number, timeoutMs = 30_000): Promise<boolean> {
-  const deadline = Date.now() + timeoutMs;
-  while (await portInUse(port)) {
-    if (Date.now() > deadline) return false;
-    await Bun.sleep(250);
-  }
-  return true;
-}
-
-// Matches on the full path, not the image name: a hand-run copy of the same exe elsewhere (another
-// data dir or port) may be recording and must survive. The path and arg go in through env, never quoted into the script.
-const KILL_SCRIPT = `
-$name = Split-Path -Leaf $env:GRINDLOG_KILL_EXE
-$p = @(Get-CimInstance Win32_Process -Filter "Name='$name'" | Where-Object {
-  $_.ExecutablePath -eq $env:GRINDLOG_KILL_EXE -and ([string]::IsNullOrEmpty($env:GRINDLOG_KILL_ARG) -or $_.CommandLine -match [regex]::Escape($env:GRINDLOG_KILL_ARG))
-})
-foreach ($x in $p) { Stop-Process -Id $x.ProcessId -Force -ErrorAction SilentlyContinue }
-if ($p.Count -gt 0) { exit 0 } else { exit 3 }`;
-
-/** Force-ends the processes running `exe` (a full path), only those whose command line has `arg` if given; true if any was running. */
-export function killExe(exe: string, arg = ""): boolean {
-  const res = Bun.spawnSync(["powershell", "-NoProfile", "-NonInteractive", "-Command", KILL_SCRIPT], {
-    env: { ...process.env, GRINDLOG_KILL_EXE: exe, GRINDLOG_KILL_ARG: arg },
-    stdout: "ignore",
-    stderr: "pipe",
-  });
-  if (res.exitCode === 0) return true;
-  // 3 is the script's "nothing matched"; anything else is PowerShell or CIM failing, which would
-  // otherwise read as nothing running.
-  if (res.exitCode !== 3) console.error(`Could not look for ${exe} processes (exit ${String(res.exitCode)}): ${res.stderr.toString().trim()}`);
-  return false;
-}
-
 // Only the installed supervisor: it runs only when the port refused, and a tracker of the same
 // install that is still starting up is left alone. A friend's install has another exe path.
-const endSupervisor = () => killExe(join(dataDir(), "bin", identity().exe), "--supervisor");
+function endSupervisor(): boolean {
+  const exe = join(dataDir(), "bin", identity().exe);
+  const result = killExe(exe, "--supervisor");
+  // A failed lookup must not read as "nothing running" without saying so.
+  if (result.kind === "failed") console.error(`Could not look for ${exe} processes (${result.error}).`);
+  return result.kind === "killed";
+}
 
 export interface StopResult {
   message: string;

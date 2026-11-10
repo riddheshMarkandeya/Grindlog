@@ -327,6 +327,10 @@ export const statusSchema = z.object({
   /** The game has run a minute or more without the Stats API answering. */
   statsApiOff: z.boolean(),
   configProblems: z.array(z.enum(["no_ini", "user_missing", "send_rate_off", "web_port_off", "web_port_mismatch"])),
+  /** The release this build is; null for dev and source runs. */
+  version: z.string().nullable(),
+  /** The tracker's process ID, so launchers and the updater know which process answered. */
+  pid: z.number().int(),
 });
 
 export const breakResponse = z.object({ at: z.number() });

@@ -67,6 +67,10 @@ describe("main as a process", () => {
     // It left before storage: no databases in its own data dir.
     expect(existsSync(join(otherDir, "tracker.db"))).toBe(false);
 
+    expect(events(dir)[0]).toMatchObject({ cat: "app", event: "started", pid: first.pid, version: null, channel: "dev", bun: Bun.version });
+    const status = (await (await fetch(`http://127.0.0.1:${String(port)}/api/status`)).json()) as { version: unknown; pid: unknown };
+    expect(status).toMatchObject({ version: null, pid: first.pid });
+
     const res = await fetch(`http://127.0.0.1:${String(port)}/api/shutdown`, { method: "POST", headers: { [SHUTDOWN_HEADER]: "1" } });
     expect(res.status).toBe(202);
     expect(await first.exited).toBe(EXIT_OK);

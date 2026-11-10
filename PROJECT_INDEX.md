@@ -6,7 +6,12 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
 ## Code layout and commands
 - `src/server/` (Bun process: `main.ts` entry, `host.ts` HTTP server and shutdown endpoint,
   `grindlog.ts` the compiled entry (`--supervisor` runs `supervisor.ts`'s restart loop over the same
-  exe, bare runs `main.ts`), `game-watch.ts` game detection and toast, `exit-codes.ts`, `log.ts`
+  exe, `--open` and `--quit` run `launcher.ts`, bare runs `main.ts`), `launcher.ts` the short-lived modes
+  (`--open` starts the supervisor detached if nothing answers and opens the dashboard; `--quit`, for the
+  installer and updater, asks the tracker to stop and ends supervisors and waiting `--open`s, never a
+  recording tracker), `control.ts` probing, listing, ending and starting this install's processes
+  (shared with `stop.ts` and `autostart.ts`), `runtime-info.ts` version, channel, Windows and Bun for
+  `started` lines, `game-watch.ts` game detection and toast, `exit-codes.ts`, `log.ts`
   logger, `paths.ts` per-channel `identity()` (data dir, port, exe, task, shortcut) and paths from it, `storage.ts` opens both DBs, `maintenance.ts` schedules retention and backups; `db/`: `sqlite.ts` driver seam, `migrate.ts`, `migrations.ts`,
   `backup.ts`, `retention.ts`; `recorder/`: Stats API client, lifecycle, raw store, dedup,
   summary, checks, `play.ts` live-play view, `extras.ts` stat registry, `read-match.ts`, `thin.ts`
@@ -23,7 +28,8 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   tabs from a SharedWorker (`worker.ts`, in-page fallback in `client.ts`), `live.ts` header state,
   `useLiveEvents.ts` refetch on events; `logic/` pure header logic; `components/` header and empty
   state; `styles/tokens.css` themes carbon, slate, oled; `pages/` placeholders until WP6+),
-  `src/shared/` (`channel.ts` the baked dev/prod channel and `APP_NAME`, `constants.ts`, `result.ts` your W/L, `playlists.ts` ID map, `goal-range.ts`
+  `src/shared/` (`channel.ts` the baked dev/prod channel and `APP_NAME`, `version.ts` the baked
+  `GRINDLOG_VERSION` (null in dev and source runs), `constants.ts`, `result.ts` your W/L, `playlists.ts` ID map, `goal-range.ts`
   close/mid/long, `periods.ts` local days and periods, `playlist-filter.ts` filter groups, `schemas/` API params
   and response shapes),
   `scripts/` (standalone `capture.ts`; `make-icons.ts` packs `src/web/assets/icon.svg` and
@@ -52,7 +58,8 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   the temp data dir and its logs). Bun lives at `~/.bun/bin/bun` and may not be on PATH.
 - Channel: every source run and the CLI install are the dev channel (`GrindlogDev`, port 49102,
   `grindlog-dev.exe`, task `GrindlogDev`, "Grindlog Dev" with a Dev badge). Only a build with
-  `GRINDLOG_CHANNEL=prod` baked in (`--define`, never read at runtime) is prod (`Grindlog`, 49100,
+  `GRINDLOG_CHANNEL=prod` baked in (`--define`, never read at runtime; no repo script passes it yet, the
+  release build in package 5 will, with `GRINDLOG_VERSION`) is prod (`Grindlog`, 49100,
   `grindlog.exe`), so a friend's install and the developer's share no data, port, task or exe.
 - Background: `bun run install-autostart` compiles `grindlog-dev.exe` and the dashboard (`bin\web`,
   which the tracker serves) into `%LOCALAPPDATA%\GrindlogDev\bin\`, registers the `GrindlogDev`
@@ -60,7 +67,7 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   `http://127.0.0.1:49102/`. It runs that snapshot, not the repo. `bun run deploy` ships code
   changes: check, e2e, then install-autostart (builds while the old one records, then swaps and
   restarts), then recompute. `uninstall-autostart` removes the task, shortcut and `bin`.
-- Data and logs: `%LOCALAPPDATA%\GrindlogDev\` (`logs\tracker.log` and `logs\supervisor.log`,
+- Data and logs: `%LOCALAPPDATA%\GrindlogDev\` (`logs\tracker.log`, `logs\supervisor.log` and `logs\launcher.log` (`--open`/`--quit`),
   5 × 5 MB, JSON lines); `GRINDLOG_DATA_DIR` overrides it for tests and dev runs. Also `tracker.db` (settings, seasons,
   IDs, match records; backed up to `backups/`, 7 kept), `raw.db` (raw events; after 90 days a
   match's UpdateStates are thinned to the scoreboard changes, with its car stats and camera
@@ -88,6 +95,9 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   Task Scheduler doesn't restart a crashed task.
 
 ## Plans
+- `docs/reviews/2026-11-10-wp2a-process-control.md`: step 4 package 2a review summary (3 rounds, 2 disputed nits).
+- `docs/plans/2026-11-10-wp2a-process-control.md`: step 4 package 2a, the detached-spawn spike, baked version,
+  `version`/`pid` in `/api/status`, `--open`, `--quit` and the shared control module; review log.
 - `docs/reviews/2026-11-10-wp1-rename-identity.md`: step 4 package 1 review summary (3 rounds, 1 deferred,
   1 disputed).
 - `docs/plans/2026-11-09-wp1-rename-identity.md`: step 4 package 1, grindlog ids, the dev/prod channel,

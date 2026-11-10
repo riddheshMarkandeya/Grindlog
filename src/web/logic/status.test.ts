@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import type { Status } from "../../shared/schemas/responses";
 import { statusLabel } from "./status";
 
-const live = (over: Partial<Status> = {}): Status => ({ connection: "waiting", statsApiOff: false, configProblems: [], ...over });
+const live = (over: Partial<Status> = {}): Status => ({ connection: "waiting", statsApiOff: false, configProblems: [], version: null, pid: 1234, ...over });
 
 describe("statusLabel", () => {
   test("names each connection state the way the map does", () => {

@@ -10,7 +10,8 @@ import { dataDir, identity } from "../src/server/paths";
 import { APP_NAME } from "../src/shared/channel";
 import { DASHBOARD_HOST } from "../src/shared/constants";
 import { version as appVersion } from "../package.json";
-import { killExe, stopTracker } from "./stop";
+import { killExe } from "../src/server/control";
+import { stopTracker } from "./stop";
 
 const ID = identity();
 const PUBLISHER = "Grindlog";
@@ -107,8 +108,10 @@ async function stopInstalled(bin: string): Promise<void> {
   // it loses nothing. Only processes running this install's exe hold it. The supervisor goes first,
   // so it can't restart the tracker in between.
   console.log("Ending the leftover background processes.");
-  killExe(exe, "--supervisor");
-  killExe(exe);
+  for (const arg of ["--supervisor", ""]) {
+    const result = killExe(exe, arg);
+    if (result.kind === "failed") console.error(`Could not end ${[exe, arg].filter(Boolean).join(" ")} (${result.error}).`);
+  }
   if (!(await waitUnlocked([exe], 10_000))) throw new StepFailed(`${bin} is still in use; end ${ID.exe} in Task Manager's Details tab and try again.`);
 }
 

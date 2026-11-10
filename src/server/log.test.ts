@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmdirSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { createLogger } from "./log";
+import { createLogger, LOG_ROTATION } from "./log";
 
 // renameSync stays real except in the test that simulates a locked file.
 vi.mock("node:fs", async (importOriginal) => {
@@ -178,6 +178,10 @@ describe("rotation", () => {
   // Each line is ~75 bytes, so with maxBytes 100 every line after the first rotates.
   const opts = () => ({ dir, now: fixedNow, echo: false, maxBytes: 100, maxFiles: 3 });
   const ns = (file: string) => lines(file).map((l) => l.n);
+
+  test("by default every role's log rotates at 5 MiB and keeps 5 files", () => {
+    expect(LOG_ROTATION).toEqual({ maxBytes: 5 * 1024 * 1024, maxFiles: 5 });
+  });
 
   test("keeps maxFiles files, newest in the base file, oldest dropped", () => {
     const log = createLogger(opts());

@@ -10,6 +10,8 @@ import { startStatsClient, statsApiUrl, type StatsClient } from "./recorder/clie
 import { createRecorder, type Recorder } from "./recorder/recorder";
 import { toRecord } from "./records/record";
 import { createRecordWriter } from "./records/save";
+import { runtimeInfo } from "./runtime-info";
+import { VERSION } from "../shared/version";
 import { expectedPort } from "./stats-config";
 import { openStorage, type Storage } from "./storage";
 
@@ -25,7 +27,7 @@ interface Parts {
 }
 
 function main(): void {
-  log.info("app", "started", { pid: process.pid, dataDir: dataDir(), bun: Bun.version });
+  log.info("app", "started", { pid: process.pid, dataDir: dataDir(), ...runtimeInfo() });
   const parts: Parts = {};
   let stopping = false;
 
@@ -41,6 +43,8 @@ function main(): void {
       ["flush", () => parts.recorder?.flush()],
       ["maintenance", () => parts.maintenance?.stop()],
       ["storage", () => parts.storage?.close()],
+      // Last: --quit reads a refused port as nothing left to flush and may then end the supervisor,
+      // which takes this process down with it.
       ["host", () => parts.host?.stop()],
     ];
     // Each step on its own: a failed flush must not skip closing storage.
@@ -71,7 +75,9 @@ function main(): void {
     process.exit(EXIT_CONFIG_INVALID);
   }
 
-  // The port first, so a second instance leaves before touching migrations or backups.
+  // The port first, so a second instance leaves before touching migrations or backups. --quit
+  // relies on this order too: when the port refuses it ends a supervisor, which takes a starting
+  // tracker down with it, and that tracker can't have opened storage yet.
   try {
     parts.host = startHost({ port, logger: log, onShutdown: () => void stop("shutdown") });
   } catch (err) {
@@ -115,7 +121,7 @@ function main(): void {
   const api = (parts.api = createApi({
     tracker: storage.tracker,
     reader: createQueryReader({ tracker: storage.tracker, logger: log }),
-    status: () => ({ connection: client.status(), statsApiOff: gameWatch.statsApiOff(), configProblems: gameWatch.statsConfig()?.problems ?? [] }),
+    status: () => ({ connection: client.status(), statsApiOff: gameWatch.statsApiOff(), configProblems: gameWatch.statsConfig()?.problems ?? [], version: VERSION, pid: process.pid }),
     staticDir: staticDir(),
     logger: log,
   }));

@@ -4,6 +4,7 @@ import { dirname } from "node:path";
 import { EXIT_CONFIG_INVALID, EXIT_OK, EXIT_PORT_TAKEN, EXIT_START_FAILED } from "./exit-codes";
 import { createLogger, type Logger } from "./log";
 import { logsDir } from "./paths";
+import { runtimeInfo } from "./runtime-info";
 
 const RESTART_MIN_MS = 5_000;
 const RESTART_MAX_MS = 5 * 60_000;
@@ -37,7 +38,7 @@ export interface SupervisorOptions {
 /** Runs `cmd` until it exits with a code that `decide` says to stop on; resolves with that code. */
 export async function runSupervisor(opts: SupervisorOptions): Promise<number> {
   const { cmd, cwd, logger, spawn = Bun.spawn, sleep = Bun.sleep, now = Date.now } = opts;
-  logger.info("supervisor", "started", { pid: process.pid, cmd });
+  logger.info("supervisor", "started", { pid: process.pid, cmd, ...runtimeInfo() });
   let prevDelayMs: number | null = null;
   for (;;) {
     const started = now();

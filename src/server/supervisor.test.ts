@@ -82,6 +82,8 @@ describe("runSupervisor with a real child", () => {
       "supervisor/stopped",
     ]);
     expect(logger.lines.filter((l) => l.event === "restarting").map((l) => l.fields.cause)).toEqual(["crash", "start_failed"]);
+    // What a friend's log needs to say which build and Windows it ran on.
+    expect(logger.lines[0]?.fields).toMatchObject({ pid: process.pid, version: null, channel: "dev", windows: expect.any(String) as unknown, bun: Bun.version });
   });
 
   test("a child that found the port taken isn't restarted", async () => {

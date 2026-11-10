@@ -42,7 +42,7 @@ let host: Host;
 let api: Api;
 let logger: ReturnType<typeof memoryLogger>;
 let clock: number;
-const status: Status = { connection: "connected", statsApiOff: false, configProblems: ["user_missing"] };
+const status: Status = { connection: "connected", statsApiOff: false, configProblems: ["user_missing"], version: null, pid: 1234 };
 
 const T0 = Date.UTC(2026, 9, 10, 18);
 const MIN = 60_000;
