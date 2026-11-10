@@ -5,6 +5,8 @@ A design ready to build for this: a friend downloads one installer from GitHub R
 without admin rights or dev tools. It then records, shows a small tray and updates itself from then on.
 
 ## Notes
+- **Frozen 2026-11-09** after the plan-reviewer pass: Decisions so far is the design. Later changes go in the
+  build work packages' own plans (see Build work packages), not here.
 - Parent: step 4 of `docs/plans/2026-11-05-friends-release-map.md`. The user confirmed the decisions below
   on 2026-11-06.
 - A friend is an end user and this is a proper release; friends are just early beta testers.
@@ -47,7 +49,8 @@ revisit leaner data later.
 ### Dev stays separate
 CLI-only through `bun run install-autostart`, documented in CONTRIBUTING, and it never self-updates. Dev uses
 `%LOCALAPPDATA%\GrindlogDev`, task `GrindlogDev`, port 49102. Prod uses `Grindlog` and 49100, and `bun run dev`
-keeps 49101. A one-off script with backup and verification moves the user's data there, so friends' installers
+keeps 49101. A one-off script with backup and verification moves the user's data from `RLTracker` to `GrindlogDev`
+(Proof before friends copies it on into `Grindlog`; revised by Plan review), so friends' installers
 carry no migration code. This revisits the backlog's "with installer migration": only that machine has the old
 ids, the reasoning `LEGACY_SHORTCUT` already uses. The whole internal rename lands before the first release.
 
@@ -69,8 +72,10 @@ Azure Artifact Signing's fit depends on whether the user is in the US or Canada,
 ### Proof before friends
 On a clean Windows environment: install, auto-update with data intact, watch a broken build roll back, and check
 whether an app-downloaded update trips SmartScreen (read its `Zone.Identifier` stream). Also check that closing the game doesn't overwrite a Stats API write made
-while it was open. Then record one live match
-on prod on the user's PC. This covers the open WP3b autostart check.
+while it was open. The broken build is served through the update feed override, never published. Before the first
+prod install on the user's PC, the move script in copy mode copies `GrindlogDev` into `Grindlog`, so prod starts with the
+history and becomes the everyday install, and dev a scratch copy. Then record one live match on prod on the user's PC.
+This covers the open WP3b autostart check (revised by Plan review).
 
 ### Backlog fold-ins
 The install exe-replace bug and the antivirus backup-rename retry get fixed in step 4 rather than waiting for their
@@ -175,12 +180,27 @@ until the next successful update. Start the old version, check it the same way, 
 newer one appears. The tray says what happened; if the old version won't start either, a toast links to a reinstall.
 
 `raw.db` now gets a pre-migration backup too, because old code refuses a newer schema. It is deleted once the update is
-healthy, and the update is skipped if disk space is short.
+healthy. Before any pre-migration backup the tracker checks free space; if it's short, startup fails without migrating,
+the health check fails, the update rolls back, and the tray says there wasn't enough disk space (revised by Plan review:
+the supervisor can't know before applying whether a migration will run).
+
+Shared state (Plan review): a JSON state file in `<data>\update\`, written by the supervisor and updater, served by the
+tracker on an endpoint for the tray and dashboard. "Install update" goes to the tracker, which writes a request into the
+file; the supervisor polls it. Nothing new listens on a port, and the tray's menu lines read this state.
+
+Failures before apply (Plan review): a failed minisign check or a signed comment whose version or file name doesn't match
+skips that version, logs a warning and adds a tray line. A download or GitHub API error (rate limit included) logs and
+retries at the next check.
+
+Feed override (Plan review): `GRINDLOG_UPDATE_FEED` points the check at a local folder or server instead of
+`releases/latest`, for testing; minisign still applies, so it can't bypass signing.
 
 Interrupted by a shutdown: a state file tells the next supervisor. On the old version it clears the state and retries
 later; on the new version it finishes the health check without rollback, and a failure is only logged and shown in the
 tray. Half-written exes mean a manual reinstall, with data untouched. If the game opens mid-update the update carries
-on and the new tracker records the match; a rollback may cut that match short.
+on and the new tracker records the match; a rollback restores the pre-migration backup and so drops any match the new
+version recorded (accepted; the failed database is kept until the next successful update, and a manual-merge item waits
+on the BACKLOG Watch list; revised by Plan review).
 
 Manual install or uninstall while running: the installer runs `grindlog.exe --quit` first, and restarts the app after a
 manual install. A silent install from the updater skips that restart.
@@ -288,18 +308,36 @@ the Windows username in paths, their own and other players' gamertags and platfo
 5 MB × 5 files rotation per log. `started` logs app version, channel and Windows build in all three processes, and the
 updater writes its own `updater.log`. Exporting one match's raw events waits on a BACKLOG Watch item.
 
-## Open tickets
 ### Build work packages
-- Question: How does the build split into ordered work packages, including the order of the rename and the fold-ins?
-  The identity change and the one-off data move land together, or source scripts would miss the running install.
-  Also: whether the release build runs `rcedit` on `InternalName`, and whether VirusTotal checks the exes before and
-  after (see Bun version info and antivirus).
-- Type: grilling
-- Blocked by: Diagnostics for friends
-- Status: open
+Seven packages in this order, each planned in its own session (user, 2026-11-09):
+1. **Rename, identity and data move**, as one package so source scripts never miss the running install: the rename list,
+   channel define, `GrindlogDev`/49102, `grindlog-dev*.exe`, dev badge, logs to `<data>\logs\`, the one-off move
+   script, the closing rename checks, and `grindlog.exe` becoming tracker plus supervisor behind a flag (Process
+   model). Fold-in: the install exe-replace fix.
+2. **Release-aware app**: first a spike on whether a detached `Bun.spawn` child outlives its parent's exit, a force-kill
+   and the task's End (`--open` and the updater rely on it; record the result before package 6). Then baked
+   `GRINDLOG_VERSION`, version and process ID in `/api/status`, Recompute in a release, Dashboard after an update, log
+   rotation and the tracker's and supervisor's `started` fields, `--open`, `--quit` (waits for the processes to exit and
+   reaches the supervisor even while its tracker is down), the "Start with Windows" setting.
+3. **Tray and process model**: `grindlog-tray.exe` with its `started` fields, the supervisor starting and restarting it,
+   the quit protocol with a test of the stdin close, icon states, menu, toasts through the tray; its decision file
+   corrects the supervisor-autostart Limit.
+4. **Stats API setup card**: the ini write, decimal `parseStatsIni`, the "Is this you?" card.
+5. **Installer and release pipeline**: the Inno script with the Inno Setup check's fixes, the Start menu `.lnk`
+   (`grindlog.exe --open`, which closes the non-ASCII `.url` Watch item), the tag workflow, `sign-release`, and
+   `rcedit` on `InternalName` from a pinned, checksummed download, with CI running the edited exe; if it breaks the exe,
+   drop it and record why.
+6. **Updater**: Updater design in full, including the shared state file, the feed override and `updater.log`'s
+   `started` fields. Fold-in: the antivirus backup-rename retry.
+7. **Proof before friends**: as that decision says (copy into `Grindlog`, rollback through the feed override), plus one
+   VirusTotal scan of the release-candidate installer and
+   `grindlog.exe` (no before/after comparison; a flag goes to the WDSI portal). Closes WP3b's autostart check.
+
+## Open tickets
+None.
 
 ## Not yet specified
-None left: the last three items became tickets on 2026-11-09.
+None left: the last three items became tickets on 2026-11-09, all resolved the same day.
 
 ## Out of scope
 - Buying a code signing certificate: nothing spent for now, and it can't remove the warning on day one.

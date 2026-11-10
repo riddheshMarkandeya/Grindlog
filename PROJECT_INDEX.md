@@ -85,7 +85,7 @@ release's step 4.
 
 ## Plans
 - `docs/plans/2026-11-06-distribution-map.md`: the wayfinder map for friends release step 4: installer, tray,
-  auto-update, releases and the dev/prod split (charted; tickets open).
+  auto-update, releases and the dev/prod split (frozen 2026-11-09; its Decisions so far is the design, built as seven BACKLOG work packages).
 - `docs/plans/2026-11-05-friends-release-map.md`: the friends release map, the ordered steps to shipping
   and each one's status. Start here for what's next.
 - `docs/reviews/2026-11-05-name-and-icon.md`: name and icon review summary (2 deferred, 2 disputed).

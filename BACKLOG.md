@@ -73,13 +73,26 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   dismiss it. Trigger: friend feedback asks for it. Context: "Release workflow" in
   `docs/plans/2026-11-06-distribution-map.md`.
 
-- [ ] **[feature, Med, Substantial]** Friends release step 4, distribution: `docs/plans/2026-11-06-distribution-map.md`. Next: frontier ticket "Build work packages" (grilling), the last open ticket. No fog left.
-- [ ] **[refactor, Med, Standard]** Internal rename to grindlog: the user-visible name and the exes changed on
-  2026-11-05, the other ids didn't. Step 4; the full list and closing checks are under "Dev and prod identity" in
-  `docs/plans/2026-11-06-distribution-map.md`. Data dir `%LOCALAPPDATA%\RLTracker` and task `RLTracker` move by a
-  one-off script on the developer's machine, not an installer migration. `rlt-theme` needs no migration: it only
-  caches the theme from `tracker.db`. Steps:
-  `docs/plans/2026-11-05-friends-release-map.md`. Record: `docs/plans/2026-11-05-name-and-icon.md`.
+- Friends release step 4, distribution: seven build work packages, in order, each planned in its own session. The
+  design is the frozen map `docs/plans/2026-11-06-distribution-map.md` ("Decisions so far"; each package's scope is
+  under "Build work packages").
+  - [ ] **[refactor, Med, Substantial]** 1. Rename, identity and data move: the internal rename to grindlog (list and
+    closing checks under "Dev and prod identity"), the dev/prod channel, `grindlog.exe` as tracker plus supervisor,
+    logs to `<data>\logs\`, and the one-off script moving `%LOCALAPPDATA%\RLTracker` and task `RLTracker` to
+    `GrindlogDev`. Fold-in: the install exe-replace bug. Next up.
+  - [ ] **[feature, Med, Substantial]** 2. Release-aware app: starts with the detached-spawn spike; then baked version,
+    `/api/status` version and process ID, recompute on version change, dashboard reload, log rotation, `--open`,
+    `--quit`, "Start with Windows".
+  - [ ] **[feature, Med, Substantial]** 3. Tray and process model: `grindlog-tray.exe`, supervisor-managed, quit
+    protocol, icon states, menu, toasts; decision file corrects the supervisor-autostart Limit.
+  - [ ] **[feature, Med, Standard]** 4. Stats API setup card: the one-click ini write, decimal `parseStatsIni`, the
+    "Is this you?" card.
+  - [ ] **[feature, Med, Substantial]** 5. Installer and release pipeline: Inno script, Start menu `.lnk`, tag workflow,
+    `sign-release`, `rcedit` on `InternalName`.
+  - [ ] **[feature, Med, Substantial]** 6. Updater: check, download, minisign, apply, health check, rollback, shared
+    state file, feed override. Fold-in: the antivirus backup-rename retry.
+  - [ ] **[test-coverage, Med, Standard]** 7. Proof before friends: clean account, one Sandbox run, rollback through the
+    feed override, copy history into prod, one live match on prod, one VirusTotal scan. Closes WP3b's autostart check.
 
 - [ ] **[feature, Med, Standard]** After the friends release map: set up new seasons automatically, and
   keep them editable. Source the user found: `ggseason.com/blog/rocket-league-all-seasons-dates/`, captured
@@ -96,6 +109,10 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   so check which is right, since it decides which season a match on that day counts in.
 
 ## Watch list
+- [ ] **[feature, Low, Standard]** Trigger: a friend loses a match to an update rollback. Rollback restores the
+  pre-migration backup, so matches the failed version recorded are dropped; the failed database is kept until the next
+  successful update. Then add a manual merge of its newer matches. Record: "Updater design" in
+  `docs/plans/2026-11-06-distribution-map.md`.
 - [ ] **[feature, Low, Standard]** Trigger: a friend's match gets flagged. The log shows the flag but not the events,
   which live only in their `raw.db`, so add a way to export one match's raw events (for now they'd send the whole
   `raw.db` through a file host). Record: "Diagnostics for friends" in `docs/plans/2026-11-06-distribution-map.md`.
