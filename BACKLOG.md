@@ -73,7 +73,7 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   dismiss it. Trigger: friend feedback asks for it. Context: "Release workflow" in
   `docs/plans/2026-11-06-distribution-map.md`.
 
-- [ ] **[feature, Med, Substantial]** Friends release step 4, distribution: `docs/plans/2026-11-06-distribution-map.md`. Next: frontier ticket "Inno Setup check", the last open ticket; fog remains.
+- [ ] **[feature, Med, Substantial]** Friends release step 4, distribution: `docs/plans/2026-11-06-distribution-map.md`. Next: frontier ticket "Diagnostics for friends" (grilling); "Bun version info and antivirus" (research) is also open and can run alongside it. No fog left.
 - [ ] **[refactor, Med, Standard]** Internal rename to grindlog: the user-visible name and the exes changed on
   2026-11-05, the other ids didn't. Step 4; the full list and closing checks are under "Dev and prod identity" in
   `docs/plans/2026-11-06-distribution-map.md`. Data dir `%LOCALAPPDATA%\RLTracker` and task `RLTracker` move by a

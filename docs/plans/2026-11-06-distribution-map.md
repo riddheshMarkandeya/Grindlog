@@ -169,7 +169,8 @@ closed, so a recording bug is fixed by the next release. There is no automatic r
 
 Rollback, run by the updater when the installer or the health check fails: stop what's running, then silently run the
 copy of the previous installer each install keeps in `<data>\update\previous\`, which also keeps the installed apps
-list correct. Restore this update's pre-migration backups and delete `-wal` and `-shm`, keeping the failed database
+list correct. Before running the new installer, the updater copies that file to `<data>\update\rollback-setup.exe` and
+rolls back from there (revised by Inno Setup check). Restore this update's pre-migration backups and delete `-wal` and `-shm`, keeping the failed database
 until the next successful update. Start the old version, check it the same way, and skip the failed version until a
 newer one appears. The tray says what happened; if the old version won't start either, a toast links to a reinstall.
 
@@ -248,22 +249,54 @@ Private bytes reached 111.4 MB, but that's committed memory, not resident, and t
 peaked at 6.8 MB. With the tray's 5.9 MB, everything resident stays under 45 MB. The 75 MB step seen in the WP3b 10×
 replays didn't happen in real play. It stays unexplained and goes to the BACKLOG Watch list.
 
-## Open tickets
 ### Inno Setup check
-- Question: Does Inno do what Updater design assumes? Confirm that `{autopf}` with `PrivilegesRequired=lowest` gives
-  `%LocalAppData%\Programs\Grindlog`, an uninstall `MsgBox` works and a silent uninstall keeps data, the installer can
-  copy itself with `{srcexe}`, `/VERYSILENT` returns a failing exit code on a locked file, and a saved installer
-  carrying a `Zone.Identifier` stream still runs silently from a Bun parent. Inno isn't installed on this PC. Updates
-  must never re-create an existing task (`/Create /F` re-enabled a disabled one in a test).
-- Type: task
+Yes, with two fixes. Tested 2026-11-09 with Inno Setup 6.7.3 (winget, per user; CI has 6.7.1), using a throwaway
+`GrindlogInnoTest` installer that was then removed:
+- `{autopf}` with `PrivilegesRequired=lowest` installs to `%LocalAppData%\Programs\<name>` with no UAC prompt, and the
+  installed apps entry goes under HKCU.
+- Uninstall: the `MsgBox` showed and No kept the data (the user clicked it). `UninstallSilent()` skips the prompt, so a
+  silent uninstall keeps data. Uninstall also deletes the kept installer copy, since it's a `[Files]` entry.
+- `{srcexe}` with `Flags: external` copies the installer, and the copy has no `Zone.Identifier`. **Fix 1**: rollback
+  can't run that copy. The new installer overwrites it before the health check, and the copy fails with exit 5 when
+  run in place, because it tries to overwrite itself. So the updater copies it to `rollback-setup.exe` first (see
+  Updater design).
+- Locked exe: a plain `/VERYSILENT` closes the running app through Restart Manager, even a windowless one, and exits 0.
+  With `/NOCLOSEAPPLICATIONS /SUPPRESSMSGBOXES` it retries for about 4 s, then aborts with exit 5 and rolls back.
+  **Fix 2**: the updater must pass `/SUPPRESSMSGBOXES`. Without it the installer waits on an Error dialog forever. It
+  passes all three flags, since it already waits for the exes to unlock, and treats any nonzero exit as failure. A
+  killed installer leaves an `is-*.tmp` file in the install folder.
+- A saved installer marked `ZoneId=3`, started by `Bun.spawn` with `/VERYSILENT /SUPPRESSMSGBOXES`, ran without a prompt
+  and exited 0 in 4.9 s.
+- Task: check with `schtasks /Query` and create only if it's missing. A disabled task stayed disabled across an update.
+  Writing the XML from Inno only works with `SaveStringsToUTF8FileWithoutBOM`, no XML declaration and `DOMAIN\user`
+  as `UserId`; a BOM, the declaration or a bare user name makes `schtasks` fail. Also, ISPP's built-in `VER` clashes
+  with a define named `Ver`.
+
+## Open tickets
+### Diagnostics for friends
+- Question: Is `tracker.log` enough for a friend to send when something breaks? Does anything in it need scrubbing
+  (paths, player names, IDs) or a size limit first, and how does a friend find and send it (tray "Open logs folder" is
+  already decided)?
+- Type: grilling
 - Blocked by: none
 - Status: open
 
+### Bun version info and antivirus
+- Question: Does the Bun version info left in the exes (`InternalName` and similar) make antivirus flag an unsigned
+  exe that downloads and runs installers, and can the release build overwrite it?
+- Type: research
+- Blocked by: none
+- Status: open
+
+### Build work packages
+- Question: How does the build split into ordered work packages, including the order of the rename and the fold-ins?
+  The identity change and the one-off data move land together, or source scripts would miss the running install.
+- Type: grilling
+- Blocked by: Diagnostics for friends, Bun version info and antivirus
+- Status: open
+
 ## Not yet specified
-- Diagnostics for friends: is `tracker.log` enough to send, and does anything need scrubbing or size limits first?
-- How the build work splits into ordered packages, including the order of the rename and the fold-ins. The identity
-  change and the one-off data move land together, or source scripts would miss the running install.
-- Whether the Bun version info left in the exes (`InternalName`) raises antivirus trouble for an unsigned updater.
+None left: the last three items became tickets on 2026-11-09.
 
 ## Out of scope
 - Buying a code signing certificate: nothing spent for now, and it can't remove the warning on day one.
