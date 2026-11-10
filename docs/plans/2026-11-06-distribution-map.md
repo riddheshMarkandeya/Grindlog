@@ -272,27 +272,30 @@ Yes, with two fixes. Tested 2026-11-09 with Inno Setup 6.7.3 (winget, per user; 
   as `UserId`; a BOM, the declaration or a bare user name makes `schtasks` fail. Also, ISPP's built-in `VER` clashes
   with a define named `Ver`.
 
-## Open tickets
-### Diagnostics for friends
-- Question: Is `tracker.log` enough for a friend to send when something breaks? Does anything in it need scrubbing
-  (paths, player names, IDs) or a size limit first, and how does a friend find and send it (tray "Open logs folder" is
-  already decided)?
-- Type: grilling
-- Blocked by: none
-- Status: open
-
 ### Bun version info and antivirus
-- Question: Does the Bun version info left in the exes (`InternalName` and similar) make antivirus flag an unsigned
-  exe that downloads and runs installers, and can the release build overwrite it?
-- Type: research
-- Blocked by: none
-- Status: open
+No source links version info to detections. Bun's `--windows-*` flags set product, company, description, copyright,
+version and icon, and blank `OriginalFilename`; `InternalName` stays `bun` (confirmed on the installed exes
+2026-11-09). `rcedit --set-version-string InternalName grindlog` can fix it, since Bun 1.4.3 keeps its payload in a
+`.bun` PE section that resource edits preserve. Untested on our output, so run the exe after editing. Microsoft cites
+signature, file-hash reputation and behaviour. Bun's own `bun.exe` was flagged `Wacatac` (issues #16284, #26820).
+False positives go to the WDSI developer submission portal. Note: `docs/research/2026-11-09-bun-version-info-antivirus.md`.
 
+### Diagnostics for friends
+Yes, with the version added. Logs move to `<data>\logs\` (dev too) with the rename and data move, so "Open logs folder"
+shows no database. A friend drags `tracker.log` and `supervisor.log` into a DM or a GitHub issue, older files only on
+request. There's no zip or upload, and no scrubbing. The issue form and README's "Reporting a bug" list what a log holds:
+the Windows username in paths, their own and other players' gamertags and platform IDs, and match IDs and scores. Keep
+5 MB × 5 files rotation per log. `started` logs app version, channel and Windows build in all three processes, and the
+updater writes its own `updater.log`. Exporting one match's raw events waits on a BACKLOG Watch item.
+
+## Open tickets
 ### Build work packages
 - Question: How does the build split into ordered work packages, including the order of the rename and the fold-ins?
   The identity change and the one-off data move land together, or source scripts would miss the running install.
+  Also: whether the release build runs `rcedit` on `InternalName`, and whether VirusTotal checks the exes before and
+  after (see Bun version info and antivirus).
 - Type: grilling
-- Blocked by: Diagnostics for friends, Bun version info and antivirus
+- Blocked by: Diagnostics for friends
 - Status: open
 
 ## Not yet specified

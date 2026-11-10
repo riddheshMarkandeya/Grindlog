@@ -73,7 +73,7 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   dismiss it. Trigger: friend feedback asks for it. Context: "Release workflow" in
   `docs/plans/2026-11-06-distribution-map.md`.
 
-- [ ] **[feature, Med, Substantial]** Friends release step 4, distribution: `docs/plans/2026-11-06-distribution-map.md`. Next: frontier ticket "Diagnostics for friends" (grilling); "Bun version info and antivirus" (research) is also open and can run alongside it. No fog left.
+- [ ] **[feature, Med, Substantial]** Friends release step 4, distribution: `docs/plans/2026-11-06-distribution-map.md`. Next: frontier ticket "Build work packages" (grilling), the last open ticket. No fog left.
 - [ ] **[refactor, Med, Standard]** Internal rename to grindlog: the user-visible name and the exes changed on
   2026-11-05, the other ids didn't. Step 4; the full list and closing checks are under "Dev and prod identity" in
   `docs/plans/2026-11-06-distribution-map.md`. Data dir `%LOCALAPPDATA%\RLTracker` and task `RLTracker` move by a
@@ -96,6 +96,9 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   so check which is right, since it decides which season a match on that day counts in.
 
 ## Watch list
+- [ ] **[feature, Low, Standard]** Trigger: a friend's match gets flagged. The log shows the flag but not the events,
+  which live only in their `raw.db`, so add a way to export one match's raw events (for now they'd send the whole
+  `raw.db` through a file host). Record: "Diagnostics for friends" in `docs/plans/2026-11-06-distribution-map.md`.
 - [ ] **[performance, Low, Standard]** Trigger: the tracker's working set passes 100 MB in real play, or a friend reports
   high memory. Two real matches on 2026-11-09 peaked at 31.9 MB (18.5 MB private). The WP3b 10× replays showed a ~75 MB
   one-step jump at replay start, mostly shared pages, that real play didn't reproduce. Record: "Memory footprint
