@@ -55,7 +55,8 @@ spawns the hidden tracker with no window; `Bun.spawn` of a missing exe throws `E
 synchronously; a PowerShell toast from the hidden exe shows. Details in the plan.
 
 ## Limits
-- Task Scheduler's **End** kills only the supervisor; the tracker keeps running, unsupervised, and
+- *Superseded by `2026-11-10-tray-process-model.md`: End takes down the whole tree through Bun's
+  job object.* Task Scheduler's **End** kills only the supervisor; the tracker keeps running, unsupervised, and
   a supervisor started later exits on the taken port. `bun run stop` is the documented stop.
 - A kill from Task Manager shows up as exit 255, not 1; the supervisor treats every nonzero code
   other than 3 (port taken) and 4 (invalid config) as a crash.

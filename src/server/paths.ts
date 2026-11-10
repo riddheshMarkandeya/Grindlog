@@ -11,6 +11,8 @@ export interface Identity {
   port: number;
   /** The one installed exe, which runs as both tracker and (with --supervisor) supervisor. */
   exe: string;
+  /** The tray icon's exe, installed beside the main one and started by the supervisor. */
+  trayExe: string;
   /** The logon task's name. */
   task: string;
   /** The Start menu shortcut's file name. */
@@ -24,8 +26,8 @@ export interface Identity {
  */
 export function identity(channel: Channel = CHANNEL): Identity {
   return channel === "prod"
-    ? { dataDirName: "Grindlog", port: 49100, exe: "grindlog.exe", task: "Grindlog", shortcut: "Grindlog.url" }
-    : { dataDirName: "GrindlogDev", port: 49102, exe: "grindlog-dev.exe", task: "GrindlogDev", shortcut: "Grindlog Dev.url" };
+    ? { dataDirName: "Grindlog", port: 49100, exe: "grindlog.exe", trayExe: "grindlog-tray.exe", task: "Grindlog", shortcut: "Grindlog.url" }
+    : { dataDirName: "GrindlogDev", port: 49102, exe: "grindlog-dev.exe", trayExe: "grindlog-dev-tray.exe", task: "GrindlogDev", shortcut: "Grindlog Dev.url" };
 }
 
 /** Where the tracker keeps its logs and databases. GRINDLOG_DATA_DIR overrides it (tests, dev). */

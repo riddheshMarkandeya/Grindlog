@@ -9,6 +9,7 @@ import { logsDir } from "./paths";
 import { memoryLogger } from "./testing";
 
 const EXE = String.raw`C:\Users\f\AppData\Local\Grindlog\bin\grindlog.exe`;
+const TRAY = String.raw`C:\Users\f\AppData\Local\Grindlog\bin\grindlog-tray.exe`;
 const URL = "http://127.0.0.1:49100/";
 
 /** A clock that only moves when the code under test sleeps. */
@@ -133,9 +134,10 @@ describe("quitApp", () => {
       quitApp({
         port: 49100,
         execPath: EXE,
+        trayExe: TRAY,
         selfPid: SELF,
-        exeProcesses: (exe) => {
-          expect(exe).toBe(EXE);
+        exeProcesses: (exes) => {
+          expect(exes).toEqual([EXE, TRAY]);
           return opts.procs[Math.min(tick++, opts.procs.length - 1)] ?? [];
         },
         probe: scripted(opts.probes),
@@ -152,9 +154,13 @@ describe("quitApp", () => {
       });
     return { run, logger, stops, kills, clock };
   };
-  const self: ExeProcess = { pid: SELF, commandLine: `"${EXE}" --quit` };
-  const tracker: ExeProcess = { pid: 42, commandLine: `"${EXE}"` };
-  const supervisor: ExeProcess = { pid: 41, commandLine: `"${EXE}" --supervisor` };
+  const self: ExeProcess = { pid: SELF, path: EXE, commandLine: `"${EXE}" --quit` };
+  const tracker: ExeProcess = { pid: 42, path: EXE, commandLine: `"${EXE}"` };
+  const supervisor: ExeProcess = { pid: 41, path: EXE, commandLine: `"${EXE}" --supervisor` };
+  // The lookup's path keeps Windows' own casing, which may differ from execPath's.
+  const tray: ExeProcess = { pid: 50, path: TRAY.toUpperCase(), commandLine: `"${TRAY}" --port 49100` };
+  /** `n` ticks of the same list (one tick per 250 ms poll). */
+  const ticks = (n: number, list: ExeProcess[]) => Array.from({ length: n }, () => list);
 
   test("nothing running exits 0 at once", async () => {
     const s = setup({ procs: [[self]], probes: ["refused"] });
@@ -214,13 +220,13 @@ describe("quitApp", () => {
   });
 
   test("a second --quit is not waited for", async () => {
-    const s = setup({ procs: [[self, { pid: 8, commandLine: `"${EXE}" --quit` }]], probes: ["refused"] });
+    const s = setup({ procs: [[self, { pid: 8, path: EXE, commandLine: `"${EXE}" --quit` }]], probes: ["refused"] });
     expect(await s.run()).toBe(0);
     expect(s.kills).toEqual([]);
   });
 
   test("a concurrent --open is ended, so it can't hold the exe or start a supervisor after the quit", async () => {
-    const open = { pid: 7, commandLine: `"${EXE}" --open` };
+    const open = { pid: 7, path: EXE, commandLine: `"${EXE}" --open` };
     const s = setup({ procs: [[self, open, tracker], [self], []], probes: [{ pid: 42 }] });
     expect(await s.run()).toBe(0);
     expect(s.kills).toEqual([7]);
@@ -245,6 +251,7 @@ describe("quitApp", () => {
     const code = await quitApp({
       port: 49100,
       execPath: EXE,
+      trayExe: TRAY,
       selfPid: SELF,
       exeProcesses: () => (tick++ < 3 ? [supervisor, { ...supervisor, pid: 40 }] : []),
       probe: () => Promise.resolve("refused"),
@@ -266,6 +273,7 @@ describe("quitApp", () => {
     const code = await quitApp({
       port: 49100,
       execPath: EXE,
+      trayExe: TRAY,
       selfPid: SELF,
       exeProcesses: () => {
         if (calls++ < 2) throw new Error("CIM down");
@@ -281,6 +289,34 @@ describe("quitApp", () => {
     expect(calls).toBe(3);
     expect(logger.events()).toEqual(["launcher/lookup_failed", "launcher/done"]);
     expect(logger.lines.at(-1)?.fields).toMatchObject({ lookupFailures: 2 });
+  });
+
+  test("waits for the tray too, leaving it to its supervisor", async () => {
+    const s = setup({ procs: [[self, supervisor, tracker, tray], [self, supervisor, tray], [self]], probes: [{ pid: 42 }, "refused"] });
+    expect(await s.run()).toBe(0);
+    expect(s.stops).toEqual([49100]);
+    expect(s.kills).toEqual([]);
+  });
+
+  test("a tray with no supervisor is an orphan and is ended: it records nothing", async () => {
+    const s = setup({ procs: [[self, tray], []], probes: ["refused"] });
+    expect(await s.run()).toBe(0);
+    expect(s.kills).toEqual([50]);
+    expect(s.logger.lines.find((l) => l.event === "killed")?.fields).toMatchObject({ pid: 50, arg: "tray" });
+  });
+
+  test("after an accepted stop, a supervisor gets 8 s from the first refused probe to close its tray", async () => {
+    // Asked at tick 0, refused from tick 1 (250 ms); gone at tick 32 (8 s), just inside the grace.
+    const s = setup({ procs: [[self, supervisor, tracker, tray], ...ticks(31, [self, supervisor, tray]), [self]], probes: [{ pid: 42 }, "refused"] });
+    expect(await s.run()).toBe(0);
+    expect(s.kills).toEqual([]);
+  });
+
+  test("past the 8 s grace, a supervisor still there is ended", async () => {
+    const s = setup({ procs: [[self, supervisor, tracker, tray], ...ticks(33, [self, supervisor, tray]), []], probes: [{ pid: 42 }, "refused"] });
+    expect(await s.run()).toBe(0);
+    expect(s.kills).toEqual([41]);
+    expect(s.logger.lines.find((l) => l.event === "killed")?.fields).toMatchObject({ pid: 41, waitedMs: 8250 });
   });
 
   test("processes still there after 30 s are left alone; it logs their pids and exits 1", async () => {

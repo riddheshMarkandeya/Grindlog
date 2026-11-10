@@ -78,6 +78,9 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   rebuild gives a different record (`retention/thin_mismatch`), and every other event is kept).
 
 ## Decisions
+- `docs/decisions/2026-11-10-tray-process-model.md`: the tray exe as a second supervised child; exit 0 = Quit,
+  3 = stdin closed; the quit protocol and own-pid check; tray logs through `supervisor.log`; corrects Task
+  Scheduler End (it ends the whole tree).
 - `docs/decisions/2026-10-21-query-sessions-baseline.md`: sessions cut at read time over every
   match, key = first match's GUID; baseline = 30 days before the session; "everything" leaves out
   private and offline.
@@ -98,6 +101,9 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   Task Scheduler doesn't restart a crashed task.
 
 ## Plans
+- `docs/reviews/2026-11-10-wp3a-tray-process-model.md`: step 4 package 3a review summary (4 rounds, 1 limit recorded).
+- `docs/plans/2026-11-10-wp3a-tray-process-model.md`: step 4 package 3a, the tray exe, supervisor with two
+  children, quit protocol, `--quit` covering the tray, manual checks; 3b outline; review log.
 - `docs/plans/2026-11-10-wp2b-release-data.md`: step 4 package 2b, the release recompute and its `meta` marker,
   `records_recomputed`, `Cache-Control: no-cache`, tabs reloading once on a new version; review log (3 rounds).
 - `docs/reviews/2026-11-10-wp2a-process-control.md`: step 4 package 2a review summary (3 rounds, 2 disputed nits).

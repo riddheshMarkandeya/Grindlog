@@ -74,10 +74,15 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   - [ ] **[refactor, Low, Standard]** 2 (release-aware app) is done; left over: once a deployed exe has `--quit`,
     `stop.ts` and `stopInstalled` end a sleeping supervisor through it instead of `killExe`'s path-filtered kill
     (deferred from package 1's review, `docs/reviews/2026-11-10-wp1-rename-identity.md`).
-  - [ ] **[feature, Med, Substantial]** 3. Tray and process model: `grindlog-tray.exe`, supervisor-managed, quit
-    protocol, icon states, menu, toasts; decision file corrects the supervisor-autostart Limit. Fold-in: the map's
-    quiet tray line for release-recompute failures needs a status field; 2b only logs `failed` in
-    `records/release_recompute_done`, and a match that fails every run reruns the whole recompute at each start
+  - [ ] **[feature, Med, Substantial]** 3b. Tray view (3a, the tray exe and process model, is done:
+    `docs/decisions/2026-11-10-tray-process-model.md`). Decided in 3a's plan
+    (`docs/plans/2026-11-10-wp3a-tray-process-model.md`, "3b outline"): the tracker works out the view,
+    `GET /api/tray` (needs an `X-Grindlog-Tray` header) returns icon state, status text, lines, setup URL and
+    pending toasts from a pure `trayView`, and the tray polls it every 2 s, turning red itself when the tracker stops
+    answering. Toasts go through the tray when it polled in the last 10 s, otherwise PowerShell. The dev tray gets a
+    tinted icon set from `make-icons.ts`. `ui-implementation-guidelines` applies. Fold-in: the quiet tray line for
+    release-recompute failures needs a status field; 2b only logs `failed` in `records/release_recompute_done`, and a
+    match that fails every run reruns the whole recompute at each start
     (`docs/plans/2026-11-10-wp2b-release-data.md`).
   - [ ] **[feature, Med, Standard]** 4. Stats API setup card: the one-click ini write, decimal `parseStatsIni`, the
     "Is this you?" card.

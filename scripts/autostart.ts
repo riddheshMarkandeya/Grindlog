@@ -1,17 +1,19 @@
-// Installs the developer's background tracker: compiles the one exe (tracker and supervisor) into
-// <dataDir>\bin, builds the dashboard into <dataDir>\bin\web, registers a logon task that runs the
-// exe as the supervisor, and adds a Start menu shortcut to the dashboard. Running it again is the
-// update path. Every name comes from this build's channel, so it never touches a friend's install.
+// Installs the developer's background tracker: compiles the one exe (tracker and supervisor) and
+// the tray exe into <dataDir>\bin, builds the dashboard into <dataDir>\bin\web, registers a logon
+// task that runs the exe as the supervisor, and adds a Start menu shortcut to the dashboard.
+// Running it again is the update path. Every name comes from this build's channel, so it never
+// touches a friend's install.
 // `bun run install-autostart` / `bun run uninstall-autostart`.
 import { closeSync, existsSync, mkdirSync, openSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { dataDir, identity } from "../src/server/paths";
-import { APP_NAME } from "../src/shared/channel";
+import { APP_NAME, CHANNEL } from "../src/shared/channel";
 import { DASHBOARD_HOST } from "../src/shared/constants";
 import { version as appVersion } from "../package.json";
 import { killExe } from "../src/server/control";
 import { parseTaskState } from "../src/server/logon-task";
+import { buildTray, TrayBuildFailed } from "./build-tray";
 import { stopTracker } from "./stop";
 
 const ID = identity();
@@ -110,22 +112,24 @@ async function waitUnlocked(paths: string[], ms: number): Promise<boolean> {
   return true;
 }
 
-/** Stops the background tracker and its supervisor, so their exe can be replaced or removed. */
+/** Stops the background tracker, its supervisor and its tray, so their exes can be replaced or removed. */
 async function stopInstalled(bin: string): Promise<void> {
   const exe = join(bin, ID.exe);
+  const trayExe = join(bin, ID.trayExe);
   const { message, exitCode, notRunning } = await stopTracker(ID.port, true);
   console.log(message);
   if (exitCode !== 0 && !notRunning) throw new StepFailed("Could not stop the running tracker.");
-  if (await waitUnlocked([exe], 10_000)) return;
+  // The supervisor closes its tray before exiting, and the tray dies with it in any case (Bun's job).
+  if (await waitUnlocked([exe, trayExe], 10_000)) return;
   // A supervisor sleeping between restarts has no tracker to ask; nothing is recording, so ending
-  // it loses nothing. Only processes running this install's exe hold it. The supervisor goes first,
-  // so it can't restart the tracker in between.
+  // it loses nothing. Only processes running this install's exes hold them. The supervisor goes
+  // first, so it can't restart the tracker in between; a tray left without one records nothing.
   console.log("Ending the leftover background processes.");
-  for (const arg of ["--supervisor", ""]) {
-    const result = killExe(exe, arg);
-    if (result.kind === "failed") console.error(`Could not end ${[exe, arg].filter(Boolean).join(" ")} (${result.error}).`);
+  for (const [path, arg] of [[exe, "--supervisor"], [exe, ""], [trayExe, ""]] as const) {
+    const result = killExe(path, arg);
+    if (result.kind === "failed") console.error(`Could not end ${[path, arg].filter(Boolean).join(" ")} (${result.error}).`);
   }
-  if (!(await waitUnlocked([exe], 10_000))) throw new StepFailed(`${bin} is still in use; end ${ID.exe} in Task Manager's Details tab and try again.`);
+  if (!(await waitUnlocked([exe, trayExe], 10_000))) throw new StepFailed(`${bin} is still in use; end ${ID.exe} and ${ID.trayExe} in Task Manager's Details tab and try again.`);
 }
 
 /** Moves `from` over `to`, retrying while antivirus still holds the fresh exe. */
@@ -260,6 +264,9 @@ async function install(): Promise<void> {
   // so a failed build leaves it intact and running.
   const exe = join(bin, ID.exe);
   const fresh = join(bin, ID.exe.replace(/\.exe$/, ".new.exe"));
+  const trayExe = join(bin, ID.trayExe);
+  const trayFresh = join(bin, ID.trayExe.replace(/\.exe$/, ".new.exe"));
+  let trayBuilt = false;
   const web = join(bin, "web");
   const webFresh = join(bin, "web.new");
   let swapFailed: StepFailed | null = null;
@@ -267,6 +274,16 @@ async function install(): Promise<void> {
   try {
     console.log(`Building ${exe}`);
     run([process.execPath, ...compileArgs({ entry: ENTRY, outfile: fresh, description: APP_NAME, icon: EXE_ICON, version: appVersion })]);
+    console.log(`Building ${trayExe}`);
+    try {
+      buildTray({ out: trayFresh, channel: CHANNEL, version: appVersion });
+      trayBuilt = true;
+    } catch (err) {
+      if (!(err instanceof TrayBuildFailed)) throw err;
+      // Recording matters more than the icon: install without it, and the supervisor gives up on
+      // a missing tray after a few tries. An old tray exe, if any, stays.
+      console.warn(`Warning: the tray icon was not built, so ${APP_NAME} installs without a new one. ${err.message}`);
+    }
     // Its own build, not the repo's dist/, which may be stale.
     console.log(`Building the dashboard into ${web}`);
     try {
@@ -277,6 +294,11 @@ async function install(): Promise<void> {
     }
     await stopInstalled(bin);
     exeSwap = await swapExe(fresh, exe);
+    // Only beside a new exe: the tray's command line is the supervisor's to define.
+    if (trayBuilt && exeSwap.kind === "updated") {
+      const traySwap = await swapExe(trayFresh, trayExe);
+      if (traySwap.kind !== "updated") console.warn(`Warning: the tray icon was not updated: ${traySwap.reason}`);
+    }
     // A kept old exe keeps its old dashboard too: a new dashboard can call API routes it lacks.
     if (exeSwap.kind === "updated") {
       console.log("Swapping in the new dashboard");
@@ -291,6 +313,7 @@ async function install(): Promise<void> {
   } finally {
     // A swapped-in build is gone already; whatever failed leaves no ~92 MB leftovers.
     removeLeftover(fresh);
+    removeLeftover(trayFresh);
     removeLeftover(webFresh);
   }
 

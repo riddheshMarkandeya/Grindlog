@@ -10,3 +10,15 @@ export const EXIT_START_FAILED = 2;
 export const EXIT_PORT_TAKEN = 3;
 /** An environment setting (GRINDLOG_PORT, STATS_API_URL) is invalid. Not restarted: no retry fixes it. */
 export const EXIT_CONFIG_INVALID = 4;
+
+// The tray exe's exit codes, mirrored by the tray's own ExitCodes class. Only Quit stops the app:
+// a closed stdin is the supervisor (this one or a duplicate) telling the tray to go.
+
+/** "Quit" clicked in the tray menu. */
+export const TRAY_EXIT_QUIT = 0;
+/** An unhandled exception; restarted like any other failure. */
+export const TRAY_EXIT_CRASHED = 1;
+/** Bad command-line arguments. Not restarted: no retry fixes them. */
+export const TRAY_EXIT_BAD_ARGS = 2;
+/** Its stdin closed (EOF or a broken pipe). */
+export const TRAY_EXIT_STDIN_CLOSED = 3;

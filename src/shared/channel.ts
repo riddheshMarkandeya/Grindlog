@@ -8,5 +8,10 @@ export type Channel = "dev" | "prod";
 // The typeof guard covers unbundled Bun runs (tests, `bun run start`), where nothing defines it.
 export const CHANNEL: Channel = typeof GRINDLOG_CHANNEL !== "undefined" && GRINDLOG_CHANNEL === "prod" ? "prod" : "dev";
 
-/** What the user sees: tab title, toasts, Task Manager. */
-export const APP_NAME = CHANNEL === "prod" ? "Grindlog" : "Grindlog Dev";
+/** What the user sees for a channel: tab title, toasts, Task Manager, the tray. */
+export function appName(channel: Channel): string {
+  return channel === "prod" ? "Grindlog" : "Grindlog Dev";
+}
+
+/** This build's name. */
+export const APP_NAME = appName(CHANNEL);

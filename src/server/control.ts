@@ -5,7 +5,13 @@ import { DASHBOARD_HOST, SHUTDOWN_HEADER } from "../shared/constants";
 import { statusSchema } from "../shared/schemas/responses";
 import type { Logger } from "./log";
 
+/** A recording tracker flushes its last scoreboard on stop; this is how long a quit waits for that. */
+export const QUIT_TIMEOUT_MS = 30_000;
+
 export type StopOutcome = { kind: "status"; status: number } | { kind: "refused" } | { kind: "reset" } | { kind: "error"; message: string };
+
+/** Whether the tracker took the stop request: any 2xx. */
+export const stopAccepted = (o: StopOutcome): boolean => o.kind === "status" && o.status >= 200 && o.status < 300;
 
 /** POSTs the tracker's shutdown endpoint; it answers 202 and then stops with exit 0. */
 export async function requestStop(port: number): Promise<StopOutcome> {
@@ -70,24 +76,26 @@ export async function statusProbe(port: number): Promise<Probe> {
 }
 
 // Matches on the full path, not the image name: a hand-run copy of the same exe elsewhere (another
-// data dir or port) may be recording and must survive. The path and arg go in through env, never
-// quoted into the script. ErrorActionPreference Stop makes a CIM failure exit non-zero instead of
-// reading as an empty list.
+// data dir or port) may be recording and must survive. The paths ('|'-joined, a character no
+// Windows path has) and arg go in through env, never quoted into the script. -in compares without
+// case, as Windows paths do. ErrorActionPreference Stop makes a CIM failure exit non-zero instead
+// of reading as an empty list.
 const MATCH_SCRIPT = `
 $ErrorActionPreference = 'Stop'
-$name = Split-Path -Leaf $env:GRINDLOG_MATCH_EXE
-$p = @(Get-CimInstance Win32_Process -Filter "Name='$name'" | Where-Object {
-  $_.ExecutablePath -eq $env:GRINDLOG_MATCH_EXE -and ([string]::IsNullOrEmpty($env:GRINDLOG_MATCH_ARG) -or $_.CommandLine -match [regex]::Escape($env:GRINDLOG_MATCH_ARG))
+$paths = @($env:GRINDLOG_MATCH_EXE -split '\\|')
+$filter = (@($paths | ForEach-Object { "Name='" + (Split-Path -Leaf $_) + "'" }) -join ' OR ')
+$p = @(Get-CimInstance Win32_Process -Filter $filter | Where-Object {
+  $_.ExecutablePath -in $paths -and ([string]::IsNullOrEmpty($env:GRINDLOG_MATCH_ARG) -or $_.CommandLine -match [regex]::Escape($env:GRINDLOG_MATCH_ARG))
 })`;
 const KILL_SCRIPT = `${MATCH_SCRIPT}
 foreach ($x in $p) { Stop-Process -Id $x.ProcessId -Force -ErrorAction SilentlyContinue }
 if ($p.Count -gt 0) { exit 0 } else { exit 3 }`;
 const LIST_SCRIPT = `${MATCH_SCRIPT}
-ConvertTo-Json -Compress -InputObject @($p | ForEach-Object { @{ pid = [int]$_.ProcessId; commandLine = [string]$_.CommandLine } })`;
+ConvertTo-Json -Compress -InputObject @($p | ForEach-Object { @{ pid = [int]$_.ProcessId; path = [string]$_.ExecutablePath; commandLine = [string]$_.CommandLine } })`;
 
-function runMatchScript(script: string, exe: string, arg: string) {
+function runMatchScript(script: string, exes: string[], arg: string) {
   return Bun.spawnSync(["powershell", "-NoProfile", "-NonInteractive", "-Command", script], {
-    env: { ...process.env, GRINDLOG_MATCH_EXE: exe, GRINDLOG_MATCH_ARG: arg },
+    env: { ...process.env, GRINDLOG_MATCH_EXE: exes.join("|"), GRINDLOG_MATCH_ARG: arg },
     stdout: "pipe",
     stderr: "pipe",
     windowsHide: true,
@@ -100,7 +108,7 @@ export type KillResult = { kind: "killed" } | { kind: "none" } | { kind: "failed
 
 /** Force-ends the processes running `exe` (a full path), only those whose command line has `arg` if given. */
 export function killExe(exe: string, arg = ""): KillResult {
-  const res = runMatchScript(KILL_SCRIPT, exe, arg);
+  const res = runMatchScript(KILL_SCRIPT, [exe], arg);
   if (res.exitCode === 0) return { kind: "killed" };
   // 3 is the script's "nothing matched"; anything else is PowerShell or CIM failing.
   if (res.exitCode === 3) return { kind: "none" };
@@ -109,13 +117,15 @@ export function killExe(exe: string, arg = ""): KillResult {
 
 export interface ExeProcess {
   pid: number;
+  /** Its exe's full path, in the casing Windows reports. */
+  path: string;
   commandLine: string;
 }
 
-/** The processes running `exe` (a full path). Throws when the lookup itself fails, never reads that as none running. */
-export function exeProcesses(exe: string): ExeProcess[] {
-  const res = runMatchScript(LIST_SCRIPT, exe, "");
-  if (res.exitCode !== 0) throw new Error(`process lookup for ${exe} failed (exit ${String(res.exitCode)}): ${res.stderr.toString().trim()}`);
+/** The processes running any of `exes` (full paths), in one lookup. Throws when the lookup itself fails, never reads that as none running. */
+export function exeProcesses(exes: string[]): ExeProcess[] {
+  const res = runMatchScript(LIST_SCRIPT, exes, "");
+  if (res.exitCode !== 0) throw new Error(`process lookup for ${exes.join(", ")} failed (exit ${String(res.exitCode)}): ${res.stderr.toString().trim()}`);
   return JSON.parse(res.stdout.toString()) as ExeProcess[];
 }
 

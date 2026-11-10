@@ -5,11 +5,11 @@ import { dashboardPort, dataDir, identity, logonTaskName, logsDir, staticDir } f
 
 describe("identity", () => {
   test("prod is a friend's install", () => {
-    expect(identity("prod")).toEqual({ dataDirName: "Grindlog", port: 49100, exe: "grindlog.exe", task: "Grindlog", shortcut: "Grindlog.url" });
+    expect(identity("prod")).toEqual({ dataDirName: "Grindlog", port: 49100, exe: "grindlog.exe", trayExe: "grindlog-tray.exe", task: "Grindlog", shortcut: "Grindlog.url" });
   });
 
   test("dev shares none of prod's names or its port, so both can be installed side by side", () => {
-    expect(identity("dev")).toEqual({ dataDirName: "GrindlogDev", port: 49102, exe: "grindlog-dev.exe", task: "GrindlogDev", shortcut: "Grindlog Dev.url" });
+    expect(identity("dev")).toEqual({ dataDirName: "GrindlogDev", port: 49102, exe: "grindlog-dev.exe", trayExe: "grindlog-dev-tray.exe", task: "GrindlogDev", shortcut: "Grindlog Dev.url" });
   });
 
   test("an unbundled run is dev", () => {

@@ -60,6 +60,8 @@ describe.runIf(process.platform === "win32")("killExe and exeProcesses", () => {
   let root: string;
   let a: string;
   let b: string;
+  // A differently named exe beside a, as the tray beside the main exe.
+  let c: string;
   const procs: Bun.Subprocess[] = [];
   const run = (exe: string, ...args: string[]) => {
     const p = Bun.spawn([exe, ...args], { stdout: "ignore", stderr: "ignore" });
@@ -78,6 +80,8 @@ describe.runIf(process.platform === "win32")("killExe and exeProcesses", () => {
     const built = Bun.spawnSync([process.execPath, "build", "--compile", join(root, "sleeper.ts"), "--outfile", a], { stdout: "ignore", stderr: "pipe" });
     if (built.exitCode !== 0) throw new Error(built.stderr.toString());
     copyFileSync(a, b);
+    c = join(root, "A", "grindlog-dev-tray.exe");
+    copyFileSync(a, c);
   }, 60_000);
 
   afterAll(async () => {
@@ -90,11 +94,18 @@ describe.runIf(process.platform === "win32")("killExe and exeProcesses", () => {
     const aSup = run(a, "--supervisor");
     const aTracker = run(a);
     const bSup = run(b, "--supervisor");
+    const cTray = run(c);
     await Bun.sleep(1000);
 
-    const listed = exeProcesses(a);
+    const listed = exeProcesses([a]);
     expect(listed.map((p) => p.pid).sort()).toEqual([aSup.pid, aTracker.pid].sort());
     expect(listed.find((p) => p.pid === aSup.pid)?.commandLine).toContain("--supervisor");
+    expect(listed.every((p) => p.path.toLowerCase() === a.toLowerCase())).toBe(true);
+
+    // Several paths in one lookup, each process labelled with its own.
+    const both = exeProcesses([a, c]);
+    expect(both.map((p) => p.pid).sort()).toEqual([aSup.pid, aTracker.pid, cTray.pid].sort());
+    expect(both.find((p) => p.pid === cTray.pid)?.path.toLowerCase()).toBe(c.toLowerCase());
 
     expect(killExe(a, "--supervisor")).toEqual({ kind: "killed" });
     await aSup.exited;
@@ -105,13 +116,13 @@ describe.runIf(process.platform === "win32")("killExe and exeProcesses", () => {
     expect(alive(bSup)).toBe(true);
 
     expect(killExe(a)).toEqual({ kind: "none" });
-    expect(exeProcesses(a)).toEqual([]);
+    expect(exeProcesses([a])).toEqual([]);
   }, 30_000);
 
   test("a lookup that fails is reported as failed or thrown, never as nothing running", () => {
     // A quote in the exe's name breaks the WMI query, a real CIM failure that's cheap to cause.
     const broken = join(root, "it's.exe");
     expect(killExe(broken)).toMatchObject({ kind: "failed" });
-    expect(() => exeProcesses(broken)).toThrow(/lookup .* failed/);
+    expect(() => exeProcesses([broken])).toThrow(/lookup .* failed/);
   }, 30_000);
 });
