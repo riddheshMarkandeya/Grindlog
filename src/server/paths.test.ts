@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { dashboardPort, dataDir, identity, logsDir, staticDir } from "./paths";
+import { dashboardPort, dataDir, identity, logonTaskName, logsDir, staticDir } from "./paths";
 
 describe("identity", () => {
   test("prod is a friend's install", () => {
@@ -73,5 +73,16 @@ describe("staticDir", () => {
 
   test("an empty GRINDLOG_STATIC_DIR counts as unset", () => {
     expect(staticDir({ GRINDLOG_STATIC_DIR: "", LOCALAPPDATA: "C:\\L" })).toBe(join("C:\\L", "GrindlogDev", "bin", "web"));
+  });
+});
+
+describe("logonTaskName", () => {
+  test("GRINDLOG_TASK wins, so tests never touch a real install's task", () => {
+    expect(logonTaskName({ GRINDLOG_TASK: "GrindlogE2e" })).toBe("GrindlogE2e");
+  });
+
+  test("defaults to the channel's task; an empty GRINDLOG_TASK counts as unset", () => {
+    expect(logonTaskName({})).toBe("GrindlogDev");
+    expect(logonTaskName({ GRINDLOG_TASK: "" }, "prod")).toBe("Grindlog");
   });
 });

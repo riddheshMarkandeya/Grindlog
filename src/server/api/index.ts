@@ -3,8 +3,9 @@
 import type { Server } from "bun";
 import type { z } from "zod";
 import { REQUEST_HEADER } from "../../shared/constants";
-import { filterOnly, monthsParams, periodParams, playedDaysParams, sessionsParams } from "../../shared/schemas/params";
+import { autostartParams, filterOnly, monthsParams, periodParams, playedDaysParams, sessionsParams } from "../../shared/schemas/params";
 import {
+  autostartResponse,
   breakResponse,
   currentResponse,
   friendDetailResponse,
@@ -32,6 +33,7 @@ import type { Db } from "../db/sqlite";
 import { createFriends, type FriendWrite } from "../friends";
 import { createIds } from "../ids";
 import type { Logger } from "../log";
+import { LogonTaskError, type LogonTask } from "../logon-task";
 import type { QueryReader } from "../query/read";
 import { createRemarks } from "../remarks/store";
 import { createSeasons, type SeasonWrite } from "../seasons";
@@ -52,6 +54,8 @@ export interface ApiOptions {
   logger: Logger;
   now?: () => number;
   events?: Partial<Omit<EventHubOptions, "status" | "logger">>;
+  /** The logon task behind the "Start with Windows" setting. */
+  logonTask: Pick<LogonTask, "get" | "set">;
 }
 
 interface Ctx {
@@ -60,7 +64,7 @@ interface Ctx {
   query: Record<string, string>;
   params: Record<string, string>;
 }
-type RouteHandler = (ctx: Ctx) => Response;
+type RouteHandler = (ctx: Ctx) => Response | Promise<Response>;
 
 class BadRequest extends Error {
   constructor(readonly issues: z.core.$ZodIssue[]) {
@@ -92,7 +96,7 @@ function friendWritten(write: FriendWrite, answer: () => Response): Response {
   return write.error === "not_found" ? notFound() : Response.json({ error: "conflict" }, { status: 409 });
 }
 
-export function createApi({ tracker, reader, status, staticDir, logger, now = Date.now, events: eventOptions }: ApiOptions) {
+export function createApi({ tracker, reader, status, staticDir, logger, now = Date.now, events: eventOptions, logonTask }: ApiOptions) {
   const pages = createPages({ reader, logger, now });
   const hub = createEventHub({ status, logger, ...eventOptions });
   const remarks = createRemarks({ tracker, pages, logger, now });
@@ -255,11 +259,14 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
       handler: ({ query }) => friendWritten(friends.suggestAgain(parse(friendIdParams, query).id), () => ok(neverSuggestResponse, pages.neverSuggested())),
     },
     { method: "GET", path: "/api/settings", handler: () => ok(settingsSchema, settings.get()) },
-    // The changes ride in the query string: every setting is one scalar, and handlers are synchronous.
+    // The changes ride in the query string: every setting is one scalar, so a body would add nothing.
     { method: "POST", path: "/api/settings", handler: ({ query }) => ok(settingsSchema, settings.save(parse(settingsPatch, query))) },
+    // Not a settings row: the logon task itself is the record, read from schtasks on each request.
+    { method: "GET", path: "/api/autostart", handler: async () => ok(autostartResponse, { state: await logonTask.get() }) },
+    { method: "POST", path: "/api/autostart", handler: async ({ query }) => ok(autostartResponse, { state: await logonTask.set(parse(autostartParams, query).on) }) },
   ];
 
-  function api(req: Request, server: Server<undefined>, url: URL): Response {
+  async function api(req: Request, server: Server<undefined>, url: URL): Promise<Response> {
     const started = performance.now();
     // HEAD takes the GET route's handler; Bun drops the body itself.
     const match = matchRoute(routes, req.method === "HEAD" ? "GET" : req.method, url.pathname);
@@ -270,11 +277,15 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
     else {
       route = match.path;
       try {
-        res = match.handler({ req, server, query: Object.fromEntries(url.searchParams), params: match.params });
+        // Awaited inside the try, so an async handler's rejection lands in these branches too.
+        res = await match.handler({ req, server, query: Object.fromEntries(url.searchParams), params: match.params });
       } catch (err) {
         if (err instanceof BadRequest) {
           logger.warn(C, "bad_request", { route, issues: err.issues.map((i) => i.path.join(".")) });
           res = Response.json({ error: "bad_request", issues: err.issues }, { status: 400 });
+        } else if (err instanceof LogonTaskError) {
+          // Logged where it failed, with what schtasks said.
+          res = Response.json({ error: "autostart_failed" }, { status: 500 });
         } else {
           logger.error(C, "failed", { route, err });
           res = Response.json({ error: "internal" }, { status: 500 });
@@ -287,7 +298,7 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
 
   let stopped = false;
 
-  function respond(req: Request, server: Server<undefined>): Response {
+  function respond(req: Request, server: Server<undefined>): Response | Promise<Response> {
     // Shutdown closes storage before the host stops listening.
     if (stopped) return Response.json({ error: "stopping" }, { status: 503 });
     const url = new URL(req.url);
@@ -302,8 +313,8 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
     return res;
   }
 
-  function handle(req: Request, server: Server<undefined>): Response {
-    const res = respond(req, server);
+  async function handle(req: Request, server: Server<undefined>): Promise<Response> {
+    const res = await respond(req, server);
     res.headers.set("X-Content-Type-Options", "nosniff");
     return res;
   }

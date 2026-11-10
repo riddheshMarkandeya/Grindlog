@@ -65,3 +65,9 @@ export function staticDir(env: Env = process.env, channel: Channel = CHANNEL): s
   if (env.GRINDLOG_STATIC_DIR) return env.GRINDLOG_STATIC_DIR;
   return join(dataDir(env, channel), "bin", "web");
 }
+
+/** The logon task behind "Start with Windows". GRINDLOG_TASK overrides it (tests), so they never switch a real install's task. */
+export function logonTaskName(env: Env = process.env, channel: Channel = CHANNEL): string {
+  if (env.GRINDLOG_TASK) return env.GRINDLOG_TASK;
+  return identity(channel).task;
+}

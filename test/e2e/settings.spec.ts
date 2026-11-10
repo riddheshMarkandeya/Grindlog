@@ -10,8 +10,8 @@ test.use({ seed: "settings" });
 const THEMES = ["carbon", "slate", "oled"] as const;
 const DEFAULTS = "theme=carbon&clock=24h&speed=kmh&startPage=recap&recapFilter=everything&trendsFilter=ranked&rollingWindow=20&remarks=true&moodLine=true";
 const HEADER = { "X-Grindlog-Request": "1" };
-// The one failed save a test brings about on purpose.
-const SAVE_FAILED = /^Failed to load resource: .* 500 .*\/api\/settings/;
+// The failed saves tests bring about on purpose.
+const SAVE_FAILED = /^Failed to load resource: .* 500 .*\/api\/(settings|autostart)/;
 
 const put = async (request: APIRequestContext, query: string) => {
   const res = await request.post(`/api/settings?${query}`, { headers: HEADER });
@@ -182,6 +182,69 @@ test("a failed save keeps the old value and offers Retry; a working Retry hands 
   await expect(window).toHaveValue("20");
 });
 
+test("Start with Windows reads the real logon task: the stack's never exists, so it's unavailable", async ({ page }) => {
+  await page.goto("/settings");
+  const startup = row(page, "Start with Windows");
+  await expect(page.getByRole("switch", { name: "Start with Windows" })).toBeDisabled();
+  await expect(startup).toContainText("Couldn't find or read Grindlog's startup task on this PC.");
+});
+
+/** Answers /api/autostart from `state` (a switch sets it), or 500s a switch while `fail` is set. */
+async function fakeAutostart(page: Page, start: "on" | "off") {
+  const fake = { state: start, fail: false };
+  await page.route("**/api/autostart*", (route) => {
+    const req = route.request();
+    if (req.method() !== "POST") return route.fulfill({ json: { state: fake.state } });
+    if (fake.fail) return route.fulfill({ status: 500, json: { error: "autostart_failed" } });
+    fake.state = new URL(req.url()).searchParams.get("on") === "true" ? "on" : "off";
+    return route.fulfill({ json: { state: fake.state } });
+  });
+  return fake;
+}
+
+test("Start with Windows switches off and on and says so", async ({ page }) => {
+  const fake = await fakeAutostart(page, "on");
+  await page.goto("/settings");
+  const toggle = page.getByRole("switch", { name: "Start with Windows" });
+  await expect(toggle).toBeChecked();
+  await expect(row(page, "Start with Windows")).toContainText("Starts recording when you sign in to Windows.");
+  await toggle.click();
+  await expect(saved(page, "Start with Windows")).toHaveText("✓ Saved");
+  await expect(toggle).not.toBeChecked();
+  expect(fake.state).toBe("off");
+  await toggle.click();
+  await expect(toggle).toBeChecked();
+  expect(fake.state).toBe("on");
+});
+
+test("a failed Start with Windows switch keeps the old state and offers Retry; a working Retry hands focus back", async ({ page }) => {
+  const fake = await fakeAutostart(page, "on");
+  fake.fail = true;
+  await page.goto("/settings");
+  const toggle = page.getByRole("switch", { name: "Start with Windows" });
+  await toggle.click();
+  await expect(row(page, "Start with Windows")).toContainText("Couldn't save");
+  await expect(toggle).toBeChecked();
+  fake.fail = false;
+  const retry = row(page, "Start with Windows").getByRole("button", { name: "Retry" });
+  await retry.focus();
+  await retry.press("Enter");
+  await expect(saved(page, "Start with Windows")).toHaveText("✓ Saved");
+  await expect(toggle).not.toBeChecked();
+  await expect(toggle).toBeFocused();
+});
+
+test("a failed Start with Windows read offers Retry", async ({ page }) => {
+  let fail = true;
+  await page.route("**/api/autostart", (route) => (fail ? route.fulfill({ status: 500, json: { error: "internal" } }) : route.fulfill({ json: { state: "on" } })));
+  await page.goto("/settings");
+  const startup = section(page, "Startup");
+  await expect(startup).toContainText("Couldn't load the startup setting.");
+  fail = false;
+  await startup.getByRole("button", { name: "Retry" }).click();
+  await expect(page.getByRole("switch", { name: "Start with Windows" })).toBeChecked();
+});
+
 test("reset puts a section back, reads Defaults, and focuses its heading", async ({ page, request }) => {
   await put(request, "clock=12h");
   await page.goto("/settings");
@@ -199,6 +262,7 @@ test("passes axe in every theme, and fits at 320px", async ({ page, request }) =
     await page.goto("/settings");
     await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
     await expect(page.getByRole("radio", { name: "Carbon" })).toBeVisible();
+    await expect(page.getByRole("switch", { name: "Start with Windows" })).toBeVisible();
     const { violations } = await new AxeBuilder({ page }).analyze();
     expect(violations, theme).toEqual([]);
   }

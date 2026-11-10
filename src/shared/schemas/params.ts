@@ -5,7 +5,7 @@ import type { PeriodSpec } from "../periods";
 import type { PlaylistFilter } from "../playlist-filter";
 import { pairKey, type TeammateFilter } from "../teammate-filter";
 import { ROLLING_WINDOW } from "../trends";
-import { groupFilter, windowParam } from "./settings";
+import { boolParam, groupFilter, windowParam } from "./settings";
 
 export const wholeId = z.string().regex(/^\d{1,9}$/).transform(Number);
 
@@ -75,3 +75,6 @@ export const periodParams = z
         return { spec: { kind: p.kind }, ...rest };
     }
   });
+
+/** `POST /api/autostart?on=true|false`: switch the logon task on or off. */
+export const autostartParams = z.object({ on: boolParam }).strict();

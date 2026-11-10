@@ -43,6 +43,7 @@ export const SECTIONS = [
   ["appearance", "Appearance"],
   ["defaults", "Defaults"],
   ["remarks", "Remarks"],
+  ["startup", "Startup"],
   ["you", "You"],
   ["seasons", "Seasons"],
 ] as const;

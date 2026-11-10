@@ -46,7 +46,7 @@ export type SectionId = keyof typeof SETTINGS_SECTIONS;
 
 /** The rolling window as a query value: digits only, 5–100. */
 export const windowParam = z.string().regex(/^\d{1,3}$/).transform(Number).pipe(rollingWindow);
-const boolParam = z.stringbool({ truthy: ["true"], falsy: ["false"] });
+export const boolParam = z.stringbool({ truthy: ["true"], falsy: ["false"] });
 
 /** A save as `POST /api/settings` takes it, in the query string: any of the keys, at least one, nothing else. */
 export const settingsPatch = z

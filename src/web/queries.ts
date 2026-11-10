@@ -1,7 +1,7 @@
 // Every API query the pages share, with their cache keys. Lists live under "sessions"; a session's
 // detail, the heavy one, is "session"; one match with every player is "match"; a session's headline
 // lines are "remarks"; the Trends page reads "period", "played-days" and "seasons"; every page reads
-// "settings"; the Settings page also reads "ids"; the teammate filters and the Friends page read
+// "settings"; the Settings page also reads "ids" and "autostart"; the teammate filters and the Friends page read
 // "friends", and that page also reads "friend" (one friend's page), "friend-pair" (a pair's),
 // "friend-suggestions" and "never-suggest". Page queries take the teammate filter last in their key.
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
@@ -10,6 +10,7 @@ import { filterValue, type PlaylistFilter } from "../shared/playlist-filter";
 import type { PeriodSpec } from "../shared/periods";
 import { pairKey, teammateValue, type TeammateFilter } from "../shared/teammate-filter";
 import {
+  autostartResponse,
   currentResponse,
   friendDetailResponse,
   friendsResponse,
@@ -296,4 +297,19 @@ export function useSettings(): Settings {
 /** Saves some settings; the answer is all of them, put straight into the cache. */
 export function useSaveSettings() {
   return useWholeWrite(SETTINGS_KEY, (patch: SettingsPatch) => postJson(`/api/settings?${patchQuery(patch)}`, WRITE, settingsSchema));
+}
+
+const AUTOSTART_KEY = ["autostart"] as const;
+
+/**
+ * Whether the logon task starts Grindlog at sign-in. Each read runs schtasks, so it's read once per
+ * page load rather than on every focus; a switch answers with the new state.
+ */
+export function useAutostart() {
+  return useQuery({ queryKey: AUTOSTART_KEY, queryFn: () => getJson("/api/autostart", autostartResponse), retry: false, staleTime: Infinity });
+}
+
+/** Switches "Start with Windows" on or off; the answer is what Windows now holds. */
+export function useSetAutostart() {
+  return useWholeWrite(AUTOSTART_KEY, (on: boolean) => postJson(`/api/autostart?on=${String(on)}`, WRITE, autostartResponse));
 }

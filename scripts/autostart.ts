@@ -11,6 +11,7 @@ import { APP_NAME } from "../src/shared/channel";
 import { DASHBOARD_HOST } from "../src/shared/constants";
 import { version as appVersion } from "../package.json";
 import { killExe } from "../src/server/control";
+import { parseTaskState } from "../src/server/logon-task";
 import { stopTracker } from "./stop";
 
 const ID = identity();
@@ -75,6 +76,18 @@ function run(cmd: string[], cwd?: string): string {
   const res = Bun.spawnSync(cmd, { cwd, stdout: "pipe", stderr: "pipe" });
   if (res.exitCode !== 0) throw new StepFailed(`${cmd.slice(0, 2).join(" ")} failed (exit ${String(res.exitCode)}):\n${res.stderr.toString().trim() || res.stdout.toString().trim()}`);
   return res.stdout.toString();
+}
+
+/**
+ * Whether the dashboard's "Start with Windows" switched the task off. A missing task (first install)
+ * counts as on, the default; so does one whose XML can't be read, with a warning, since it gets re-enabled.
+ */
+function taskSwitchedOff(): boolean {
+  const res = Bun.spawnSync(["schtasks", "/Query", "/TN", ID.task, "/XML"], { stdout: "pipe", stderr: "pipe", timeout: 10_000 });
+  const state = res.exitCode === 0 ? parseTaskState(res.stdout.toString()) : null;
+  // A failed query is a missing task on first install, so only a hang or unreadable XML warns.
+  if (res.exitedDueToTimeout || state === "unknown") console.warn(`Couldn't read whether ${ID.task} was switched off; it will start with Windows.`);
+  return state === "off";
 }
 
 /** A running exe can't be opened for writing, so this says whether it's still in use. */
@@ -283,6 +296,9 @@ async function install(): Promise<void> {
 
   // Nothing to start: registering a task for a missing exe would only fail at each logon.
   if (exeSwap.kind === "not_installed") throw new StepFailed(`${APP_NAME} is not installed: ${exeSwap.reason}`);
+  // /Create /F writes the task enabled, so a task switched off in the dashboard is switched off again
+  // below, as the installer leaves it off.
+  const switchedOff = taskSwitchedOff();
   const xmlPath = join(tmpdir(), "grindlog-task.xml");
   writeFileSync(xmlPath, "﻿" + taskXml({ userId: `${process.env.USERDOMAIN ?? ""}\\${process.env.USERNAME ?? ""}`, exe, args: "--supervisor", workDir: bin }), "utf16le");
   try {
@@ -290,11 +306,20 @@ async function install(): Promise<void> {
   } finally {
     rmSync(xmlPath, { force: true });
   }
-  run(["schtasks", "/Run", "/TN", ID.task]);
+  // /Run refuses a disabled task, so it runs first; disabling leaves the running supervisor alone.
+  // A failed /Run must not leave the task enabled, hence finally.
+  try {
+    run(["schtasks", "/Run", "/TN", ID.task]);
+  } finally {
+    if (switchedOff) {
+      run(["schtasks", "/Change", "/TN", ID.task, "/DISABLE"]);
+      console.log("Start with Windows stays off, as the dashboard set it.");
+    }
+  }
   writeShortcut(join(web, "favicon.ico"));
   if (exeSwap.kind === "kept_old") throw new StepFailed(`${APP_NAME} is running again, but not updated: ${exeSwap.reason}`);
   if (swapFailed !== null) throw new StepFailed(`${APP_NAME} is running again, but the dashboard was not updated: ${swapFailed.message}`);
-  console.log(`${APP_NAME} is installed in ${bin} and running; it starts at each logon. The dashboard is at ${DASHBOARD_URL}`);
+  console.log(`${APP_NAME} is installed in ${bin} and running${switchedOff ? "" : "; it starts at each logon"}. The dashboard is at ${DASHBOARD_URL}`);
   console.log("Stop it: bun run stop. Remove it: bun run uninstall-autostart. After code changes, run bun run deploy.");
 }
 

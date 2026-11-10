@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import type { z } from "zod";
 import { REQUEST_HEADER } from "../../shared/constants";
 import {
+  autostartResponse,
   breakResponse,
   currentResponse,
   friendDetailResponse,
@@ -30,6 +31,7 @@ import {
 } from "../../shared/schemas/responses";
 import { DEFAULT_SETTINGS, settingsSchema } from "../../shared/schemas/settings";
 import { startHost, type Host } from "../host";
+import { LogonTaskError, type AutostartState } from "../logon-task";
 import { createQueryReader } from "../query/read";
 import { createRecordWriter } from "../records/save";
 import { openStorage, type Storage } from "../storage";
@@ -42,6 +44,10 @@ let host: Host;
 let api: Api;
 let logger: ReturnType<typeof memoryLogger>;
 let clock: number;
+/** The fake logon task's state; `getFails`/`setFails` make the next calls reject. */
+let autostart: AutostartState;
+let getFails: Error | null;
+let setFails: boolean;
 const status: Status = { connection: "connected", statsApiOff: false, configProblems: ["user_missing"], version: null, pid: 1234 };
 
 const T0 = Date.UTC(2026, 9, 10, 18);
@@ -59,6 +65,9 @@ beforeEach(() => {
   writeFileSync(join(dist, "index.html"), "<html>app</html>");
   clock = T0 + 20 * MIN;
   logger = memoryLogger();
+  autostart = "on";
+  getFails = null;
+  setFails = false;
   host = startHost({ port: 0, logger, onShutdown: () => undefined });
   api = createApi({
     tracker: storage.tracker,
@@ -69,6 +78,14 @@ beforeEach(() => {
     now: () => clock,
     // Out of the way of the idle-timeout test, which needs a quiet stream.
     events: { heartbeatMs: 60_000 },
+    logonTask: {
+      get: () => (getFails ? Promise.reject(getFails) : Promise.resolve(autostart)),
+      set: (on: boolean) => {
+        if (setFails) return Promise.reject(new LogonTaskError("refused"));
+        autostart = on ? "on" : "off";
+        return Promise.resolve(autostart);
+      },
+    },
   });
   host.mount(api.handle);
 });
@@ -267,6 +284,50 @@ describe("settings", () => {
     const at = (window: string) => get(periodResponse, `/api/period?kind=all&window=${window}`);
     expect((await at("5")).rolling).toEqual([]);
     expect((await fetch(url("/api/period?kind=all&window=4"))).status).toBe(400);
+  });
+});
+
+describe("autostart", () => {
+  const change = (query: string, headers: Record<string, string> = { [REQUEST_HEADER]: "1" }) => fetch(url(`/api/autostart?${query}`), { method: "POST", headers });
+
+  test("reads the logon task, then switches it off and on", async () => {
+    expect(await get(autostartResponse, "/api/autostart")).toEqual({ state: "on" });
+    const off = await change("on=false");
+    expect(off.status).toBe(200);
+    expect(off.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(autostartResponse.parse(await off.json())).toEqual({ state: "off" });
+    expect(await get(autostartResponse, "/api/autostart")).toEqual({ state: "off" });
+    expect(autostartResponse.parse(await (await change("on=true")).json())).toEqual({ state: "on" });
+  });
+
+  test("an unavailable task reads as such", async () => {
+    autostart = "unavailable";
+    expect(await get(autostartResponse, "/api/autostart")).toEqual({ state: "unavailable" });
+  });
+
+  test("a bad or missing on is 400; no request header is 403", async () => {
+    expect((await change("on=yes")).status).toBe(400);
+    expect((await change("")).status).toBe(400);
+    expect((await change("on=true&extra=1")).status).toBe(400);
+    expect((await change("on=false", {})).status).toBe(403);
+    expect(autostart).toBe("on");
+  });
+
+  test("a refused switch is 500 autostart_failed, logged by the logon task only", async () => {
+    setFails = true;
+    const res = await change("on=false");
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({ error: "autostart_failed" });
+    expect(logger.events()).not.toContain("api/failed");
+  });
+
+  test("any other rejection in an async handler is a logged 500", async () => {
+    getFails = new Error("boom");
+    const res = await fetch(url("/api/autostart"));
+    expect(res.status).toBe(500);
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(await res.json()).toEqual({ error: "internal" });
+    expect(logger.lines.find((l) => l.event === "failed")?.fields).toMatchObject({ route: "/api/autostart" });
   });
 });
 

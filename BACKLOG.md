@@ -71,12 +71,9 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
 - Friends release step 4, distribution: seven build work packages, in order, each planned in its own session. The
   design is the frozen map `docs/plans/2026-11-06-distribution-map.md` ("Decisions so far"; each package's scope is
   under "Build work packages").
-  - 2. Release-aware app, split three ways (user, 2026-11-10), in order, each planned in its own session; 2a
-    (`docs/plans/2026-11-10-wp2a-process-control.md`) and 2b (`docs/plans/2026-11-10-wp2b-release-data.md`) are
-    done. Once a
-    deployed exe has `--quit`, `stop.ts` and `stopInstalled` end a sleeping supervisor through it instead of
-    `killExe`'s path-filtered kill (deferred from package 1's review, `docs/reviews/2026-11-10-wp1-rename-identity.md`).
-    - [ ] **[feature, Med, Standard]** 2c. Dashboard "Start with Windows" setting (`schtasks /Query` and `/Change`).
+  - [ ] **[refactor, Low, Standard]** 2 (release-aware app) is done; left over: once a deployed exe has `--quit`,
+    `stop.ts` and `stopInstalled` end a sleeping supervisor through it instead of `killExe`'s path-filtered kill
+    (deferred from package 1's review, `docs/reviews/2026-11-10-wp1-rename-identity.md`).
   - [ ] **[feature, Med, Substantial]** 3. Tray and process model: `grindlog-tray.exe`, supervisor-managed, quit
     protocol, icon states, menu, toasts; decision file corrects the supervisor-autostart Limit. Fold-in: the map's
     quiet tray line for release-recompute failures needs a status field; 2b only logs `failed` in
@@ -110,6 +107,10 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   so check which is right, since it decides which season a match on that day counts in.
 
 ## Watch list
+- [ ] **[bug (latent), Low, Standard]** Trigger: a `logon_task/unexpected_xml` line in a friend's log. The "Start
+  with Windows" read takes the task's state from `<Settings>` in `schtasks /Query /XML` (no `<Enabled>` there = on,
+  `false` = off), captured on one Windows 11 PC only; an unreadable shape shows the switch as unavailable. Fit
+  `parseTaskState` to that XML.
 - [ ] **[feature, Low, Standard]** Trigger: a friend loses a match to an update rollback. Rollback restores the
   pre-migration backup, so matches the failed version recorded are dropped; the failed database is kept until the next
   successful update. Then add a manual merge of its newer matches. Record: "Updater design" in

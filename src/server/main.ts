@@ -3,8 +3,9 @@ import { EXIT_CONFIG_INVALID, EXIT_OK, EXIT_PORT_TAKEN, EXIT_START_FAILED } from
 import { startGameWatch, type GameWatch } from "./game-watch";
 import { PortTakenError, startHost, type Host } from "./host";
 import { log } from "./log";
+import { createLogonTask } from "./logon-task";
 import { scheduleMaintenance, type Maintenance } from "./maintenance";
-import { dashboardPort, dataDir, staticDir } from "./paths";
+import { dashboardPort, dataDir, logonTaskName, staticDir } from "./paths";
 import { createQueryReader } from "./query/read";
 import { startStatsClient, statsApiUrl, type StatsClient } from "./recorder/client";
 import { createRecorder, type Recorder } from "./recorder/recorder";
@@ -128,6 +129,7 @@ function main(): void {
     status: () => ({ connection: client.status(), statsApiOff: gameWatch.statsApiOff(), configProblems: gameWatch.statsConfig()?.problems ?? [], version: VERSION, pid: process.pid }),
     staticDir: staticDir(),
     logger: log,
+    logonTask: createLogonTask({ task: logonTaskName(), logger: log }),
   }));
   parts.host.mount(api.handle);
   // After the mount, so its end event reaches open pages. Health doesn't wait for it.

@@ -1,7 +1,8 @@
-// The Settings page: Appearance, Defaults and Remarks, one row per setting, then the You and
-// Seasons tables. Each change saves at once and the row says so ("✓ Saved", or "Couldn't save ·
-// Retry"); controls show the stored value, so a failed save leaves the old one. Each settings
-// section resets to its defaults. A sticky list of links jumps to each section.
+// The Settings page: Appearance, Defaults and Remarks, one row per setting, then Startup (the
+// logon task, not a settings row), then the You and Seasons tables. Each change saves at once and
+// the row says so ("✓ Saved", or "Couldn't save · Retry"); controls show the stored value, so a
+// failed save leaves the old one. Each settings section resets to its defaults. A sticky list of
+// links jumps to each section.
 import { useEffect, useId, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { groupFilter, THEMES, type Settings, type SettingsPatch } from "../../../shared/schemas/settings";
 import { cx } from "../../components/cx";
@@ -9,17 +10,17 @@ import { EmptyState } from "../../components/EmptyState";
 import { filterLabel } from "../../logic/filter-options";
 import { SPEED_LABEL } from "../../logic/format";
 import { parseWindow } from "../../logic/settings";
-import { useSettingsQuery } from "../../queries";
-import { SaveStatus } from "../../components/SaveStatus";
-import { Section, SECTIONS, useSave } from "./parts";
+import { useAutostart, useSetAutostart, useSettingsQuery } from "../../queries";
+import { SaveStatus, type SaveState } from "../../components/SaveStatus";
+import { codeOf, Section, SECTIONS, TableState, useSave } from "./parts";
 import { SeasonsSection } from "./SeasonsSection";
 import styles from "./Settings.module.css";
 import { YouSection } from "./YouSection";
 
-function Row({ label, help, htmlFor, labelId, children }: { label: string; help?: string; htmlFor?: string; labelId: string; children: (save: (p: SettingsPatch, onFailed?: () => void) => void) => ReactNode }) {
+/** A row's label, help, save status and control, for any write: `m` is its mutation, `save` re-sends a value. */
+function RowFrame<V>({ label, help, htmlFor, labelId, m, save, children }: { label: string; help?: string; htmlFor?: string; labelId: string; m: SaveState & { variables: V | undefined }; save: (v: V) => void; children: ReactNode }) {
   const row = useRef<HTMLDivElement>(null);
   const retried = useRef(false);
-  const { m, save } = useSave();
   // A Retry that works disappears; focus goes back to the control it saved, once it shows the new value.
   useEffect(() => {
     if (!m.isSuccess || !retried.current) return;
@@ -41,9 +42,15 @@ function Row({ label, help, htmlFor, labelId, children }: { label: string; help?
         </div>
         {help && <div className={styles.help}>{help}</div>}
       </div>
-      <div className={styles.control}>{children(save)}</div>
+      <div className={styles.control}>{children}</div>
     </div>
   );
+}
+
+/** A settings row: its control saves through the settings write. */
+function Row({ children, ...frame }: { label: string; help?: string; htmlFor?: string; labelId: string; children: (save: (p: SettingsPatch, onFailed?: () => void) => void) => ReactNode }) {
+  const { m, save } = useSave();
+  return <RowFrame {...frame} m={m} save={save}>{children(save)}</RowFrame>;
 }
 
 /** Native radios drawn as segments (or swatches): arrow keys and the group's name come free. */
@@ -177,6 +184,27 @@ function Form({ s }: { s: Settings }) {
   );
 }
 
+/** "Start with Windows": the logon task itself, read and switched through schtasks, so it loads on its own. */
+function StartupSection() {
+  const labelId = useId();
+  const q = useAutostart();
+  const m = useSetAutostart();
+  const save = (on: boolean) => {
+    m.mutate(on, { onError: (error) => { console.warn("[grindlog] autostart/save_failed", { on, code: codeOf(error) }); } });
+  };
+  return (
+    <Section anchor="startup" title="Startup" intro="How Grindlog runs on this PC.">
+      {q.data ? (
+        <RowFrame label="Start with Windows" help={q.data.state === "unavailable" ? "Couldn't find or read Grindlog's startup task on this PC." : "Starts recording when you sign in to Windows."} labelId={labelId} m={m} save={save}>
+          <Switch labelId={labelId} checked={q.data.state === "on"} disabled={q.data.state === "unavailable"} onToggle={save} />
+        </RowFrame>
+      ) : (
+        <TableState what="the startup setting" failed={q.isError} retry={() => { void q.refetch(); }} />
+      )}
+    </Section>
+  );
+}
+
 /**
  * A fragment jump scrolls but doesn't move focus, so the link scrolls and focuses the section's h2
  * itself. The URL keeps no hash: the sections render after their data loads, so a reload couldn't
@@ -213,6 +241,7 @@ export function SettingsPage() {
             <p>The other pages use the defaults meanwhile. <button type="button" className={styles.link} onClick={() => { void q.refetch(); }}>Retry</button></p>
           </EmptyState>
         )}
+        <StartupSection />
         <YouSection />
         <SeasonsSection />
       </div>

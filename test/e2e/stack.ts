@@ -31,6 +31,8 @@ const READY_TIMEOUT_MS = 30_000;
 const STOP_TIMEOUT_MS = 10_000;
 /** The `update` seed's first release, so a restart's version change has a non-null baseline. */
 const UPDATE_FROM = "e2e-a";
+/** A logon task that never exists, so the tracker reads "Start with Windows" as unavailable and never switches a real one. */
+const E2E_TASK = "GrindlogE2eNoSuchTask";
 
 const say = (msg: string, fields: Record<string, unknown> = {}) => {
   console.log(`[e2e] ${msg}${Object.keys(fields).length ? " " + JSON.stringify(fields) : ""}`);
@@ -240,7 +242,7 @@ async function main(): Promise<void> {
   const url = `http://${DASHBOARD_HOST}:${String(port)}`;
   say("starting", { dataDir: dir, trackerPort: port, replayPort: replay.port });
 
-  const env: Record<string, string | undefined> = { ...process.env, GRINDLOG_DATA_DIR: dir, GRINDLOG_PORT: String(port), STATS_API_URL: `ws://127.0.0.1:${String(replay.port)}` };
+  const env: Record<string, string | undefined> = { ...process.env, GRINDLOG_DATA_DIR: dir, GRINDLOG_PORT: String(port), GRINDLOG_TASK: E2E_TASK, STATS_API_URL: `ws://127.0.0.1:${String(replay.port)}` };
   delete env.GRINDLOG_STATIC_DIR;
 
   let tearingDown = false;
