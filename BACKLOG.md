@@ -78,7 +78,7 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   dismiss it. Trigger: friend feedback asks for it. Context: "Release workflow" in
   `docs/plans/2026-11-06-distribution-map.md`.
 
-- [ ] **[feature, Med, Substantial]** Friends release step 4, distribution: `docs/plans/2026-11-06-distribution-map.md`. Next: frontier ticket "Clean test environment"; the task tickets "Memory footprint measurement" and "Inno Setup check" are also open, and nothing blocks them.
+- [ ] **[feature, Med, Substantial]** Friends release step 4, distribution: `docs/plans/2026-11-06-distribution-map.md`. Next: frontier ticket "Memory footprint measurement"; "Inno Setup check" is also open and unblocked.
 - [ ] **[refactor, Med, Standard]** Internal rename to grindlog: the user-visible name and the exes changed on
   2026-11-05, the other ids didn't. Step 4; the full list and closing checks are under "Dev and prod identity" in
   `docs/plans/2026-11-06-distribution-map.md`. Data dir `%LOCALAPPDATA%\RLTracker` and task `RLTracker` move by a

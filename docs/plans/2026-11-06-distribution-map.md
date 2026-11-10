@@ -231,14 +231,17 @@ installed tracker and `scripts/capture.ts` both connected (32 ms apart) through 
 (`31E5553011F1DC9880C5D39C9AC9546B`). Both kept the same 1,482 events, and the tracker stored a completed match with no
 flags. The capture also wrote the freeplay frames before and after it, so the game sends every frame to both clients.
 
-## Open tickets
 ### Clean test environment
-- Question: Does Windows Sandbox work on this PC once enabled (`WindowsSandbox.exe` is missing today), or do we use
-  a second local Windows account?
-- Type: task
-- Blocked by: none
-- Status: open
+A standard local account is the routine clean environment: no-admin install, first run, SmartScreen, tray, autostart
+at sign-in, updates across sign-ins and uninstall. It has none of the user's per-user state, Bun (`~/.bun`) included,
+but machine-wide Node (nvm4w) and Git stay on its PATH. A clean uninstall resets it, or it can be recreated. Live
+recording is proved on the user's own account, since neither environment runs Rocket League. Windows Sandbox (enabled
+2026-11-09) runs once before the first friend release, from a saved `.wsb`, to catch machine-wide dependencies. The user
+first chose Sandbox for every throwaway install, then cut it to that one run the same day, since a new Sandbox per check
+is slow and the exes are self-contained. Autostart at sign-in was confirmed after a reboot on 2026-11-09: the sign-in
+task fired 1 s after sign-in.
 
+## Open tickets
 ### Memory footprint measurement
 - Question: Private bytes vs shared working set in a real match: is the 108–111 MB peak really over the user's 100 MB
   threshold? The tray adds 5.9 MB private working set, 22.8 MB private bytes at idle (see Process model).
