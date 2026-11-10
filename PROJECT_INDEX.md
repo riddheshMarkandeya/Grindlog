@@ -84,6 +84,8 @@ release's step 4.
   Task Scheduler doesn't restart a crashed task.
 
 ## Plans
+- `docs/plans/2026-11-06-distribution-map.md`: the wayfinder map for friends release step 4: installer, tray,
+  auto-update, releases and the dev/prod split (charted; tickets open).
 - `docs/plans/2026-11-05-friends-release-map.md`: the friends release map, the ordered steps to shipping
   and each one's status. Start here for what's next.
 - `docs/reviews/2026-11-05-name-and-icon.md`: name and icon review summary (2 deferred, 2 disputed).
@@ -173,6 +175,12 @@ release's step 4.
   (done; the spec WPs cite; build order lives in the roadmap).
 
 ## Research
+- `docs/research/2026-11-06-installer-updater.md`: installer and self-update tooling; recommends Inno Setup plus a
+  small hand-written updater, with Velopack the runner-up.
+- `docs/research/2026-11-06-tray-technology.md`: what to build the tray with; recommends a .NET Framework 4.8
+  `NotifyIcon` exe, with memory and antivirus behaviour unverified.
+- `docs/research/2026-11-06-code-signing.md`: Windows code signing options, cost and eligibility; none removes
+  the SmartScreen warning on day one.
 - `docs/research/2026-10-19-weekend-captures.md`: weekend captures (casual/ranked, private,
   spectated 1v1): duplicates, mis-tagged teardown, winner/MVP sources, bots, WP3a requirements,
   captures still wanted.

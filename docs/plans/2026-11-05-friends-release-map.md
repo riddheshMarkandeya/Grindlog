@@ -13,10 +13,10 @@ docs and an update path. Polish comes after their feedback, not before.
 ## Steps
 | # | Step | Status | Plan or next action |
 |---|---|---|---|
-| 1 | Pre-friends backlog fixes | Done (`4531ee4`) | `docs/reviews/2026-11-05-pre-friends-fixes.md`. The goal-map orientation check by eye is still the user's. |
+| 1 | Pre-friends backlog fixes | Done (`4531ee4`) | `docs/reviews/2026-11-05-pre-friends-fixes.md`. The goal-map orientation was checked against a replay on 2026-11-09. |
 | 2 | Name and app icon | Done | `docs/plans/2026-11-05-name-and-icon.md`. |
 | 3 | Task Manager names | Done | Section below. |
-| 4 | Distribution | Next | `/wayfinder`, multi-session. |
+| 4 | Distribution | In progress | `docs/plans/2026-11-06-distribution-map.md`. |
 | 5 | Docs | Open | No plan yet. |
 | → | **Ship to friends** | | |
 | 6 | Post-feedback UI polish | Open | `/prototype`, after feedback. |

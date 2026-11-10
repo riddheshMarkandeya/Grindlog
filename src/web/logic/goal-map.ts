@@ -10,9 +10,8 @@ export const MAP_H = (MAP_W * SIDE_WALL_X) / GOAL_LINE_Y;
 
 /**
  * A field point in map units. Team 0 attacks +Y, so team 1's view is the field turned half a circle.
- * Assumed, unverified: +X is on blue's left, so it is drawn at the top while blue attacks to the
- * right; were it the other way, the map would be mirrored top to bottom. Touches inside a
- * goal mouth (|y| past the goal line) are drawn on the line.
+ * +X is on blue's left (checked against a saved replay), so it is drawn at the top while blue
+ * attacks to the right. Touches inside a goal mouth (|y| past the goal line) are drawn on the line.
  */
 export function toScreen(pos: { x: number; y: number }, myTeam: number): { x: number; y: number } {
   const turn = myTeam === 1 ? -1 : 1;

@@ -15,11 +15,6 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
     ±10% (3–5 past ±20%). Every baseline was under a month old (13–65 matches), so swings ran
     large. Re-run that table against full 30-day baselines and pick the number then. Record:
     `docs/plans/2026-10-27-wp6a-b-overview-sections.md`.
-  - **[design, Low, Trivial]** Check the goal map's top/bottom against a goal you remember:
-    +X is assumed to be blue's left, which nothing has verified. A wrong guess mirrors the map top
-    to bottom; left/right (your goal) is confirmed by real data. Fix it in `toScreen`, which has
-    the tests. Record: `docs/plans/2026-10-27-wp6a-b-overview-sections.md`. The user plans to save a
-    replay of a goal to check this: last touched on the scorer's left, its mark should be in the top half.
   - **[feature, Low, Standard]** Per-tier and per-trigger remark switches: deferred from v1
     (user, 2026-10-28, simplest settings first). WP8a ships only the master and mood-line
     switches, which change what's shown and not the pick; clock and speed go through
@@ -78,14 +73,17 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
 - [ ] **[idea, Low, TBD]** Playful UI touches: the flat peeling corner (variant L on the
   `prototype/recap-stood-out` branch, never merge) was liked as a stood-out mark (user, 2026-11-04).
   Look at where flat-but-fun details fit the dashboard. Trigger: a UI polish pass.
+- [ ] **[idea, Low, TBD]** A dashboard "What changed" card after an update, instead of the tray opening the GitHub
+  release page (user, 2026-11-09). Needs markdown rendering for the release body, an update-state field and a way to
+  dismiss it. Trigger: friend feedback asks for it. Context: "Release workflow" in
+  `docs/plans/2026-11-06-distribution-map.md`.
 
+- [ ] **[feature, Med, Substantial]** Friends release step 4, distribution: `docs/plans/2026-11-06-distribution-map.md`. Next: frontier ticket "Clean test environment"; the task tickets "Memory footprint measurement" and "Inno Setup check" are also open, and nothing blocks them.
 - [ ] **[refactor, Med, Standard]** Internal rename to grindlog: the user-visible name and the exes changed on
-  2026-11-05, the other ids didn't. Data dir `%LOCALAPPDATA%\RLTracker` and task `RLTracker`, with installer migration, plus
-  the `RLTRACKER_*` env vars, `X-RLTracker-*` headers and package name → step 4. Also step 4, and a
-  grep for "rltracker" misses some: the `rlt-theme` localStorage key (a blind rename resets the saved
-  theme, so migrate it), the `rlt-events` worker name, the `[rlt]` log tag, `RLT_E2E_KEEP`, the
-  `rlt-e2e-` prefix and the `rltracker-*` temp names. `LEGACY_SHORTCUT` in `autostart.ts` goes once
-  the installer exists: only the developer's machine ever had that file. Steps:
+  2026-11-05, the other ids didn't. Step 4; the full list and closing checks are under "Dev and prod identity" in
+  `docs/plans/2026-11-06-distribution-map.md`. Data dir `%LOCALAPPDATA%\RLTracker` and task `RLTracker` move by a
+  one-off script on the developer's machine, not an installer migration. `rlt-theme` needs no migration: it only
+  caches the theme from `tracker.db`. Steps:
   `docs/plans/2026-11-05-friends-release-map.md`. Record: `docs/plans/2026-11-05-name-and-icon.md`.
 
 - [ ] **[feature, Med, Standard]** After the friends release map: set up new seasons automatically, and
@@ -103,6 +101,19 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   so check which is right, since it decides which season a match on that day counts in.
 
 ## Watch list
+- [ ] **[improvement, Low, Standard]** Trigger: a friend's other tool needs a `WebPort` other than 49124. One-click
+  setup moves the game to 49124 after a warning, and there is no port setting. Then consider a setting, or following
+  the port in the file.
+- [ ] **[bug (latent), Low, Standard]** Trigger: the first Steam user. Nothing confirms the Documents ini path for Steam;
+  Epic is the only install locator. `user_missing` flags a wrong path, so fit it to that user's log.
+- [ ] **[bug (latent), Low, Standard]** Trigger: `send_rate_off` returns after a game patch on a machine that had it on.
+  The Documents ini's `[IniVersion]` matches the default ini's timestamp, so a patch might regenerate it (not seen). The
+  setup card covers it; check whether the game rewrote the file before changing anything.
+- [ ] **[improvement, Low, Substantial]** Trigger: a user's `raw.db` passes about 5 GB, or anyone complains about
+  disk use. A full match takes about 2.3 MB and a thinned one about 0.6 MB (real data, 2026-11-06), and thinned
+  matches stay forever, so growth has no cap: an estimated 27 GB after a year at 10 h/day, 5 GB at 2 h/day.
+  Options: compress stored events (not measured), or thin sooner (30 days saves about a quarter in the first year
+  at 10 h/day, but less history can be fully recomputed). Recomputes need the raw events, so deleting them isn't one.
 - [ ] **[bug (latent), Low, Standard]** Trigger: "Couldn't make the image" again on the share card. It
   showed once on 2026-11-06 at the end of a live session, then cleared by itself. The same card exported
   fine in the same Chrome, and in a clean one, so there is no repro. Next time, before retrying, read
@@ -233,13 +244,6 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   `retention/kept_whole` with reason `open` → let recompute close it (as `restart`) or add a
   manual close. Record: Review log
   round 2 in `docs/plans/2026-10-20-wp4a-match-records.md`.
-- [ ] **[bug (latent), Low, Standard]** A supervisor killed on its own (Task Scheduler's End)
-  leaves the tracker running unsupervised; a later supervisor exits on the taken port, so a crash
-  of that orphan isn't restarted. Trigger: a real `supervisor/stopped` with code 3 at logon or
-  install → tie the child to the supervisor (a job object) or let a new supervisor adopt it.
-  Same orphan, narrower: `bun run stop` in the moment a restarted tracker hasn't bound its port
-  yet ends the supervisor and leaves that tracker running.
-  Record: WP3b Review log round 1 in `docs/plans/2026-10-19-wp3b-background-process.md`.
 - [ ] **[bug (latent), Low, Trivial]** Windows antivirus may hold a fresh backup `.partial` and
   fail its rename (EPERM/EBUSY), aborting a pre-migration startup. Trigger: a real
   `backup/failed` on the rename → retry it briefly. Record: Review log round 3 #8 in
