@@ -241,14 +241,14 @@ first chose Sandbox for every throwaway install, then cut it to that one run the
 is slow and the exes are self-contained. Autostart at sign-in was confirmed after a reboot on 2026-11-09: the sign-in
 task fired 1 s after sign-in.
 
-## Open tickets
 ### Memory footprint measurement
-- Question: Private bytes vs shared working set in a real match: is the 108–111 MB peak really over the user's 100 MB
-  threshold? The tray adds 5.9 MB private working set, 22.8 MB private bytes at idle (see Process model).
-- Type: task
-- Blocked by: none
-- Status: open
+No, it isn't over. Two real online matches on 2026-11-09 (installed build, 1,690 and 1,660 events stored, no flags),
+sampled every 2 s: the tracker's working set peaked at 31.9 MB, of which 18.5 MB was private and up to 14.5 MB shared.
+Private bytes reached 111.4 MB, but that's committed memory, not resident, and the threshold is RSS. The supervisor
+peaked at 6.8 MB. With the tray's 5.9 MB, everything resident stays under 45 MB. The 75 MB step seen in the WP3b 10×
+replays didn't happen in real play. It stays unexplained and goes to the BACKLOG Watch list.
 
+## Open tickets
 ### Inno Setup check
 - Question: Does Inno do what Updater design assumes? Confirm that `{autopf}` with `PrivilegesRequired=lowest` gives
   `%LocalAppData%\Programs\Grindlog`, an uninstall `MsgBox` works and a silent uninstall keeps data, the installer can

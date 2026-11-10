@@ -40,11 +40,6 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   display is the reliable signal (`statsConfig()` carries the same diagnosis). WP8 has no toast switch, dropped
   2026-10-28 (user, simplest settings first). An urgent/priority toast is still untried. Record: Verification results in
   `docs/plans/2026-10-19-wp3b-background-process.md`.
-- [ ] **[performance, Med, Standard]** The tracker's working set peaked at 108–111 MB in the three
-  10× replay runs made with Rocket League open, against the user's 100 MB threshold (WP3b decision
-  4). It's one ~75 MB step at replay start, then flat, while private bytes barely moved: likely
-  shared or file-backed pages, not heap. Next: measure private bytes vs shared WS in a real match.
-  Record: "Footprint" in `docs/plans/2026-10-19-wp3b-background-process.md`.
 - [ ] **[bug, Low, Trivial]** Install: if replacing an exe fails after the tracker is stopped
   (antivirus holding the fresh `.new.exe` past `replace`'s 10 s), install throws before
   `schtasks /Run`, so nothing records until the next logon. Restart the task anyway, as the
@@ -78,7 +73,7 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   dismiss it. Trigger: friend feedback asks for it. Context: "Release workflow" in
   `docs/plans/2026-11-06-distribution-map.md`.
 
-- [ ] **[feature, Med, Substantial]** Friends release step 4, distribution: `docs/plans/2026-11-06-distribution-map.md`. Next: frontier ticket "Memory footprint measurement"; "Inno Setup check" is also open and unblocked.
+- [ ] **[feature, Med, Substantial]** Friends release step 4, distribution: `docs/plans/2026-11-06-distribution-map.md`. Next: frontier ticket "Inno Setup check", the last open ticket; fog remains.
 - [ ] **[refactor, Med, Standard]** Internal rename to grindlog: the user-visible name and the exes changed on
   2026-11-05, the other ids didn't. Step 4; the full list and closing checks are under "Dev and prod identity" in
   `docs/plans/2026-11-06-distribution-map.md`. Data dir `%LOCALAPPDATA%\RLTracker` and task `RLTracker` move by a
@@ -101,6 +96,10 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   so check which is right, since it decides which season a match on that day counts in.
 
 ## Watch list
+- [ ] **[performance, Low, Standard]** Trigger: the tracker's working set passes 100 MB in real play, or a friend reports
+  high memory. Two real matches on 2026-11-09 peaked at 31.9 MB (18.5 MB private). The WP3b 10× replays showed a ~75 MB
+  one-step jump at replay start, mostly shared pages, that real play didn't reproduce. Record: "Memory footprint
+  measurement" in `docs/plans/2026-11-06-distribution-map.md`, "Footprint" in `docs/plans/2026-10-19-wp3b-background-process.md`.
 - [ ] **[improvement, Low, Standard]** Trigger: a friend's other tool needs a `WebPort` other than 49124. One-click
   setup moves the game to 49124 after a warning, and there is no port setting. Then consider a setting, or following
   the port in the file.
