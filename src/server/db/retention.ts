@@ -15,7 +15,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** Pages returned per incremental_vacuum step: 16 MB at the default 4 KB page size. */
 const VACUUM_PAGES = 4096;
 
-const setImmediateYield = () =>
+/** Lets other work (requests, a recording match) run between background steps. */
+export const setImmediateYield = () =>
   new Promise<void>((resolve) => {
     setImmediate(resolve);
   });

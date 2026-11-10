@@ -1,8 +1,10 @@
 // The e2e stack, run under Bun by the Playwright fixture (seeding needs bun:sqlite): a temp data dir
 // seeded per the mode in argv (`rich`, the default, `empty`, `few`, `share`, `tables` or `friends`), the repo's web build copied to the
 // installed path, a gated replay of the completed fixture, and the real tracker. Protocol: prints
-// `ready {"url","dataDir"}` on stdout; the stdin line `go` releases the replay; stdin EOF tears
-// everything down.
+// `ready {"url","dataDir"}` on stdout; the stdin line `go` releases the replay; the stdin line
+// `restart <version>` stops the tracker and starts it again on the same port and data as that
+// release (`--define GRINDLOG_VERSION`), then prints `restarted {"version"}`; stdin EOF tears
+// everything down. The `update` seed is `rich` with the first start already a release (UPDATE_FROM).
 // GRINDLOG_E2E_KEEP=1 keeps the temp dir (and its logs/tracker.log).
 import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -27,6 +29,8 @@ const MIN = 60_000;
 const REPLAY_SPEED = 64;
 const READY_TIMEOUT_MS = 30_000;
 const STOP_TIMEOUT_MS = 10_000;
+/** The `update` seed's first release, so a restart's version change has a non-null baseline. */
+const UPDATE_FROM = "e2e-a";
 
 const say = (msg: string, fields: Record<string, unknown> = {}) => {
   console.log(`[e2e] ${msg}${Object.keys(fields).length ? " " + JSON.stringify(fields) : ""}`);
@@ -217,12 +221,12 @@ async function main(): Promise<void> {
   if (!existsSync(join(dist, "index.html"))) throw new Error(`${dist}\\index.html is missing; run vite build first (bun run e2e does)`);
 
   const dir = mkdtempSync(join(tmpdir(), "grindlog-e2e-"));
+  const mode = process.argv[2];
   try {
     // The installed path, so the tracker's default staticDir is what's served.
     cpSync(dist, join(dir, "bin", "web"), { recursive: true });
-    const mode = process.argv[2];
-    // `settings` seeds as `rich` and `friends-page` as `friends`; their own names only buy a separate
-    // stack, so what they save stays there.
+    // `settings` and `update` seed as `rich`, and `friends-page` as `friends`; their own names only
+    // buy a separate stack, so what they do stays there.
     seed(dir, mode === "empty" || mode === "few" || mode === "share" || mode === "tables" || mode === "friends" ? mode : mode === "friends-page" ? "friends" : "rich");
   } catch (err) {
     removeDir(dir);
@@ -238,10 +242,9 @@ async function main(): Promise<void> {
 
   const env: Record<string, string | undefined> = { ...process.env, GRINDLOG_DATA_DIR: dir, GRINDLOG_PORT: String(port), STATS_API_URL: `ws://127.0.0.1:${String(replay.port)}` };
   delete env.GRINDLOG_STATIC_DIR;
-  const started = Date.now();
-  const tracker = Bun.spawn([process.execPath, "run", join(REPO, "src", "server", "main.ts")], { cwd: REPO, env, stdout: "ignore", stderr: "inherit" });
 
   let tearingDown = false;
+  let restarting = false;
   // The log tail is printed before the dir goes; GRINDLOG_E2E_KEEP=1 keeps the whole log.
   const fail = (msg: string, fields: Record<string, unknown>) => {
     say(msg, fields);
@@ -249,46 +252,78 @@ async function main(): Promise<void> {
     removeDir(dir);
     process.exit(1);
   };
-  void tracker.exited.then((code) => {
-    if (!tearingDown) fail("tracker exited early", { code });
-  });
+  const spawnTracker = (version: string | undefined) => {
+    // `bun run --define` takes K:V, with the value as JSON; it must come after `run`.
+    const define = version === undefined ? [] : ["--define", `GRINDLOG_VERSION:${JSON.stringify(version)}`];
+    const child = Bun.spawn([process.execPath, "run", ...define, join(REPO, "src", "server", "main.ts")], { cwd: REPO, env, stdout: "ignore", stderr: "inherit" });
+    void child.exited.then((code) => {
+      if (!tearingDown && !restarting) fail("tracker exited early", { code, version });
+    });
+    return child;
+  };
+  const waitReady = async (child: ReturnType<typeof spawnTracker>) => {
+    const started = Date.now();
+    for (;;) {
+      try {
+        if ((await fetch(`${url}/api/status`, { signal: AbortSignal.timeout(2000) })).status === 200) return Date.now() - started;
+      } catch {
+        // Not listening yet, or not answering within 2 s.
+      }
+      if (Date.now() - started > READY_TIMEOUT_MS) {
+        tearingDown = true;
+        child.kill();
+        await child.exited;
+        fail("tracker never became ready", { ms: READY_TIMEOUT_MS });
+      }
+      await Bun.sleep(100);
+    }
+  };
+  const stopTracker = async (child: ReturnType<typeof spawnTracker>) => {
+    const stop = await requestStop(port);
+    if (describeStopResult(stop).exitCode !== 0) say("shutdown request failed", { stop });
+    const code = await Promise.race([child.exited, Bun.sleep(STOP_TIMEOUT_MS).then(() => null)]);
+    if (code === null) {
+      say("tracker did not stop; killing it", { ms: STOP_TIMEOUT_MS });
+      child.kill();
+      await child.exited;
+    } else {
+      say("tracker stopped", { code });
+    }
+  };
 
-  for (;;) {
-    try {
-      if ((await fetch(`${url}/api/status`, { signal: AbortSignal.timeout(2000) })).status === 200) break;
-    } catch {
-      // Not listening yet, or not answering within 2 s.
-    }
-    if (Date.now() - started > READY_TIMEOUT_MS) {
-      tearingDown = true;
-      tracker.kill();
-      await tracker.exited;
-      fail("tracker never became ready", { ms: READY_TIMEOUT_MS });
-    }
-    await Bun.sleep(100);
-  }
-  say("tracker ready", { ms: Date.now() - started });
+  let tracker = spawnTracker(mode === "update" ? UPDATE_FROM : undefined);
+  say("tracker ready", { ms: await waitReady(tracker) });
   console.log(`ready ${JSON.stringify({ url, dataDir: dir })}`);
 
+  const restart = async (version: string) => {
+    restarting = true;
+    await stopTracker(tracker);
+    tracker = spawnTracker(version);
+    restarting = false;
+    say("tracker restarted", { version, ms: await waitReady(tracker) });
+    console.log(`restarted ${JSON.stringify({ version })}`);
+  };
+
+  // Restarts run one after another, and one still in flight when stdin closes finishes first, so
+  // teardown stops the tracker it started.
+  let pendingRestart: Promise<void> = Promise.resolve();
   const input = createInterface({ input: process.stdin });
   input.on("line", (line) => {
-    if (line.trim() !== "go") return;
-    say("replay released", { speed: REPLAY_SPEED });
-    release();
+    const [command, arg] = line.trim().split(/\s+/);
+    if (command === "go") {
+      say("replay released", { speed: REPLAY_SPEED });
+      release();
+    } else if (command === "restart" && arg !== undefined) {
+      pendingRestart = pendingRestart.then(() => restart(arg)).catch((err: unknown) => {
+        fail("restart failed", { err: String(err) });
+      });
+    }
   });
   await new Promise<void>((resolve) => input.once("close", resolve));
 
+  await pendingRestart;
   tearingDown = true;
-  const stop = await requestStop(port);
-  if (describeStopResult(stop).exitCode !== 0) say("shutdown request failed", { stop });
-  const code = await Promise.race([tracker.exited, Bun.sleep(STOP_TIMEOUT_MS).then(() => null)]);
-  if (code === null) {
-    say("tracker did not stop; killing it", { ms: STOP_TIMEOUT_MS });
-    tracker.kill();
-    await tracker.exited;
-  } else {
-    say("tracker stopped", { code });
-  }
+  await stopTracker(tracker);
   await replay.stop();
   removeDir(dir);
 }

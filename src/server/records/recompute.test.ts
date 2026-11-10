@@ -9,7 +9,7 @@ import { openStorage, type Storage } from "../storage";
 import { memoryLogger, readFixture } from "../testing";
 import { RECORDED_RULE_VERSIONS } from "../rules/registry";
 import { toRecord } from "./record";
-import { recomputeAll } from "./recompute";
+import { recomputeAll, recomputeSteps, type RecomputeResult } from "./recompute";
 import { createRecordWriter, type RecordWriter } from "./save";
 
 let dir: string;
@@ -157,5 +157,46 @@ describe("recomputeAll", () => {
     expect(result).toMatchObject({ written: 1, failed: 1 });
     expect(logger.lines.find((l) => l.event === "recompute_failed")).toMatchObject({ level: "error", fields: { guid: first, err: expect.anything() as unknown } });
     expect(storage.tracker.all("SELECT guid FROM matches")).toHaveLength(1);
+  });
+});
+
+describe("recomputeSteps", () => {
+  /** Drains the generator, collecting its yields. */
+  function drain(gen: Generator<number, RecomputeResult>): { yields: number[]; result: RecomputeResult } {
+    const yields: number[] = [];
+    for (;;) {
+      const next = gen.next();
+      if (next.done === true) return { yields, result: next.value };
+      yields.push(next.value);
+    }
+  }
+
+  test("yields once per match with the count still to do, and gives the same records and result as recomputeAll", () => {
+    recordLive(["private-series"]);
+    const matches = guids("SELECT DISTINCT match_guid AS g FROM events").length;
+    const live = snapshot();
+    clear();
+    const { yields, result } = drain(recomputeSteps({ raw: storage.raw, tracker: storage.tracker, logger: memoryLogger(), now }));
+    expect(matches).toBeGreaterThan(1);
+    expect(yields).toEqual(Array.from({ length: matches }, (_, i) => matches - i - 1));
+    expect(snapshot()).toEqual(live);
+    clear();
+    const all = recomputeAll({ raw: storage.raw, tracker: storage.tracker, logger: memoryLogger(), now });
+    expect({ ...result, ms: 0 }).toEqual({ ...all, ms: 0 });
+  });
+
+  test("quietSkips counts info-level skips without logging them, and still logs a warn-level one", () => {
+    recordLive(["private-series"]);
+    // A lost close marker on a non-newest match is a warn-level skip.
+    const recorded = storage.tracker.all<{ guid: string }>("SELECT guid FROM matches").map((r) => r.guid);
+    const [first] = recorded;
+    storage.raw.run("DELETE FROM events WHERE match_guid = ? AND name = 'MatchDestroyed'", first ?? "");
+    const logger = memoryLogger();
+    const { result } = drain(recomputeSteps({ raw: storage.raw, tracker: storage.tracker, logger, now, quietSkips: true }));
+    // The lobby and the live open match are info skips; first's lost marker is a warn.
+    expect(result.skipped).toMatchObject({ lobby: 1 });
+    expect((result.skipped.open ?? 0)).toBeGreaterThanOrEqual(2);
+    const skipLines = logger.lines.filter((l) => l.event === "recompute_skipped");
+    expect(skipLines.map((l) => [l.level, l.fields.reason])).toEqual([["warn", "open"]]);
   });
 });

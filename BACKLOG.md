@@ -71,15 +71,17 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
 - Friends release step 4, distribution: seven build work packages, in order, each planned in its own session. The
   design is the frozen map `docs/plans/2026-11-06-distribution-map.md` ("Decisions so far"; each package's scope is
   under "Build work packages").
-  - 2. Release-aware app, split three ways (user, 2026-11-10), in order, each planned in its own session; 2a is
-    done (`docs/plans/2026-11-10-wp2a-process-control.md`). Once a
+  - 2. Release-aware app, split three ways (user, 2026-11-10), in order, each planned in its own session; 2a
+    (`docs/plans/2026-11-10-wp2a-process-control.md`) and 2b (`docs/plans/2026-11-10-wp2b-release-data.md`) are
+    done. Once a
     deployed exe has `--quit`, `stop.ts` and `stopInstalled` end a sleeping supervisor through it instead of
     `killExe`'s path-filtered kill (deferred from package 1's review, `docs/reviews/2026-11-10-wp1-rename-identity.md`).
-    - [ ] **[feature, Med, Standard]** 2b. Release data: Recompute in a release, `Cache-Control: no-cache` on static
-      files, tabs reloading once after an update (several tabs, shared worker).
     - [ ] **[feature, Med, Standard]** 2c. Dashboard "Start with Windows" setting (`schtasks /Query` and `/Change`).
   - [ ] **[feature, Med, Substantial]** 3. Tray and process model: `grindlog-tray.exe`, supervisor-managed, quit
-    protocol, icon states, menu, toasts; decision file corrects the supervisor-autostart Limit.
+    protocol, icon states, menu, toasts; decision file corrects the supervisor-autostart Limit. Fold-in: the map's
+    quiet tray line for release-recompute failures needs a status field; 2b only logs `failed` in
+    `records/release_recompute_done`, and a match that fails every run reruns the whole recompute at each start
+    (`docs/plans/2026-11-10-wp2b-release-data.md`).
   - [ ] **[feature, Med, Standard]** 4. Stats API setup card: the one-click ini write, decimal `parseStatsIni`, the
     "Is this you?" card.
   - [ ] **[feature, Med, Substantial]** 5. Installer and release pipeline: Inno script, Start menu `.lnk`, tag workflow,
@@ -87,7 +89,9 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   - [ ] **[feature, Med, Substantial]** 6. Updater: check, download, minisign, apply, health check, rollback, shared
     state file, feed override. Fold-in: the antivirus backup-rename retry. Detached starts use `spawnDetached` (`Bun.spawn` with
     `detached: true`), which survives the parent's exit, a force-kill and Task Scheduler's End (spike result in
-    `docs/plans/2026-11-10-wp2a-process-control.md`).
+    `docs/plans/2026-11-10-wp2a-process-control.md`). The migrator refuses a database newer than the code
+    (`newer_than_code` in `db/migrate.ts`), so a rollback across a schema change must restore the pre-migration
+    backup before starting the old exe (2b's `meta` table is the first such change).
   - [ ] **[test-coverage, Med, Standard]** 7. Proof before friends: clean account, one Sandbox run, rollback through the
     feed override, copy history into prod, one live match on prod, one VirusTotal scan. Closes WP3b's autostart check.
 

@@ -363,6 +363,17 @@ describe("match ended", () => {
   });
 });
 
+describe("records recomputed", () => {
+  test("tells open pages every record may have changed", async () => {
+    const events = sse(await fetch(url("/api/events")));
+    await events.next();
+    api.recordsRecomputed();
+    expect(await events.next()).toEqual({ event: "records_recomputed", data: {} });
+    expect(logger.lines.find((l) => l.event === "records_recomputed")?.fields).toEqual({ subscribers: 1 });
+    await events.cancel();
+  });
+});
+
 describe("friends", () => {
   const SAM = "Epic|sam|0";
   const post = (path: string, headers: Record<string, string> = { [REQUEST_HEADER]: "1" }) => fetch(url(path), { method: "POST", headers });

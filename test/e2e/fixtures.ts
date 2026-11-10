@@ -15,14 +15,17 @@ export interface Stack {
   dataDir: string;
   /** Releases the replay: the tracker starts receiving the completed match. */
   go: () => void;
+  /** Stops the tracker and starts it again as this release; resolves once it answers. */
+  restart: (version: string) => Promise<void>;
 }
 
 /**
  * What the stack's DB holds. A spec file picks one with `test.use({ seed })`; files with the same
  * seed share a worker and stack, so a spec that writes takes a seed of its own ("friends-page" is
- * "friends" for the Friends page spec).
+ * "friends" for the Friends page spec, and "update" is "rich" with the tracker started as a
+ * release, since its spec restarts the tracker).
  */
-export type Seed = "rich" | "empty" | "few" | "share" | "settings" | "tables" | "friends" | "friends-page";
+export type Seed = "rich" | "empty" | "few" | "share" | "settings" | "tables" | "friends" | "friends-page" | "update";
 
 export const test = base.extend<{ consoleErrors: string[] }, { stack: Stack; seed: Seed }>({
   seed: ["rich", { scope: "worker", option: true }],
@@ -46,13 +49,14 @@ export const test = base.extend<{ consoleErrors: string[] }, { stack: Stack; see
         output.push(line);
         console.error(line);
       });
+      const stdout = createInterface({ input: child.stdout });
       const ready = new Promise<{ url: string; dataDir: string }>((resolve, reject) => {
         const timer = setTimeout(() => { reject(new Error(`the e2e stack wasn't ready after ${String(READY_TIMEOUT_MS)} ms:\n${output.join("\n")}`)); }, READY_TIMEOUT_MS);
         void exited.then((code) => {
           clearTimeout(timer);
           reject(new Error(`the e2e stack exited (code ${String(code)}) before it was ready:\n${output.join("\n")}`));
         });
-        createInterface({ input: child.stdout }).on("line", (line) => {
+        stdout.on("line", (line) => {
           output.push(line);
           console.log(line);
           if (!line.startsWith("ready ")) return;
@@ -62,7 +66,29 @@ export const test = base.extend<{ consoleErrors: string[] }, { stack: Stack; see
       });
       try {
         const { url, dataDir } = await ready;
-        await use({ url, dataDir, go: () => child.stdin.write("go\n") });
+        const restartTimeoutMs = EXIT_TIMEOUT_MS + READY_TIMEOUT_MS;
+        const restart = (version: string) =>
+          new Promise<void>((resolve, reject) => {
+            const timer = setTimeout(() => {
+              stdout.off("line", onLine);
+              reject(new Error(`the tracker didn't restart within ${String(restartTimeoutMs)} ms:\n${output.join("\n")}`));
+            }, restartTimeoutMs);
+            const onLine = (line: string) => {
+              if (!line.startsWith("restarted ")) return;
+              clearTimeout(timer);
+              stdout.off("line", onLine);
+              resolve();
+            };
+            stdout.on("line", onLine);
+            // A stack that dies mid-restart says why on its way out; report that, not the timeout.
+            void exited.then((code) => {
+              clearTimeout(timer);
+              stdout.off("line", onLine);
+              reject(new Error(`the e2e stack exited (code ${String(code)}) during a restart:\n${output.join("\n")}`));
+            });
+            child.stdin.write(`restart ${version}\n`);
+          });
+        await use({ url, dataDir, go: () => child.stdin.write("go\n"), restart });
       } finally {
         child.stdin.end();
         const code = await Promise.race([exited, new Promise<"timeout">((resolve) => setTimeout(() => { resolve("timeout"); }, EXIT_TIMEOUT_MS))]);

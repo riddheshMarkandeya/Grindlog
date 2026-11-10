@@ -153,11 +153,21 @@ describe("tracker schema", () => {
     const d = db();
     migrate(d, "tracker", trackerMigrations.slice(0, 5), { logger });
     d.run("INSERT INTO remark_shown (line_id, session_key, shown_at) VALUES ('l', 's', 1)");
-    migrate(d, "tracker", trackerMigrations, { logger });
+    migrate(d, "tracker", trackerMigrations.slice(0, 6), { logger });
     expect(d.pragma("user_version")).toBe(6);
     expect(tables(d)).toEqual(expect.arrayContaining(["friends", "never_suggest"]));
     d.run("INSERT INTO friends (primary_id, nickname, added_at) VALUES ('Epic|sam|0', NULL, 1)");
     expect(d.all("SELECT primary_id, nickname FROM friends")).toEqual([{ primary_id: "Epic|sam|0", nickname: null }]);
     expect(d.all("SELECT line_id FROM remark_shown")).toEqual([{ line_id: "l" }]);
+  });
+
+  test("a DB at version 6 gains the meta table for app state", () => {
+    const logger = memoryLogger();
+    const d = db();
+    migrate(d, "tracker", trackerMigrations.slice(0, 6), { logger });
+    migrate(d, "tracker", trackerMigrations, { logger });
+    expect(d.pragma("user_version")).toBe(7);
+    d.run("INSERT INTO meta (key, value) VALUES ('recomputed_version', '0.1.0')");
+    expect(d.all("SELECT key, value FROM meta")).toEqual([{ key: "recomputed_version", value: "0.1.0" }]);
   });
 });

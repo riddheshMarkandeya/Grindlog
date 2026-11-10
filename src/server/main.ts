@@ -10,6 +10,7 @@ import { startStatsClient, statsApiUrl, type StatsClient } from "./recorder/clie
 import { createRecorder, type Recorder } from "./recorder/recorder";
 import { toRecord } from "./records/record";
 import { createRecordWriter } from "./records/save";
+import { startReleaseRecompute, type ReleaseRecompute } from "./release-recompute";
 import { runtimeInfo } from "./runtime-info";
 import { VERSION } from "../shared/version";
 import { expectedPort } from "./stats-config";
@@ -21,6 +22,7 @@ interface Parts {
   storage?: Storage;
   recorder?: Recorder;
   maintenance?: Maintenance;
+  releaseRecompute?: ReleaseRecompute;
   client?: StatsClient;
   gameWatch?: GameWatch;
   api?: Api;
@@ -41,6 +43,8 @@ function main(): void {
       ["game_watch", () => parts.gameWatch?.stop()],
       // The socket's own close comes too late to run before exit; the last scoreboard is written here.
       ["flush", () => parts.recorder?.flush()],
+      // A stopped recompute leaves its marker unwritten, so the next start reruns it in full.
+      ["release_recompute", () => parts.releaseRecompute?.stop()],
       ["maintenance", () => parts.maintenance?.stop()],
       ["storage", () => parts.storage?.close()],
       // Last: --quit reads a refused port as nothing left to flush and may then end the supervisor,
@@ -126,6 +130,16 @@ function main(): void {
     logger: log,
   }));
   parts.host.mount(api.handle);
+  // After the mount, so its end event reaches open pages. Health doesn't wait for it.
+  parts.releaseRecompute = startReleaseRecompute({
+    storage,
+    version: VERSION,
+    isRecording: recorder.isRecording,
+    onDone: () => {
+      api.recordsRecomputed();
+    },
+    logger: log,
+  });
 }
 
 main();

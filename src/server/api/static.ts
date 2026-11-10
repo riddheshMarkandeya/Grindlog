@@ -30,9 +30,11 @@ function isFile(path: string): boolean {
   }
 }
 
+// no-cache on every file: without it the browser's heuristic caching can serve an old index.html
+// after an update, naming hashed assets the new build no longer has. Loopback refetches are cheap.
 function send(path: string): Response {
   const file = Bun.file(path);
-  return new Response(file, { headers: { "content-type": file.type } });
+  return new Response(file, { headers: { "content-type": file.type, "cache-control": "no-cache" } });
 }
 
 export function serveStatic(staticDir: string, pathname: string): Response {

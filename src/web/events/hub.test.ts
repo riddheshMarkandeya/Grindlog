@@ -86,11 +86,13 @@ describe("the events hub", () => {
     last().open();
     last().emit("match_ended", JSON.stringify({ guid: "G1", sessionKey: "G0" }));
     last().emit("session_break", JSON.stringify({ at: 5 }));
+    last().emit("records_recomputed", JSON.stringify({}));
     const expected: HubMessage[] = [
       { type: "link", link: "connecting" },
       { type: "link", link: "open" },
       { type: "match_ended", data: { guid: "G1", sessionKey: "G0" } },
       { type: "session_break", data: { at: 5 } },
+      { type: "records_recomputed", data: {} },
     ];
     expect(a.got).toEqual(expected);
     expect(b.got).toEqual(expected);
@@ -103,7 +105,35 @@ describe("the events hub", () => {
     last().emit("status", JSON.stringify(status));
     const late = port();
     h.connect(late);
-    expect(late.got).toEqual([{ type: "link", link: "open" }, { type: "status", data: status }]);
+    expect(late.got).toEqual([{ type: "link", link: "open" }, { type: "version", version: null }, { type: "status", data: status }]);
+  });
+
+  test("each status first posts the tracker's version on its own", () => {
+    const h = hub();
+    const a = port();
+    h.connect(a);
+    last().emit("status", JSON.stringify({ ...status, version: "0.2.0" }));
+    expect(a.got.slice(1)).toEqual([
+      { type: "version", version: "0.2.0" },
+      { type: "status", data: { ...status, version: "0.2.0" } },
+    ]);
+  });
+
+  test("a newer tracker's status this build can't parse still posts its version, so an old tab can reload", () => {
+    const h = hub();
+    const a = port();
+    h.connect(a);
+    last().emit("status", JSON.stringify({ ...status, connection: "paused", version: "0.3.0" }));
+    last().emit("status", JSON.stringify({ ...status, configProblems: ["something_new"], version: "0.3.0" }));
+    expect(a.got.slice(1)).toEqual([
+      { type: "version", version: "0.3.0" },
+      { type: "version", version: "0.3.0" },
+    ]);
+    expect(warn).toHaveBeenCalledWith("[grindlog] events/bad_payload", expect.anything());
+    // A late tab gets that version too, though no status was kept.
+    const late = port();
+    h.connect(late);
+    expect(late.got).toEqual([{ type: "link", link: "connecting" }, { type: "version", version: "0.3.0" }]);
   });
 
   test("a payload that fails its schema, or isn't JSON, is dropped with a warning", () => {
@@ -167,7 +197,7 @@ describe("the events hub", () => {
     fire();
     last().open();
     last().emit("status", JSON.stringify(status));
-    expect(a.got.slice(-2)).toEqual([{ type: "link", link: "open" }, { type: "status", data: status }]);
+    expect(a.got.slice(-3)).toEqual([{ type: "link", link: "open" }, { type: "version", version: null }, { type: "status", data: status }]);
     last().failHard();
     expect(fire()).toBe(1000);
   });

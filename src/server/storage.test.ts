@@ -39,7 +39,7 @@ describe("openStorage", () => {
       { id: 3, name: "S24", start_date: "2026-09-23" },
     ]);
     const names = (d: typeof tracker) => d.all<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").map((r) => r.name);
-    expect(names(tracker)).toEqual(["friends", "match_goals", "match_player_statfeed", "match_players", "matches", "my_ids", "never_suggest", "remark_picks", "remark_shown", "seasons", "session_breaks", "settings"]);
+    expect(names(tracker)).toEqual(["friends", "match_goals", "match_player_statfeed", "match_players", "matches", "meta", "my_ids", "never_suggest", "remark_picks", "remark_shown", "seasons", "session_breaks", "settings"]);
     expect(names(raw)).toEqual(["events", "retention_matches"]);
     expect(logger.lines.filter((l) => l.event === "migrated").map((l) => l.fields)).toMatchObject([
       { db: "tracker", from: 0, to: trackerMigrations.length },

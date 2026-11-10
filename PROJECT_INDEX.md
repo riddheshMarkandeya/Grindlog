@@ -12,7 +12,9 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   recording tracker), `control.ts` probing, listing, ending and starting this install's processes
   (shared with `stop.ts` and `autostart.ts`), `runtime-info.ts` version, channel, Windows and Bun for
   `started` lines, `game-watch.ts` game detection and toast, `exit-codes.ts`, `log.ts`
-  logger, `paths.ts` per-channel `identity()` (data dir, port, exe, task, shortcut) and paths from it, `storage.ts` opens both DBs, `maintenance.ts` schedules retention and backups; `db/`: `sqlite.ts` driver seam, `migrate.ts`, `migrations.ts`,
+  logger, `paths.ts` per-channel `identity()` (data dir, port, exe, task, shortcut) and paths from it, `storage.ts` opens both DBs, `maintenance.ts` schedules retention and backups, `release-recompute.ts` rebuilds every match record in
+  the background when a release build's version differs from tracker.db's `meta.recomputed_version` (dev builds
+  never; pauses while a match records; ends with the `records_recomputed` event); `db/`: `sqlite.ts` driver seam, `migrate.ts`, `migrations.ts`,
   `backup.ts`, `retention.ts`; `recorder/`: Stats API client, lifecycle, raw store, dedup,
   summary, checks, `play.ts` live-play view, `extras.ts` stat registry, `read-match.ts`, `thin.ts`
   which old UpdateStates retention deletes); `records/`: `record.ts` summary → rows, `save.ts` writer,
@@ -20,13 +22,14 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   `definitions.ts` renders the doc; `query/`: `read.ts` match records for pages with "you"
   joined, `sessions.ts` session cutting, `aggregate.ts` stats and the 30-day baseline; `api/`: the
   dashboard API mounted on the host: `index.ts` routes and writes, `pages.ts` composes each page,
-  `events.ts` SSE, `router.ts`, `static.ts` built web app; `remarks/`: the recap headline,
+  `events.ts` SSE (`status`, `match_ended`, `session_break`, `records_recomputed`), `router.ts`, `static.ts` built web app (every file `Cache-Control: no-cache`); `remarks/`: the recap headline,
   `copy.ts` line pool, `triggers.ts` mood and quip triggers, `pick.ts` the pure picker, `store.ts`
   stored picks and history),
   `src/web/` (the dashboard: Vite + React + React Router + TanStack Query; `main.tsx`, `App.tsx`
   routes, `api.ts` fetch + Zod parse; `events/`: `hub.ts` one `/api/events` stream fanned out to
-  tabs from a SharedWorker (`worker.ts`, in-page fallback in `client.ts`), `live.ts` header state,
-  `useLiveEvents.ts` refetch on events; `logic/` pure header logic; `components/` header and empty
+  tabs from a SharedWorker (`worker.ts`, in-page fallback in `client.ts`; it reads each status's `version`
+  leniently first and posts it on its own), `live.ts` header state, `useLiveEvents.ts` refetch on events and
+  one reload when the tracker's version changes (`logic/version-watch.ts`); `logic/` pure header logic; `components/` header and empty
   state; `styles/tokens.css` themes carbon, slate, oled; `pages/` placeholders until WP6+),
   `src/shared/` (`channel.ts` the baked dev/prod channel and `APP_NAME`, `version.ts` the baked
   `GRINDLOG_VERSION` (null in dev and source runs), `constants.ts`, `result.ts` your W/L, `playlists.ts` ID map, `goal-range.ts`
@@ -69,7 +72,7 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   restarts), then recompute. `uninstall-autostart` removes the task, shortcut and `bin`.
 - Data and logs: `%LOCALAPPDATA%\GrindlogDev\` (`logs\tracker.log`, `logs\supervisor.log` and `logs\launcher.log` (`--open`/`--quit`),
   5 × 5 MB, JSON lines); `GRINDLOG_DATA_DIR` overrides it for tests and dev runs. Also `tracker.db` (settings, seasons,
-  IDs, match records; backed up to `backups/`, 7 kept), `raw.db` (raw events; after 90 days a
+  IDs, match records, `meta` app state such as the last recomputed version; backed up to `backups/`, 7 kept), `raw.db` (raw events; after 90 days a
   match's UpdateStates are thinned to the scoreboard changes, with its car stats and camera
   snapshotted in `retention_matches`; a flagged match is kept whole, as is one whose thinned
   rebuild gives a different record (`retention/thin_mismatch`), and every other event is kept).
@@ -95,6 +98,8 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   Task Scheduler doesn't restart a crashed task.
 
 ## Plans
+- `docs/plans/2026-11-10-wp2b-release-data.md`: step 4 package 2b, the release recompute and its `meta` marker,
+  `records_recomputed`, `Cache-Control: no-cache`, tabs reloading once on a new version; review log (3 rounds).
 - `docs/reviews/2026-11-10-wp2a-process-control.md`: step 4 package 2a review summary (3 rounds, 2 disputed nits).
 - `docs/plans/2026-11-10-wp2a-process-control.md`: step 4 package 2a, the detached-spawn spike, baked version,
   `version`/`pid` in `/api/status`, `--open`, `--quit` and the shared control module; review log.

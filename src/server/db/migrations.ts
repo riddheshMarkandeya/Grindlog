@@ -145,6 +145,14 @@ export const trackerMigrations: readonly string[] = [
     added_at   INTEGER NOT NULL
   );
   `,
+  // App state that isn't a user setting (the settings table only takes keys from the settings
+  // schema), e.g. the version whose rules last recomputed every match.
+  `
+  CREATE TABLE meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+  `,
 ];
 
 export const rawMigrations: readonly string[] = [

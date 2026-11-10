@@ -327,7 +327,11 @@ export const statusSchema = z.object({
   /** The game has run a minute or more without the Stats API answering. */
   statsApiOff: z.boolean(),
   configProblems: z.array(z.enum(["no_ini", "user_missing", "send_rate_off", "web_port_off", "web_port_mismatch"])),
-  /** The release this build is; null for dev and source runs. */
+  /**
+   * The release this build is; null for dev and source runs. An open tab reloads when it changes,
+   * and an old tab's worker reads it even from a status its own schema rejects, so it must stay a
+   * top-level nullable string in every later build.
+   */
   version: z.string().nullable(),
   /** The tracker's process ID, so launchers and the updater know which process answered. */
   pid: z.number().int(),
@@ -346,6 +350,8 @@ export const sseEvents = {
   status: statusSchema,
   match_ended: z.object({ guid: z.string(), sessionKey: z.string().nullable() }),
   session_break: breakResponse,
+  /** A background recompute ended: any record may have changed. */
+  records_recomputed: z.object({}),
 };
 export type SseEvents = { [K in keyof typeof sseEvents]: z.infer<(typeof sseEvents)[K]> };
 

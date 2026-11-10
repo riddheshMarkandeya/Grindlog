@@ -323,6 +323,15 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
         logger.error(C, "match_ended_failed", { guid, err });
       }
     },
+    /** Tells open pages a background recompute ended, so any record may have changed. Never throws. */
+    recordsRecomputed(): void {
+      try {
+        hub.publish("records_recomputed", {});
+        logger.info(C, "records_recomputed", { subscribers: hub.count() });
+      } catch (err) {
+        logger.error(C, "records_recomputed_failed", { err });
+      }
+    },
     stop: () => {
       stopped = true;
       hub.stop();

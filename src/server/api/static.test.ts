@@ -26,6 +26,11 @@ const APP = [200, "<html>app</html>"] as const;
 const NOT_FOUND = [404, "not found"] as const;
 
 describe("serveStatic", () => {
+  test("every file and the index fallback must be revalidated, so an update never serves an old index.html", () => {
+    expect(serveStatic(dist, "/assets/app.js").headers.get("cache-control")).toBe("no-cache");
+    expect(serveStatic(dist, "/sessions/abc").headers.get("cache-control")).toBe("no-cache");
+  });
+
   test("a file under the dir, with its type", async () => {
     const res = serveStatic(dist, "/assets/app.js");
     expect(await body(res)).toEqual([200, "console.log(1)"]);

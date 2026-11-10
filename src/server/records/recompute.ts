@@ -16,6 +16,8 @@ export interface RecomputeOptions {
   tracker: Db;
   logger: Logger;
   now?: () => number;
+  /** Count info-level skips without logging each one; a background run would otherwise log every lobby, every time. */
+  quietSkips?: boolean;
 }
 
 export type SkipReason = "open" | "lobby" | "lobby_has_record" | "trimmed" | "ignored_playlist";
@@ -29,7 +31,21 @@ export interface RecomputeResult {
 
 const C = "records";
 
-export function recomputeAll({ raw, tracker, logger, now }: RecomputeOptions): RecomputeResult {
+/** Drains recomputeSteps in one go. */
+export function recomputeAll(opts: RecomputeOptions): RecomputeResult {
+  const steps = recomputeSteps(opts);
+  for (;;) {
+    const next = steps.next();
+    if (next.done === true) return next.value;
+  }
+}
+
+/**
+ * The recompute one match at a time: it yields after each match, so a caller can pause or stop between
+ * them. Each yield is the number of matches still to do; after the last (0), the next step only returns
+ * the result.
+ */
+export function* recomputeSteps({ raw, tracker, logger, now, quietSkips = false }: RecomputeOptions): Generator<number, RecomputeResult> {
   const started = performance.now();
   const store = createRawStore(raw);
   const writer = createRecordWriter({ tracker, logger, now });
@@ -39,13 +55,14 @@ export function recomputeAll({ raw, tracker, logger, now }: RecomputeOptions): R
   };
   const skip = (guid: string, reason: SkipReason, level: "info" | "warn" = "info") => {
     tally(reason);
+    if (level === "info" && quietSkips) return;
     logger[level](C, "recompute_skipped", { guid, reason });
   };
 
   const matches = store.matches();
   const newest = store.lastEvent()?.guid;
   logger.info(C, "recompute_started", { matches: matches.length });
-  for (const { guid, minSeq } of matches) {
+  const recomputeOne = (guid: string, minSeq: number) => {
     try {
       const r = readableAs(store, guid, minSeq);
       if ("unreadable" in r) {
@@ -62,7 +79,7 @@ export function recomputeAll({ raw, tracker, logger, now }: RecomputeOptions): R
           const hasRecord = tracker.get("SELECT 1 FROM matches WHERE guid = ?", guid) !== undefined;
           skip(guid, hasRecord ? "lobby_has_record" : "lobby", hasRecord ? "warn" : "info");
         }
-        continue;
+        return;
       }
       if (writer.save(toRecord(readMatch(store, guid, r.via).summary)) === "ignored") {
         // The writer has logged the match and removed any record of it.
@@ -75,6 +92,10 @@ export function recomputeAll({ raw, tracker, logger, now }: RecomputeOptions): R
       result.failed++;
       logger.error(C, "recompute_failed", { guid, err });
     }
+  };
+  for (const [i, { guid, minSeq }] of matches.entries()) {
+    recomputeOne(guid, minSeq);
+    yield matches.length - i - 1;
   }
   result.ms = Math.round(performance.now() - started);
   logger.info(C, "recompute_done", { ...result });
