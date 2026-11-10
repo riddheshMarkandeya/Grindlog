@@ -184,7 +184,7 @@ function Form({ s }: { s: Settings }) {
   );
 }
 
-/** "Start with Windows": the logon task itself, read and switched through schtasks, so it loads on its own. */
+/** "Run at Windows startup": the logon task itself, read and switched through schtasks, so it loads on its own. */
 function StartupSection() {
   const labelId = useId();
   const q = useAutostart();
@@ -195,7 +195,7 @@ function StartupSection() {
   return (
     <Section anchor="startup" title="Startup" intro="How Grindlog runs on this PC.">
       {q.data ? (
-        <RowFrame label="Start with Windows" help={q.data.state === "unavailable" ? "Couldn't find or read Grindlog's startup task on this PC." : "Starts recording when you sign in to Windows."} labelId={labelId} m={m} save={save}>
+        <RowFrame label="Run at Windows startup" help={q.data.state === "unavailable" ? "Couldn't find or read Grindlog's startup task on this PC." : "Starts recording when you sign in to Windows."} labelId={labelId} m={m} save={save}>
           <Switch labelId={labelId} checked={q.data.state === "on"} disabled={q.data.state === "unavailable"} onToggle={save} />
         </RowFrame>
       ) : (

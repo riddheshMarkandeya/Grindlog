@@ -337,7 +337,7 @@ export const statusSchema = z.object({
   pid: z.number().int(),
 });
 
-/** The "Start with Windows" switch: the logon task on or off, or unavailable when it's missing or can't be read. */
+/** The "Run at Windows startup" switch: the logon task on or off, or unavailable when it's missing or can't be read. */
 export const autostartResponse = z.object({ state: z.enum(["on", "off", "unavailable"]) });
 
 export const breakResponse = z.object({ at: z.number() });

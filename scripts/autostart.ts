@@ -79,7 +79,7 @@ function run(cmd: string[], cwd?: string): string {
 }
 
 /**
- * Whether the dashboard's "Start with Windows" switched the task off. A missing task (first install)
+ * Whether the dashboard's "Run at Windows startup" switched the task off. A missing task (first install)
  * counts as on, the default; so does one whose XML can't be read, with a warning, since it gets re-enabled.
  */
 function taskSwitchedOff(): boolean {
@@ -313,7 +313,7 @@ async function install(): Promise<void> {
   } finally {
     if (switchedOff) {
       run(["schtasks", "/Change", "/TN", ID.task, "/DISABLE"]);
-      console.log("Start with Windows stays off, as the dashboard set it.");
+      console.log("Run at Windows startup stays off, as the dashboard set it.");
     }
   }
   writeShortcut(join(web, "favicon.ico"));

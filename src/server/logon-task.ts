@@ -1,5 +1,5 @@
 // The logon task that starts Grindlog at sign-in, read and switched on or off for the dashboard's
-// "Start with Windows" setting. The task itself is the only record of the choice, so installers
+// "Run at Windows startup" setting. The task itself is the only record of the choice, so installers
 // must keep a task switched off when they update it.
 import type { z } from "zod";
 import type { autostartResponse } from "../shared/schemas/responses";

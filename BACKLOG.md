@@ -107,8 +107,8 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   so check which is right, since it decides which season a match on that day counts in.
 
 ## Watch list
-- [ ] **[bug (latent), Low, Standard]** Trigger: a `logon_task/unexpected_xml` line in a friend's log. The "Start
-  with Windows" read takes the task's state from `<Settings>` in `schtasks /Query /XML` (no `<Enabled>` there = on,
+- [ ] **[bug (latent), Low, Standard]** Trigger: a `logon_task/unexpected_xml` line in a friend's log. The "Run at
+  Windows startup" read takes the task's state from `<Settings>` in `schtasks /Query /XML` (no `<Enabled>` there = on,
   `false` = off), captured on one Windows 11 PC only; an unreadable shape shows the switch as unavailable. Fit
   `parseTaskState` to that XML.
 - [ ] **[feature, Low, Standard]** Trigger: a friend loses a match to an update rollback. Rollback restores the

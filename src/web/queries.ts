@@ -309,7 +309,7 @@ export function useAutostart() {
   return useQuery({ queryKey: AUTOSTART_KEY, queryFn: () => getJson("/api/autostart", autostartResponse), retry: false, staleTime: Infinity });
 }
 
-/** Switches "Start with Windows" on or off; the answer is what Windows now holds. */
+/** Switches "Run at Windows startup" on or off; the answer is what Windows now holds. */
 export function useSetAutostart() {
   return useWholeWrite(AUTOSTART_KEY, (on: boolean) => postJson(`/api/autostart?on=${String(on)}`, WRITE, autostartResponse));
 }

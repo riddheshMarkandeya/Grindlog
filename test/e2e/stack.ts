@@ -31,7 +31,7 @@ const READY_TIMEOUT_MS = 30_000;
 const STOP_TIMEOUT_MS = 10_000;
 /** The `update` seed's first release, so a restart's version change has a non-null baseline. */
 const UPDATE_FROM = "e2e-a";
-/** A logon task that never exists, so the tracker reads "Start with Windows" as unavailable and never switches a real one. */
+/** A logon task that never exists, so the tracker reads "Run at Windows startup" as unavailable and never switches a real one. */
 const E2E_TASK = "GrindlogE2eNoSuchTask";
 
 const say = (msg: string, fields: Record<string, unknown> = {}) => {

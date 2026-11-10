@@ -182,10 +182,10 @@ test("a failed save keeps the old value and offers Retry; a working Retry hands 
   await expect(window).toHaveValue("20");
 });
 
-test("Start with Windows reads the real logon task: the stack's never exists, so it's unavailable", async ({ page }) => {
+test("Run at Windows startup reads the real logon task: the stack's never exists, so it's unavailable", async ({ page }) => {
   await page.goto("/settings");
-  const startup = row(page, "Start with Windows");
-  await expect(page.getByRole("switch", { name: "Start with Windows" })).toBeDisabled();
+  const startup = row(page, "Run at Windows startup");
+  await expect(page.getByRole("switch", { name: "Run at Windows startup" })).toBeDisabled();
   await expect(startup).toContainText("Couldn't find or read Grindlog's startup task on this PC.");
 });
 
@@ -202,14 +202,14 @@ async function fakeAutostart(page: Page, start: "on" | "off") {
   return fake;
 }
 
-test("Start with Windows switches off and on and says so", async ({ page }) => {
+test("Run at Windows startup switches off and on and says so", async ({ page }) => {
   const fake = await fakeAutostart(page, "on");
   await page.goto("/settings");
-  const toggle = page.getByRole("switch", { name: "Start with Windows" });
+  const toggle = page.getByRole("switch", { name: "Run at Windows startup" });
   await expect(toggle).toBeChecked();
-  await expect(row(page, "Start with Windows")).toContainText("Starts recording when you sign in to Windows.");
+  await expect(row(page, "Run at Windows startup")).toContainText("Starts recording when you sign in to Windows.");
   await toggle.click();
-  await expect(saved(page, "Start with Windows")).toHaveText("✓ Saved");
+  await expect(saved(page, "Run at Windows startup")).toHaveText("✓ Saved");
   await expect(toggle).not.toBeChecked();
   expect(fake.state).toBe("off");
   await toggle.click();
@@ -217,24 +217,24 @@ test("Start with Windows switches off and on and says so", async ({ page }) => {
   expect(fake.state).toBe("on");
 });
 
-test("a failed Start with Windows switch keeps the old state and offers Retry; a working Retry hands focus back", async ({ page }) => {
+test("a failed Run at Windows startup switch keeps the old state and offers Retry; a working Retry hands focus back", async ({ page }) => {
   const fake = await fakeAutostart(page, "on");
   fake.fail = true;
   await page.goto("/settings");
-  const toggle = page.getByRole("switch", { name: "Start with Windows" });
+  const toggle = page.getByRole("switch", { name: "Run at Windows startup" });
   await toggle.click();
-  await expect(row(page, "Start with Windows")).toContainText("Couldn't save");
+  await expect(row(page, "Run at Windows startup")).toContainText("Couldn't save");
   await expect(toggle).toBeChecked();
   fake.fail = false;
-  const retry = row(page, "Start with Windows").getByRole("button", { name: "Retry" });
+  const retry = row(page, "Run at Windows startup").getByRole("button", { name: "Retry" });
   await retry.focus();
   await retry.press("Enter");
-  await expect(saved(page, "Start with Windows")).toHaveText("✓ Saved");
+  await expect(saved(page, "Run at Windows startup")).toHaveText("✓ Saved");
   await expect(toggle).not.toBeChecked();
   await expect(toggle).toBeFocused();
 });
 
-test("a failed Start with Windows read offers Retry", async ({ page }) => {
+test("a failed Run at Windows startup read offers Retry", async ({ page }) => {
   let fail = true;
   await page.route("**/api/autostart", (route) => (fail ? route.fulfill({ status: 500, json: { error: "internal" } }) : route.fulfill({ json: { state: "on" } })));
   await page.goto("/settings");
@@ -242,7 +242,7 @@ test("a failed Start with Windows read offers Retry", async ({ page }) => {
   await expect(startup).toContainText("Couldn't load the startup setting.");
   fail = false;
   await startup.getByRole("button", { name: "Retry" }).click();
-  await expect(page.getByRole("switch", { name: "Start with Windows" })).toBeChecked();
+  await expect(page.getByRole("switch", { name: "Run at Windows startup" })).toBeChecked();
 });
 
 test("reset puts a section back, reads Defaults, and focuses its heading", async ({ page, request }) => {
@@ -262,7 +262,7 @@ test("passes axe in every theme, and fits at 320px", async ({ page, request }) =
     await page.goto("/settings");
     await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
     await expect(page.getByRole("radio", { name: "Carbon" })).toBeVisible();
-    await expect(page.getByRole("switch", { name: "Start with Windows" })).toBeVisible();
+    await expect(page.getByRole("switch", { name: "Run at Windows startup" })).toBeVisible();
     const { violations } = await new AxeBuilder({ page }).analyze();
     expect(violations, theme).toEqual([]);
   }

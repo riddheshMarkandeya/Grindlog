@@ -54,7 +54,7 @@ export interface ApiOptions {
   logger: Logger;
   now?: () => number;
   events?: Partial<Omit<EventHubOptions, "status" | "logger">>;
-  /** The logon task behind the "Start with Windows" setting. */
+  /** The logon task behind the "Run at Windows startup" setting. */
   logonTask: Pick<LogonTask, "get" | "set">;
 }
 
