@@ -84,10 +84,10 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
     "Is this you?" card.
   - [x] **[feature, Med, Substantial]** 5. Installer and release pipeline: Inno script, Start menu `.lnk`, tag workflow,
     `sign-release`, `rcedit` on `InternalName`.
-  - [ ] **[feature, Med, Substantial]** 6a. Updater check: minisign verifier, feed and `GRINDLOG_UPDATE_FEED`,
+  - [x] **[feature, Med, Substantial]** 6a. Updater check: minisign verifier, feed and `GRINDLOG_UPDATE_FEED`,
     download, shared state file, supervisor check loop, `/api/update`, auto-apply choice, tray and dashboard lines.
     Fold-in: the antivirus backup-rename retry. Plan: `docs/plans/2026-11-12-wp6a-updater-check.md`.
-  - [ ] **[feature, Med, Substantial]** 6b. Updater apply: `--update` mode, apply gate, apply, health check, rollback,
+  - [x] **[feature, Med, Substantial]** 6b. Updater apply: `--update` mode, apply gate, apply, health check, rollback,
     raw.db pre-migration backup, free-space check, interrupted updates, `updater.log`; see 6a's "Handed to 6b". (The
     "no release tag between 6a and 6b" rule ends with 6b.) Detached starts use `spawnDetached` (`Bun.spawn` with
     `detached: true`), which survives the parent's exit, a force-kill and Task Scheduler's End (spike result in
