@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { createNotifier } from "./notifier";
+import { createNotifier, toastScript } from "./notifier";
 import { memoryLogger } from "./testing";
 
 const first = { title: "Grindlog", body: "first" };
@@ -88,5 +88,18 @@ describe("createNotifier", () => {
     notifier.poll(ack(1));
     vi.advanceTimersByTime(1_000);
     expect(toast).not.toHaveBeenCalled();
+  });
+});
+
+describe("toastScript", () => {
+  test("a url becomes the toast's protocol launch, quoted for PowerShell", () => {
+    const script = toastScript({ title: "Grindlog couldn't restart", body: "Reinstall it", url: "https://example.com/it's" });
+    expect(script).toContain(`$t.DocumentElement.SetAttribute('activationType', 'protocol')`);
+    expect(script).toContain(`$t.DocumentElement.SetAttribute('launch', 'https://example.com/it''s')`);
+    expect(script).toContain(`CreateTextNode('Grindlog couldn''t restart')`);
+  });
+
+  test("without a url the toast has no launch", () => {
+    expect(toastScript({ title: "t", body: "b" })).not.toContain("launch");
   });
 });

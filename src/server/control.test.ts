@@ -2,9 +2,35 @@ import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { exeProcesses, killExe, pidAlive, statusProbe } from "./control";
+import { exeProcesses, killExe, pidAlive, statusInfo, statusProbe } from "./control";
 import { startHost } from "./host";
 import { freePort, memoryLogger } from "./testing";
+
+describe("statusInfo", () => {
+  test("a mounted API gives the pid, version and connection; refused and starting read as statusProbe's", async () => {
+    const port = await freePort();
+    expect(await statusInfo(port)).toBe("refused");
+    const host = startHost({ port, logger: memoryLogger(), onShutdown: () => undefined });
+    try {
+      expect(await statusInfo(port)).toBe("starting");
+      host.mount(() => Response.json({ connection: "recording", version: "0.1.1", pid: 4321, statsApiOff: false }));
+      expect(await statusInfo(port)).toEqual({ pid: 4321, version: "0.1.1", connection: "recording" });
+    } finally {
+      host.stop();
+    }
+  });
+
+  test("an older build's status (no version, a connection this one doesn't know) still gives the pid", async () => {
+    const port = await freePort();
+    const host = startHost({ port, logger: memoryLogger(), onShutdown: () => undefined });
+    try {
+      host.mount(() => Response.json({ connection: 7, pid: 99 }));
+      expect(await statusInfo(port)).toEqual({ pid: 99, version: null });
+    } finally {
+      host.stop();
+    }
+  });
+});
 
 describe("statusProbe", () => {
   test("nothing on the port is refused, a host before its API mounts is starting, and a mounted API gives the tracker's pid", async () => {

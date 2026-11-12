@@ -11,6 +11,7 @@ import { filterLabel } from "../../logic/filter-options";
 import { SPEED_LABEL } from "../../logic/format";
 import { parseWindow } from "../../logic/settings";
 import type { UpdateResponse } from "../../../shared/schemas/responses";
+import { lastApplyText } from "../../../shared/update-text";
 import { useAutostart, useInstallUpdate, useSetAutoApply, useSetAutostart, useSettingsQuery, useUpdate } from "../../queries";
 import { ApiError } from "../../api";
 import { SaveStatus, type SaveState } from "../../components/SaveStatus";
@@ -210,7 +211,14 @@ function StartupSection() {
 /** Says plainly that update checks are the app's only internet traffic. */
 const UPDATES_INTRO = "Grindlog's only internet use: it checks GitHub for new versions every few hours, and installs only ones signed by its developer.";
 
+/** How the last update ended comes first, so a failed one isn't hidden behind "up to date". */
 function updateSentence(u: UpdateResponse): string {
+  if (u.lastApply === null) return statusSentence(u);
+  const last = `${lastApplyText(u.lastApply)}.`;
+  return u.status === "up_to_date" ? last : `${last} ${statusSentence(u)}`;
+}
+
+function statusSentence(u: UpdateResponse): string {
   switch (u.status) {
     case "disabled": return u.version === null ? "Dev builds don't update." : "This build doesn't update.";
     case "not_checked": return `Grindlog ${u.version ?? ""} hasn't checked for updates yet.`;

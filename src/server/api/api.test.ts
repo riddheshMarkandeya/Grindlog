@@ -635,7 +635,7 @@ describe("update", () => {
   };
 
   test("reads as not checked before the supervisor's first check", async () => {
-    expect(await get(updateResponse, "/api/update")).toEqual({ enabled: true, version: "0.1.0", status: "not_checked", available: null, skipped: null, autoApply: true, installRequested: false, checkedAt: null });
+    expect(await get(updateResponse, "/api/update")).toEqual({ enabled: true, version: "0.1.0", status: "not_checked", available: null, skipped: null, autoApply: true, installRequested: false, checkedAt: null, lastApply: null });
   });
 
   test("a ready update can be asked for, and then reads as requested", async () => {

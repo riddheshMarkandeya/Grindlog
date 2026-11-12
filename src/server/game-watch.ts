@@ -53,7 +53,7 @@ export function step(state: WatchState, input: { gameRunning: boolean; status: C
 const DETECT_TIMEOUT_MS = 10_000;
 
 /** Whether the game is running; throws when tasklist can't be run, fails or times out. */
-async function detectGame(): Promise<boolean> {
+export async function detectGame(): Promise<boolean> {
   const { code, stdout, stderr, timedOut } = await runCommand(["tasklist", "/FI", `IMAGENAME eq ${GAME_IMAGE}`, "/FO", "CSV", "/NH"], DETECT_TIMEOUT_MS);
   if (timedOut) throw new Error(`tasklist timed out after ${String(DETECT_TIMEOUT_MS)} ms`);
   if (code !== 0) throw new Error(`tasklist exited ${String(code)}: ${stderr.trim()}`);

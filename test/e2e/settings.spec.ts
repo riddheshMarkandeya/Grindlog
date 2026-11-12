@@ -273,7 +273,7 @@ test("passes axe in every theme, and fits at 320px", async ({ page, request }) =
 });
 
 const PAGE = "https://github.com/riddheshMarkandeya/Grindlog/releases/tag/v0.2.0";
-const UPDATE = { enabled: true, version: "0.1.0", status: "up_to_date", available: null, skipped: null, autoApply: true, installRequested: false, checkedAt: "2026-11-12T10:00:00.000Z" };
+const UPDATE = { enabled: true, version: "0.1.0", status: "up_to_date", available: null, skipped: null, autoApply: true, installRequested: false, checkedAt: "2026-11-12T10:00:00.000Z", lastApply: null };
 const READY = { ...UPDATE, status: "ready", available: { version: "0.2.0", page: PAGE } };
 
 /** Answers /api/update from `view`; the writes change it the way the tracker does, or fail with `fail`. */
@@ -310,6 +310,10 @@ test("Updates: each status reads as a sentence", async ({ page }) => {
     [{ ...UPDATE, status: "error" }, "Couldn't check for updates. It tries again later."],
     [{ ...UPDATE, status: "skipped", skipped: "0.3.0" }, "Update 0.3.0 was skipped: its signature didn't check out."],
     [READY, "Grindlog 0.2.0 is ready to install."],
+    // How the last update ended comes first, so a failed one isn't hidden behind "up to date".
+    [{ ...UPDATE, version: "0.2.0", lastApply: { outcome: "updated", from: "0.1.0", to: "0.2.0", reason: null, at: "t", page: PAGE } }, "Updated to 0.2.0."],
+    [{ ...UPDATE, lastApply: { outcome: "rolled_back", from: "0.1.0", to: "0.2.0", reason: "health_check_failed", at: "t", page: PAGE } }, "Update 0.2.0 didn't start, so Grindlog went back to 0.1.0."],
+    [{ ...READY, available: { version: "0.2.1", page: PAGE }, lastApply: { outcome: "rolled_back", from: "0.1.0", to: "0.2.0", reason: "low_disk", at: "t", page: PAGE } }, "Update 0.2.0 needed more disk space, so Grindlog went back to 0.1.0. Grindlog 0.2.1 is ready to install."],
   ];
   for (const [view, text] of cases) {
     fake.view = view;

@@ -1,6 +1,7 @@
-// The two small JSON files the supervisor, the tracker and the separate apply-step updater share in <data>\update\.
-// Each file has one writer, so no two processes ever race on one: the supervisor and updater write
-// state.json, the tracker writes request.json. Readers take a default for a missing or bad file.
+// The small JSON files the supervisor, the tracker and the separate apply-step updater share in <data>\update\.
+// Each file has one writer at a time, so no two processes ever race on one: the supervisor and updater write
+// state.json (the updater alone while `apply` is set), the tracker writes request.json and start-failure.json.
+// Readers take a default for a missing or bad file.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
@@ -10,6 +11,7 @@ import type { Logger } from "../log";
 
 export const STATE_FILE = "state.json";
 export const REQUEST_FILE = "request.json";
+export const START_FAILURE_FILE = "start-failure.json";
 
 // Loose objects, nested ones too, keep fields this version doesn't know: a rollback runs older code
 // against a file a newer updater wrote, and a write must not drop what that updater needs to read back.
@@ -24,8 +26,35 @@ const stateSchema = z.looseObject({
   etag: z.string().optional(),
   available: z.looseObject({ version, file: z.string(), verifiedAt: z.string() }).optional(),
   skipped: z.array(z.looseObject({ version, reason: z.string() })),
+  // Present means an apply owns state.json. Phase, outcome and reason are plain strings, not enums: a value from
+  // a newer version must not fail the parse, or the next write would rebuild the file from the default.
+  apply: z.looseObject({ from: version, to: version, startedAt: z.string(), phase: z.string() }).optional(),
+  lastApply: z.looseObject({ from: version, to: version, outcome: z.string(), reason: z.string().optional(), at: z.string() }).optional(),
 });
 export type UpdateState = z.infer<typeof stateSchema>;
+export type ApplyRecord = NonNullable<UpdateState["apply"]>;
+export type LastApply = NonNullable<UpdateState["lastApply"]>;
+
+/** Phases this code writes; readers must tolerate others. */
+export type ApplyPhase = "starting" | "stopping" | "installing" | "checking" | "rolling_back" | "checking_previous";
+/** Outcomes this code writes; readers must tolerate others. */
+export type ApplyOutcome = "updated" | "rolled_back" | "rollback_failed" | "not_started" | "interrupted" | "unhealthy";
+
+const startFailureSchema = z.looseObject({
+  v: z.literal(1),
+  version,
+  reason: z.string(),
+  freeBytes: z.number(),
+  needBytes: z.number(),
+  at: z.string(),
+});
+export interface StartFailure {
+  version: string;
+  reason: string;
+  freeBytes: number;
+  needBytes: number;
+  at: string;
+}
 
 const requestSchema = z.looseObject({
   v: z.literal(1),
@@ -87,3 +116,13 @@ export const readRequest = (dir: string, logger: Logger): UpdateRequest => readJ
 export const writeState = (dir: string, logger: Logger, changes: Partial<UpdateState>): boolean => mergeWrite(dir, STATE_FILE, readState(dir, logger), changes, logger);
 /** Tracker only. Returns false (and logs) when the write failed. */
 export const writeRequest = (dir: string, logger: Logger, changes: Partial<UpdateRequest>): boolean => mergeWrite(dir, REQUEST_FILE, readRequest(dir, logger), changes, logger);
+
+/** Tracker only: why the last start failed, for the updater's health check. Never deleted; readers filter by apply. */
+export const writeStartFailure = (dir: string, logger: Logger, failure: StartFailure): boolean => mergeWrite(dir, START_FAILURE_FILE, {}, { v: 1, ...failure }, logger);
+
+/** The start failure the apply's new version wrote after the apply began, if any. */
+export function readStartFailure(dir: string, apply: Pick<ApplyRecord, "to" | "startedAt">, logger: Logger): StartFailure | undefined {
+  const failure = readJson<StartFailure | undefined>(join(dir, START_FAILURE_FILE), startFailureSchema, undefined, logger);
+  if (failure?.version !== apply.to || failure.at < apply.startedAt) return undefined;
+  return failure;
+}

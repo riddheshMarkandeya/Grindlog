@@ -58,6 +58,8 @@ export const UPDATE_REPO = "riddheshMarkandeya/Grindlog";
 export const RELEASES_API = `https://api.github.com/repos/${UPDATE_REPO}/releases/latest`;
 /** The only https prefix the tray opens; it is passed to the tray so both sides share it. */
 export const RELEASE_PAGE_PREFIX = `https://github.com/${UPDATE_REPO}/releases/tag/`;
+/** Where a user reinstalls from when an update and its rollback both failed. */
+export const RELEASES_LATEST_PAGE = `https://github.com/${UPDATE_REPO}/releases/latest`;
 
 /** Built from a verified version, never taken from the feed, so it can't point outside the repo. */
 export function releasePage(version: string): string {

@@ -1,17 +1,17 @@
 // The supervisor's update check: find the latest release, download it, verify its minisign
 // signature and signed version, and record the result in state.json. A separate updater process applies it.
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import type { Channel } from "../../shared/channel";
-import { installerName, isNewer, parseTrustedComment } from "../../shared/release";
+import { installerName, isNewer } from "../../shared/release";
 import type { Logger } from "../log";
 import { download } from "./download";
 import { feedSource, fetchLatest, pickCandidate, type FeedSource, type Pick } from "./feed";
-import { verifyMinisign } from "./minisign";
+import { startApplyGate, type ApplyGateOptions } from "./gate";
+import { checkInstaller, clearDownloads, downloadDir, haveInstallerFiles, installerFiles } from "./files";
 import { disabledReason } from "../../shared/update-key";
 import { readState, writeState, type UpdateState } from "./state";
 
-export type CheckOutcome = "up_to_date" | "downloaded" | "skipped" | "skipped_before" | "error";
+export type CheckOutcome = "up_to_date" | "downloaded" | "skipped" | "skipped_before" | "error" | "apply_in_progress";
 
 export interface CheckDeps {
   /** <data>\update */
@@ -29,39 +29,16 @@ export interface CheckDeps {
 const INSTALLER_MAX_BYTES = 200 * 1024 * 1024;
 const SIGNATURE_MAX_BYTES = 4096;
 
-const downloadDir = (dir: string) => join(dir, "download");
-const filesOf = (dir: string, version: string) => {
-  const installer = join(downloadDir(dir), installerName(version));
-  return { installer, signature: `${installer}.minisig` };
-};
-const haveFiles = (dir: string, version: string) => {
-  const f = filesOf(dir, version);
-  return existsSync(f.installer) && existsSync(f.signature);
-};
-
-/** Removes every download except `keep`'s two files. Best effort: a leftover is only disk space. */
-function clearDownloads(dir: string, logger: Logger, keep?: string): void {
-  const keepNames = keep === undefined ? [] : [installerName(keep), `${installerName(keep)}.minisig`];
-  let names: string[];
-  try {
-    names = readdirSync(downloadDir(dir));
-  } catch {
-    return;
-  }
-  for (const name of names.filter((n) => !keepNames.includes(n))) {
-    try {
-      rmSync(join(downloadDir(dir), name), { force: true });
-    } catch (err) {
-      logger.warn("update", "cleanup_failed", { name, err });
-    }
-  }
-}
-
 /** One check. Never throws for a feed, network or signature problem: those are outcomes. */
 export async function runCheck(d: CheckDeps): Promise<CheckOutcome> {
   const started = performance.now();
   const now = (d.now ?? (() => new Date()))().toISOString();
   const state = readState(d.dir, d.logger);
+  // While an apply is set the updater is state.json's only writer, and a check's write could undo its own.
+  if (state.apply) {
+    d.logger.info("update", "apply_in_progress", { phase: state.apply.phase, to: state.apply.to });
+    return "apply_in_progress";
+  }
   const newer = (version: string) => isNewer(version, d.running);
   const fetchOpt = d.fetch ? { fetch: d.fetch } : {};
   const skipped = state.skipped.filter((s) => newer(s.version));
@@ -69,13 +46,13 @@ export async function runCheck(d: CheckDeps): Promise<CheckOutcome> {
   // up with is stale, and one whose files are gone (antivirus quarantine, a manual delete) must be
   // fetched again, so the ETag that would 304 it away is dropped.
   const availableStale = state.available !== undefined && !newer(state.available.version);
-  const availableGone = state.available !== undefined && !availableStale && !haveFiles(d.dir, state.available.version);
+  const availableGone = state.available !== undefined && !availableStale && !haveInstallerFiles(d.dir, state.available.version);
   if (availableStale) clearDownloads(d.dir, d.logger);
   const dropAvailable = availableStale || availableGone;
   const stillAvailable = state.available !== undefined && !dropAvailable;
   const etag = availableGone ? undefined : state.etag;
 
-  const record = (outcome: CheckOutcome, changes: Partial<UpdateState>, fields: Record<string, unknown> = {}): CheckOutcome => {
+  const record = (outcome: Exclude<CheckOutcome, "apply_in_progress">, changes: Partial<UpdateState>, fields: Record<string, unknown> = {}): CheckOutcome => {
     const lastOutcome = outcome === "skipped_before" ? "skipped" : outcome;
     writeState(d.dir, d.logger, { checkedAt: now, lastOutcome, lastError: undefined, skipped, ...(dropAvailable ? { available: undefined } : {}), ...changes });
     d.logger.info("update", "check_result", { outcome, ms: Math.round(performance.now() - started), ...fields });
@@ -113,7 +90,7 @@ export async function runCheck(d: CheckDeps): Promise<CheckOutcome> {
   const { version } = pick;
   if (stillAvailable && state.available?.version === version) return record("downloaded", handled, { latest: version });
 
-  const files = filesOf(d.dir, version);
+  const files = installerFiles(d.dir, version);
   const discard = () => {
     rmSync(files.installer, { force: true });
     rmSync(files.signature, { force: true });
@@ -141,15 +118,11 @@ export async function runCheck(d: CheckDeps): Promise<CheckOutcome> {
     discard();
     return record("skipped", { ...handled, skipped: [...skipped, { version, reason }] }, { latest: version, reason });
   };
-  const verified = verifyMinisign({ publicKey: d.publicKey, signature, file: installer });
-  if (!verified.ok) {
-    d.logger.warn("update", "verify_failed", { version, reason: verified.reason });
-    return skip(verified.reason);
-  }
-  const comment = parseTrustedComment(verified.trustedComment);
-  if (comment?.version !== version || comment.file !== installerName(version)) {
-    d.logger.warn("update", "comment_mismatch", { version, comment: verified.trustedComment });
-    return skip("comment_mismatch");
+  const checked = checkInstaller({ publicKey: d.publicKey, version, signature, installer });
+  if (!checked.ok) {
+    if (checked.reason === "comment_mismatch") d.logger.warn("update", "comment_mismatch", { version, comment: checked.comment });
+    else d.logger.warn("update", "verify_failed", { version, reason: checked.reason });
+    return skip(checked.reason);
   }
   clearDownloads(d.dir, d.logger, version);
   return record("downloaded", { ...handled, available: { version, file: installerName(version), verifiedAt: now } }, { latest: version });
@@ -203,6 +176,8 @@ export interface SupervisorUpdateOptions {
   key: string | null;
   dir: string;
   env: Record<string, string | undefined>;
+  /** Applying what the checks download: absent in tests of the checks alone, and when the port is misconfigured. */
+  apply?: Omit<ApplyGateOptions, "logger" | "version" | "dir" | "env" | "serial">;
 }
 
 /**
@@ -210,7 +185,7 @@ export interface SupervisorUpdateOptions {
  * overridden for testing, GRINDLOG_UPDATE_FIRST_CHECK_MS can shorten the first wait; it's ignored
  * otherwise, so a stray variable can't make a friend's install check early.
  */
-export function startSupervisorUpdates({ logger, channel, version, key, dir, env }: SupervisorUpdateOptions): { stop: () => void } {
+export function startSupervisorUpdates({ logger, channel, version, key, dir, env, apply }: SupervisorUpdateOptions): { stop: () => void } {
   const reason = disabledReason(channel, version, key);
   if (reason !== null || version === null || key === null) {
     logger.info("update", "disabled", { reason });
@@ -220,6 +195,21 @@ export function startSupervisorUpdates({ logger, channel, version, key, dir, env
   const overridden = env.GRINDLOG_UPDATE_FEED !== undefined && env.GRINDLOG_UPDATE_FEED !== "";
   const firstOverride = Number(env.GRINDLOG_UPDATE_FIRST_CHECK_MS);
   const firstDelayMs = overridden && Number.isInteger(firstOverride) && firstOverride >= 0 ? firstOverride : FIRST_DELAY_MS;
-  logger.info("update", "checks_started", { source, firstDelayMs });
-  return startUpdateChecks({ logger, firstDelayMs, check: () => runCheck({ dir, running: version, publicKey: key, source, logger }) });
+  logger.info("update", "checks_started", { source, firstDelayMs, apply: apply !== undefined });
+  // One queue for checks and gate ticks: a check writing state.json from a read taken before the gate set
+  // `apply` could otherwise drop the download the updater is about to verify.
+  let queue: Promise<unknown> = Promise.resolve();
+  const serial = <T>(fn: () => Promise<T>): Promise<T> => {
+    const run = queue.then(fn);
+    queue = run.catch(() => undefined);
+    return run;
+  };
+  const gate = apply ? startApplyGate({ ...apply, logger, version, dir, env, serial }) : null;
+  const checks = startUpdateChecks({ logger, firstDelayMs, check: () => serial(() => runCheck({ dir, running: version, publicKey: key, source, logger })) });
+  return {
+    stop: () => {
+      checks.stop();
+      gate?.stop();
+    },
+  };
 }

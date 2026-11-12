@@ -10,7 +10,7 @@ import { VERSION } from "../shared/version";
 import { QUIT_TIMEOUT_MS, requestStop as requestStopReal, statusProbe, stopAccepted, type Probe, type StopOutcome } from "./control";
 import { EXIT_CONFIG_INVALID, EXIT_OK, EXIT_PORT_TAKEN, EXIT_START_FAILED, TRAY_EXIT_BAD_ARGS, TRAY_EXIT_CRASHED, TRAY_EXIT_QUIT, TRAY_EXIT_STDIN_CLOSED } from "./exit-codes";
 import { createLogger, type Logger } from "./log";
-import { dashboardPort, identity, logsDir, updateDir } from "./paths";
+import { dashboardPort, dataDir, identity, logsDir, updateDir } from "./paths";
 import { runtimeInfo } from "./runtime-info";
 import { startSupervisorUpdates } from "./update/checker";
 
@@ -365,14 +365,24 @@ export function superviseSelf(): void {
   // Its own file: two processes rotating one log would race.
   const logger = createLogger({ dir: logsDir(), fileName: "supervisor.log" });
   let tray: SupervisorOptions["tray"];
+  let port: number | null = null;
   try {
-    const port = dashboardPort();
+    port = dashboardPort();
     tray = { cmd: trayCmd({ trayExe: join(bin, identity().trayExe), name: APP_NAME, channel: CHANNEL, logs: logsDir(), port, version: VERSION }), cwd: bin, port };
   } catch (err) {
     // A bad GRINDLOG_PORT: the tracker exits EXIT_CONFIG_INVALID and says why; a tray could only point at nothing.
     logger.warn("tray", "skipped", { err });
   }
-  const updates = startSupervisorUpdates({ logger, channel: CHANNEL, version: VERSION, key: UPDATE_KEY, dir: updateDir(), env: process.env });
+  // Before the tracker starts: an apply whose updater died may need the DBs put back first.
+  const updates = startSupervisorUpdates({
+    logger,
+    channel: CHANNEL,
+    version: VERSION,
+    key: UPDATE_KEY,
+    dir: updateDir(),
+    env: process.env,
+    ...(port === null ? {} : { apply: { dataDir: dataDir(), appExe: exe, port } }),
+  });
   void runSupervisor({ cmd: [exe], cwd: bin, logger, tray }).then(() => {
     updates.stop();
     process.exit(EXIT_OK);

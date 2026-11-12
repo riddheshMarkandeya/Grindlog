@@ -1,6 +1,7 @@
 // What the tray shows, worked out here so the tray exe stays a dumb renderer. The tray adds only what
 // it alone can know: "Starting…" before the first answer and "Not responding" when answers stop.
 import type { Status, TrayResponse } from "../shared/schemas/responses";
+import { lastApplyText } from "../shared/update-text";
 import type { UpdateView } from "./update/view";
 
 export interface TrayInputs {
@@ -10,7 +11,7 @@ export interface TrayInputs {
   configUnknown: boolean;
   /** Matches the last release recompute couldn't rebuild; 0 until a run finishes. */
   recomputeFailed: number;
-  update: Pick<UpdateView, "available" | "skipped" | "autoApply" | "installRequested">;
+  update: Pick<UpdateView, "available" | "skipped" | "autoApply" | "installRequested" | "lastApply">;
 }
 
 /** The dashboard section with the Install button and the auto-apply switch. */
@@ -41,8 +42,12 @@ export function trayView(inputs: TrayInputs, feed: Pick<TrayResponse, "instance"
 }
 
 /** With auto-apply on, a ready update needs nothing from the friend: it installs once the game is closed. */
-function updateLines({ available, skipped, autoApply, installRequested }: TrayInputs["update"]): TrayResponse["lines"] {
+function updateLines({ available, skipped, autoApply, installRequested, lastApply }: TrayInputs["update"]): TrayResponse["lines"] {
   const lines: TrayResponse["lines"] = [];
+  if (lastApply !== null) {
+    lines.push({ text: lastApplyText(lastApply) });
+    if (lastApply.outcome === "updated") lines.push({ text: `What changed in ${lastApply.to}`, url: lastApply.page });
+  }
   if (available !== null && !autoApply) {
     lines.push(installRequested ? { text: `Update ${available.version} installs once Rocket League is closed` } : { text: `Install update ${available.version}…`, url: UPDATES_URL });
     lines.push({ text: `What changed in ${available.version}`, url: available.page });

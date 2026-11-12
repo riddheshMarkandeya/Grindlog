@@ -342,11 +342,24 @@ describe("startSupervisorUpdates", () => {
   });
 
   test("a release build checks GitHub, first after 3 minutes", () => {
-    expect(start({}).at(0)?.fields).toEqual({ source: { kind: "http", url: "https://api.github.com/repos/riddheshMarkandeya/Grindlog/releases/latest" }, firstDelayMs: 180_000 });
+    expect(start({}).at(0)?.fields).toEqual({ source: { kind: "http", url: "https://api.github.com/repos/riddheshMarkandeya/Grindlog/releases/latest" }, firstDelayMs: 180_000, apply: false });
   });
 
   test("the first-check override counts only beside a feed override", () => {
-    expect(start({ GRINDLOG_UPDATE_FIRST_CHECK_MS: "5" }).at(0)?.fields).toMatchObject({ firstDelayMs: 180_000 });
-    expect(start({ GRINDLOG_UPDATE_FEED: "D:\\feed", GRINDLOG_UPDATE_FIRST_CHECK_MS: "5" }).at(0)?.fields).toEqual({ source: { kind: "folder", dir: "D:\\feed" }, firstDelayMs: 5 });
+    expect(start({ GRINDLOG_UPDATE_FIRST_CHECK_MS: "5" }).at(0)?.fields).toMatchObject({ firstDelayMs: 180_000, apply: false });
+    expect(start({ GRINDLOG_UPDATE_FEED: "D:\\feed", GRINDLOG_UPDATE_FIRST_CHECK_MS: "5" }).at(0)?.fields).toEqual({ source: { kind: "folder", dir: "D:\\feed" }, firstDelayMs: 5, apply: false });
+  });
+});
+
+describe("runCheck during an apply", () => {
+  test("does nothing while an apply owns state.json: no fetch, no write", async () => {
+    writeState(dir, memoryLogger(), { available: { version: "0.1.1", file: "f", verifiedAt: "t" }, apply: { from: "0.1.0", to: "0.1.1", startedAt: "2026-11-12T09:59:00.000Z", phase: "checking" } });
+    const before = readFileSync(join(dir, "state.json"), "utf8");
+    const gh = fakeGitHub({ tag: "v0.1.2" });
+    const d = deps(gh.fetch);
+    expect(await runCheck(d)).toBe("apply_in_progress");
+    expect(gh.seen).toEqual([]);
+    expect(readFileSync(join(dir, "state.json"), "utf8")).toBe(before);
+    expect(d.logger.events()).toContain("update/apply_in_progress");
   });
 });

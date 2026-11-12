@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { memoryLogger } from "../testing";
-import { readRequest, readState, REQUEST_FILE, STATE_FILE, writeRequest, writeState } from "./state";
+import { readRequest, readStartFailure, readState, REQUEST_FILE, START_FAILURE_FILE, STATE_FILE, writeRequest, writeStartFailure, writeState } from "./state";
 
 let dir: string;
 beforeEach(() => {
@@ -79,6 +79,59 @@ describe("state.json", () => {
     writeFileSync(join(dir, "a-file"), "");
     expect(writeState(join(dir, "a-file"), logger, { lastOutcome: "error" })).toBe(false);
     expect(logger.events()).toEqual(["update/state_write_failed"]);
+  });
+});
+
+describe("apply and lastApply", () => {
+  const apply = { from: "0.1.0", to: "0.1.1", startedAt: "2026-11-12T10:00:00.000Z", phase: "installing" };
+
+  test("an apply and a last-apply outcome read back", () => {
+    const logger = memoryLogger();
+    const lastApply = { from: "0.0.9", to: "0.1.0", outcome: "rolled_back", reason: "health_check_failed", at: "2026-11-11T10:00:00.000Z" };
+    writeState(dir, logger, { apply, lastApply });
+    expect(readState(dir, logger)).toMatchObject({ apply, lastApply });
+  });
+
+  test("a phase or outcome from a newer version survives a read and a write (not an enum, so the file isn't wiped)", () => {
+    const logger = memoryLogger();
+    writeFileSync(join(dir, STATE_FILE), JSON.stringify({ v: 1, skipped: [{ version: "0.2.0", reason: "r" }], apply: { ...apply, phase: "warp_drive" }, lastApply: { from: "0.1.0", to: "0.1.1", outcome: "teleported", at: "x" } }));
+    expect(readState(dir, logger).apply?.phase).toBe("warp_drive");
+    writeState(dir, logger, { checkedAt: "now" });
+    expect(raw(STATE_FILE)).toMatchObject({ skipped: [{ version: "0.2.0" }], apply: { phase: "warp_drive" }, lastApply: { outcome: "teleported" } });
+    expect(logger.events()).toEqual([]);
+  });
+
+  test.each([{ apply: { ...apply, to: "../evil" } }, { lastApply: { from: "1.2", to: "0.1.1", outcome: "updated", at: "x" } }])("a non-version in apply or lastApply makes the file unreadable (%o)", (bad) => {
+    writeFileSync(join(dir, STATE_FILE), JSON.stringify({ v: 1, skipped: [], ...bad }));
+    const logger = memoryLogger();
+    expect(readState(dir, logger)).toEqual({ v: 1, skipped: [] });
+    expect(logger.events()).toEqual(["update/state_unreadable"]);
+  });
+});
+
+describe("start-failure.json", () => {
+  const apply = { from: "0.1.0", to: "0.1.1", startedAt: "2026-11-12T10:00:00.000Z", phase: "checking" };
+  const failure = { version: "0.1.1", reason: "low_disk", freeBytes: 1_000_000, needBytes: 500_000_000, at: "2026-11-12T10:01:00.000Z" };
+
+  test("a failure written by this apply's version after it started is read back", () => {
+    const logger = memoryLogger();
+    expect(writeStartFailure(dir, logger, failure)).toBe(true);
+    expect(raw(START_FAILURE_FILE)).toEqual({ v: 1, ...failure });
+    expect(readStartFailure(dir, apply, logger)).toMatchObject(failure);
+  });
+
+  test("a failure from before the apply started, or from another version, is ignored", () => {
+    const logger = memoryLogger();
+    writeStartFailure(dir, logger, { ...failure, at: "2026-11-12T09:59:59.000Z" });
+    expect(readStartFailure(dir, apply, logger)).toBeUndefined();
+    writeStartFailure(dir, logger, { ...failure, version: "0.1.0" });
+    expect(readStartFailure(dir, apply, logger)).toBeUndefined();
+  });
+
+  test("a missing file is no failure, quietly", () => {
+    const logger = memoryLogger();
+    expect(readStartFailure(dir, apply, logger)).toBeUndefined();
+    expect(logger.lines).toEqual([]);
   });
 });
 

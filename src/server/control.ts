@@ -3,6 +3,7 @@
 import { connect } from "node:net";
 import { DASHBOARD_HOST, SHUTDOWN_HEADER } from "../shared/constants";
 import { statusSchema } from "../shared/schemas/responses";
+import { z } from "zod";
 import type { Logger } from "./log";
 
 /** A recording tracker flushes its last scoreboard on stop; this is how long a quit waits for that. */
@@ -57,11 +58,22 @@ export async function waitForPortFree(port: number, timeoutMs = 30_000): Promise
 /** What the dashboard port says: nothing there, a tracker still starting (no API yet), or a ready tracker. */
 export type Probe = "refused" | "starting" | { pid: number };
 
-// Only the pid: the updater's new exe probes the old build's tracker, whose status may differ in
-// every other field. Another app's 200 has no pid and reads as starting.
-const probeBody = statusSchema.pick({ pid: true });
+/** A ready tracker's identity and state. `version` is null for dev builds and builds too old to report it. */
+export interface StatusInfo {
+  pid: number;
+  version: string | null;
+  connection?: string;
+}
 
-export async function statusProbe(port: number): Promise<Probe> {
+// Only the pid is required: the updater's new exe probes the old build's tracker (and the old exe the new
+// one's), whose status may differ in every other field. Another app's 200 has no pid and reads as starting.
+const infoBody = z.object({
+  pid: statusSchema.shape.pid,
+  version: z.string().nullable().catch(null),
+  connection: z.string().optional().catch(undefined),
+});
+
+export async function statusInfo(port: number): Promise<"refused" | "starting" | StatusInfo> {
   let res: Response;
   try {
     res = await fetch(`http://${DASHBOARD_HOST}:${String(port)}/api/status`, { signal: AbortSignal.timeout(2000) });
@@ -71,8 +83,15 @@ export async function statusProbe(port: number): Promise<Probe> {
   }
   // The host binds before migrations and answers 503 until the API mounts.
   if (res.status !== 200) return "starting";
-  const body = probeBody.safeParse(await res.json().catch(() => null));
-  return body.success ? { pid: body.data.pid } : "starting";
+  const body = infoBody.safeParse(await res.json().catch(() => null));
+  if (!body.success) return "starting";
+  const { pid, version, connection } = body.data;
+  return connection === undefined ? { pid, version } : { pid, version, connection };
+}
+
+export async function statusProbe(port: number): Promise<Probe> {
+  const info = await statusInfo(port);
+  return typeof info === "string" ? info : { pid: info.pid };
 }
 
 // Matches on the full path, not the image name: a hand-run copy of the same exe elsewhere (another

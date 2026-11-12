@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { trayView, type TrayInputs } from "./tray-view";
 
-const NO_UPDATE: TrayInputs["update"] = { available: null, skipped: null, autoApply: true, installRequested: false };
+const NO_UPDATE: TrayInputs["update"] = { available: null, skipped: null, autoApply: true, installRequested: false, lastApply: null };
 const base: TrayInputs = { connection: "waiting", statsApiOff: false, configProblems: [], configUnknown: false, recomputeFailed: 0, update: NO_UPDATE };
 const view = (over: Partial<TrayInputs>) => trayView({ ...base, ...over }, { instance: "run1", notices: [] });
 
@@ -70,6 +70,21 @@ describe("update lines", () => {
 
   test("a version skipped for its signature gets a plain line", () => {
     expect(update({ skipped: "0.3.0" })).toEqual([{ text: "Update 0.3.0 failed its signature check" }]);
+  });
+
+  test("after an update, it says so and links what changed", () => {
+    expect(update({ lastApply: { outcome: "updated", from: "0.1.0", to: "0.2.0", reason: null, at: "t", page: AVAILABLE.page } })).toEqual([
+      { text: "Updated to 0.2.0" },
+      { text: "What changed in 0.2.0", url: AVAILABLE.page },
+    ]);
+  });
+
+  test("after a rollback, a plain line says what happened, before any ready update's lines", () => {
+    expect(update({ available: AVAILABLE, autoApply: false, lastApply: { outcome: "rolled_back", from: "0.1.0", to: "0.1.5", reason: "low_disk", at: "t", page: "p" } }).map((l) => l.text)).toEqual([
+      "Update 0.1.5 needed more disk space, so Grindlog went back to 0.1.0",
+      "Install update 0.2.0…",
+      "What changed in 0.2.0",
+    ]);
   });
 
   test("update lines come after the recompute line", () => {

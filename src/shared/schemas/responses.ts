@@ -372,6 +372,11 @@ export const updateResponse = z.object({
   /** An install was asked for, for the version now available. */
   installRequested: z.boolean(),
   checkedAt: z.string().nullable(),
+  /**
+   * How the last update ended, while it's worth saying: "updated" for a day on the new version, a rollback
+   * for a week on the old one, "unhealthy" for a week on the new one; otherwise null.
+   */
+  lastApply: z.object({ outcome: z.enum(["updated", "rolled_back", "rollback_failed", "unhealthy"]), from: z.string(), to: z.string(), reason: z.string().nullable(), at: z.string(), page: z.string() }).nullable(),
 });
 export type UpdateResponse = z.infer<typeof updateResponse>;
 

@@ -22,6 +22,8 @@ import { openStorage, type Storage } from "./storage";
 import { trayView } from "./tray-view";
 import { disabledReason, UPDATE_KEY } from "../shared/update-key";
 import { createUpdates } from "./update/view";
+import { writeStartFailure } from "./update/state";
+import { LowDiskError } from "./db/backup";
 
 /** What has been started so far: a stop can arrive mid-startup, and tears down only these. */
 interface Parts {
@@ -128,6 +130,11 @@ function main(): void {
   } catch (err) {
     // openStorage logs its specific failure first.
     log.error("app", "start_failed", { err });
+    // Tells an updater's health check why this version didn't come up. Best effort: writeStartFailure logs
+    // its own failure, and the exit below matters more. A dev build is never an update.
+    if (err instanceof LowDiskError && VERSION !== null) {
+      writeStartFailure(updateDir(), log, { version: VERSION, reason: "low_disk", freeBytes: err.freeBytes, needBytes: err.needBytes, at: new Date().toISOString() });
+    }
     // Through stop, not a bare return: the host is already listening and would keep a process
     // alive that holds the port and records nothing.
     void stop("start_failed", EXIT_START_FAILED);

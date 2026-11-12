@@ -1,3 +1,6 @@
+/** One day in ms. */
+export const DAY_MS = 24 * 60 * 60 * 1000;
+
 // Values v1 keeps fixed; each is meant to become a user setting later.
 
 /** A gap longer than this between matches starts a new session. */

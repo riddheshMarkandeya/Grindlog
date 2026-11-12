@@ -16,19 +16,34 @@ const TOAST_TIMEOUT_MS = 10_000;
 const POWERSHELL_APP_ID = String.raw`{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe`;
 const psQuote = (s: string) => `'${s.replace(/'/g, "''")}'`;
 
-/** Shows a Windows toast through PowerShell. Best-effort: never throws, logs toast/shown or toast/failed. */
-export async function showToast(logger: Logger, { title, body }: Toast): Promise<void> {
-  const script = [
+/** A toast shown straight through PowerShell, which (unlike the tray's) can open a web page when clicked. */
+export interface PowerShellToast extends Toast {
+  /** Opened on click. Callers also put it in the body: whether the click opens it varies by Windows build. */
+  url?: string;
+}
+
+/** The PowerShell that shows `toast`. Every string goes in single-quoted, so nothing in it is evaluated. */
+export function toastScript({ title, body, url }: PowerShellToast): string {
+  return [
     "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null",
     "$t = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)",
     "$x = $t.GetElementsByTagName('text')",
     `$x.Item(0).AppendChild($t.CreateTextNode(${psQuote(title)})) > $null`,
     `$x.Item(1).AppendChild($t.CreateTextNode(${psQuote(body)})) > $null`,
+    ...(url === undefined
+      ? []
+      : [`$t.DocumentElement.SetAttribute('activationType', 'protocol')`, `$t.DocumentElement.SetAttribute('launch', ${psQuote(url)})`]),
     `[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier(${psQuote(POWERSHELL_APP_ID)}).Show([Windows.UI.Notifications.ToastNotification]::new($t))`,
   ].join("\n");
+}
+
+/** Shows a Windows toast through PowerShell. Best-effort: never throws, logs toast/shown or toast/failed. */
+export async function showToast(logger: Logger, toast: PowerShellToast): Promise<void> {
+  const { title, body, url } = toast;
+  const script = toastScript(toast);
   try {
     const { code, stderr, timedOut } = await runPowerShell(script, TOAST_TIMEOUT_MS);
-    if (code === 0) logger.info("toast", "shown", { title, body });
+    if (code === 0) logger.info("toast", "shown", { title, body, url });
     else logger.warn("toast", "failed", { code, timedOut, stderr: stderr.slice(0, 500) });
   } catch (err) {
     // Broad on purpose: a toast is a nicety, and whatever stops PowerShell from starting must not

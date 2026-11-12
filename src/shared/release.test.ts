@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { compareNumeric, installerName, isNewer, parseReleaseVersion, parseTrustedComment, releasePage, trustedComment } from "./release";
+import { compareNumeric, installerName, isNewer, parseReleaseVersion, parseTrustedComment, releasePage, RELEASES_LATEST_PAGE, trustedComment } from "./release";
 
 describe("parseReleaseVersion", () => {
   test("a plain release is its own numeric version and not a prerelease", () => {
@@ -76,5 +76,11 @@ describe("parseTrustedComment", () => {
 describe("releasePage", () => {
   test("is the repo's tag page for the version", () => {
     expect(releasePage("0.2.0")).toBe("https://github.com/riddheshMarkandeya/Grindlog/releases/tag/v0.2.0");
+  });
+});
+
+describe("RELEASES_LATEST_PAGE", () => {
+  test("is the repo's latest-release page", () => {
+    expect(RELEASES_LATEST_PAGE).toBe("https://github.com/riddheshMarkandeya/Grindlog/releases/latest");
   });
 });

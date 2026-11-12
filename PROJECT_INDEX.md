@@ -30,8 +30,18 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   plus jitter; prod builds with a baked key only), `feed.ts` GitHub `releases/latest` or the
   `GRINDLOG_UPDATE_FEED` override (http or a folder with `latest.json`) and the candidate pick, `download.ts`
   capped, timed downloads through `.partial`, `minisign.ts` the verifier (node:crypto, both algorithms),
-  `state.ts` `<data>/update/state.json` (supervisor writes) and `request.json` (tracker writes), `view.ts` the
-  tracker's `/api/update` view and writes, `fixtures/` real minisign-made signatures),
+  `state.ts` `<data>/update/state.json` (supervisor writes; the updater alone while `apply` is set),
+  `request.json` and `start-failure.json` (tracker writes), `view.ts` the tracker's `/api/update` view (with
+  `lastApply`) and writes, `fixtures/` real minisign-made signatures; WP6b: `files.ts` download paths and
+  `checkInstaller`, `apply-end.ts` `endApply` (how an apply ends, for both sides), `gate.ts` the supervisor's
+  30 s apply gate, its startup `resumeApply` and per-tick `settleInterrupted` of an interrupted apply and
+  `startApplyGate`, `apply.ts` `runUpdate` (stop, install, health check, rollback), `updater.ts` the
+  `--update` entry (`<data>/update/grindlog-updater.exe`, logging to `updater.log`), `health.ts` `waitHealthy`
+  (one pid for 2 min passes, 10 min fails), `restore.ts` puts migrated DBs back from pre-migration backups by
+  rename, keeping the failed ones in `<data>/failed-update/<version>/`); `db/backup.ts` also backs up raw.db
+  before a migration (`raw-…-premigration.db`, kept 24 h), once per schema version (dropped once the DB opens at
+  that version with no migration due), after a free-space check
+  (`LowDiskError`); `shared/update-text.ts` the last-update sentence the tray and Settings share,
   `src/web/` (the dashboard: Vite + React + React Router + TanStack Query; `main.tsx`, `App.tsx`
   routes, `api.ts` fetch + Zod parse; `events/`: `hub.ts` one `/api/events` stream fanned out to
   tabs from a SharedWorker (`worker.ts`, in-page fallback in `client.ts`; it reads each status's `version`

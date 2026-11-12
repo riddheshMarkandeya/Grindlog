@@ -88,12 +88,13 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
     download, shared state file, supervisor check loop, `/api/update`, auto-apply choice, tray and dashboard lines.
     Fold-in: the antivirus backup-rename retry. Plan: `docs/plans/2026-11-12-wp6a-updater-check.md`.
   - [ ] **[feature, Med, Substantial]** 6b. Updater apply: `--update` mode, apply gate, apply, health check, rollback,
-    raw.db pre-migration backup, free-space check, interrupted updates, `updater.log`; see 6a's "Handed to 6b". No
-    release tag between 6a and 6b: a 6a build downloads but can't apply. Detached starts use `spawnDetached` (`Bun.spawn` with
+    raw.db pre-migration backup, free-space check, interrupted updates, `updater.log`; see 6a's "Handed to 6b". (The
+    "no release tag between 6a and 6b" rule ends with 6b.) Detached starts use `spawnDetached` (`Bun.spawn` with
     `detached: true`), which survives the parent's exit, a force-kill and Task Scheduler's End (spike result in
     `docs/plans/2026-11-10-wp2a-process-control.md`). The migrator refuses a database newer than the code
     (`newer_than_code` in `db/migrate.ts`), so a rollback across a schema change must restore the pre-migration
     backup before starting the old exe (2b's `meta` table is the first such change).
+    Plan: `docs/plans/2026-11-12-wp6b-updater-apply.md`.
   - [ ] **[test-coverage, Med, Standard]** 7. Proof before friends: clean account, one Sandbox run, rollback through the
     feed override, copy history into prod, one live match on prod, one VirusTotal scan. Closes WP3b's autostart check.
 
@@ -112,6 +113,16 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   so check which is right, since it decides which season a match on that day counts in.
 
 ## Watch list
+- [ ] **[bug (latent), Med, Standard]** Trigger: a `restore_no_backup` line, or a rollback restoring an older backup
+  than expected, in a friend's `updater.log`. The restore picks the newest pre-migration backup at the old schema
+  version from up to 24 h before the apply (the tracker reuses one that young rather than making another), and no
+  real migration that failed and restarted several times has been seen. Fit the pick to that log. Record:
+  `docs/plans/2026-11-12-wp6b-updater-apply.md` Progress.
+- [ ] **[bug (latent), Low, Standard]** Trigger: a friend's `supervisor.log` showing `apply_starting` hourly with
+  `not_started` each time (`no_rollback_installer`, `updater_died`). A start that keeps failing retries once an hour
+  and isn't shown in the tray or Settings (`not_started` isn't in `SHOWN`), and `available` stays. The Inno script
+  always writes `previous\Grindlog-Setup.exe`, so no real case is known. Then add a line ("Update X couldn't start")
+  or stop after a few tries. Record: `docs/plans/2026-11-12-wp6b-updater-apply.md` Review log, round 1.
 - [ ] **[bug (latent), Low, Standard]** Trigger: a `logon_task/unexpected_xml` line in a friend's log. The "Run at
   Windows startup" read takes the task's state from `<Settings>` in `schtasks /Query /XML` (no `<Enabled>` there = on,
   `false` = off), captured on one Windows 11 PC only; an unreadable shape shows the switch as unavailable. Fit

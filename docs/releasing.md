@@ -49,3 +49,16 @@ because the signing key never leaves it.
   #<n>.txt`, or wherever the updater's `/LOG=` points). It says
   whether `--quit` ran before the files were replaced (with its exit code), whether the logon task was
   found, created or failed, whether data was deleted at uninstall, and which version was installed.
+- **An update that rolled back** (a friend's tray says "Update X didn't start, so Grindlog went back to Y"):
+  `<data>\logs\updater.log` has each phase, the installer's exit code, the health readings and what was
+  restored. Inno's own logs are `<data>\logs\install-<version>.log` and `rollback-<version>.log`. The databases
+  the failed version migrated are kept in `<data>\failed-update\<version>\` until the next healthy update, and
+  that version is skipped for good on that PC: fix it and publish a new version.
+- **"needed more disk space"**: the new version's tracker found too little room for its pre-migration backup
+  (`db/low_disk` in `tracker.log`) and migrated nothing.
+- **A "couldn't restart" toast, or "may not have finished"**: the old version didn't come back either, or the
+  updater died after the new one started (`apply_interrupted` in `supervisor.log`). Reinstalling the latest
+  release by hand opens the databases as they are.
+
+The old rule against tagging between WP6a and WP6b (a 6a build could download an update but not apply it) ended
+with WP6b.

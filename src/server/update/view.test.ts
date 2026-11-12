@@ -14,18 +14,19 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-const updates = (running: string | null = "0.1.0", enabled = true) => createUpdates({ dir, logger: memoryLogger(), running, enabled });
+const NOW = Date.parse("2026-11-12T12:00:00.000Z");
+const updates = (running: string | null = "0.1.0", enabled = true) => createUpdates({ dir, logger: memoryLogger(), running, enabled, now: () => NOW });
 const AVAILABLE = { version: "0.2.0", file: "Grindlog-Setup-0.2.0.exe", verifiedAt: "x" };
 const PAGE = "https://github.com/riddheshMarkandeya/Grindlog/releases/tag/v0.2.0";
 
 describe("view", () => {
   test("a dev build is disabled, whatever the files say", () => {
     writeState(dir, memoryLogger(), { checkedAt: "t", lastOutcome: "downloaded", available: AVAILABLE });
-    expect(updates(null, false).view()).toEqual({ enabled: false, version: null, status: "disabled", available: null, skipped: null, autoApply: true, installRequested: false, checkedAt: null });
+    expect(updates(null, false).view()).toEqual({ enabled: false, version: null, status: "disabled", available: null, skipped: null, autoApply: true, installRequested: false, checkedAt: null, lastApply: null });
   });
 
   test("before the first check it's not checked, with auto-apply on by default", () => {
-    expect(updates().view()).toEqual({ enabled: true, version: "0.1.0", status: "not_checked", available: null, skipped: null, autoApply: true, installRequested: false, checkedAt: null });
+    expect(updates().view()).toEqual({ enabled: true, version: "0.1.0", status: "not_checked", available: null, skipped: null, autoApply: true, installRequested: false, checkedAt: null, lastApply: null });
   });
 
   test("up to date after a check", () => {
@@ -96,5 +97,44 @@ describe("setAutoApply", () => {
     expect(createUpdates({ dir, logger, running: "0.1.0", enabled: true }).setAutoApply(false)).toBe(true);
     expect(readRequest(dir, memoryLogger()).autoApply).toBe(false);
     expect(logger.lines.at(-1)).toEqual({ level: "info", cat: "update", event: "request", fields: { kind: "auto_apply", on: false } });
+  });
+});
+
+describe("view's lastApply", () => {
+  const HOUR = 60 * 60 * 1000;
+  const last = (outcome: string, ago: number, reason?: string) =>
+    writeState(dir, memoryLogger(), { checkedAt: "t", lastOutcome: "up_to_date", lastApply: { from: "0.1.0", to: "0.2.0", outcome, ...(reason ? { reason } : {}), at: new Date(NOW - ago).toISOString() } });
+
+  test("an update shows for a day while the new version runs, with its page", () => {
+    last("updated", 23 * HOUR);
+    expect(updates("0.2.0").view().lastApply).toEqual({ outcome: "updated", from: "0.1.0", to: "0.2.0", reason: null, at: new Date(NOW - 23 * HOUR).toISOString(), page: PAGE });
+    last("updated", 25 * HOUR);
+    expect(updates("0.2.0").view().lastApply).toBeNull();
+  });
+
+  test.each(["rolled_back", "rollback_failed"])("%s shows for a week while the old version runs", (outcome) => {
+    last(outcome, 6 * 24 * HOUR, "low_disk");
+    expect(updates("0.1.0").view().lastApply).toMatchObject({ outcome, reason: "low_disk" });
+    expect(updates("0.2.0").view().lastApply).toBeNull();
+    last(outcome, 8 * 24 * HOUR);
+    expect(updates("0.1.0").view().lastApply).toBeNull();
+  });
+
+  test("an update that may not have finished shows for a week while the new version runs", () => {
+    last("unhealthy", 2 * 24 * HOUR);
+    expect(updates("0.2.0").view().lastApply).toMatchObject({ outcome: "unhealthy" });
+  });
+
+  test.each(["not_started", "interrupted", "some_future_outcome"])("%s shows nothing", (outcome) => {
+    last(outcome, HOUR);
+    expect(updates("0.1.0").view().lastApply).toBeNull();
+    expect(updates("0.2.0").view().lastApply).toBeNull();
+  });
+
+  test("a version skipped because its update failed isn't called a signature failure", () => {
+    writeState(dir, memoryLogger(), { checkedAt: "t", lastOutcome: "up_to_date", skipped: [{ version: "0.2.0", reason: "health_check_failed" }, { version: "0.1.5", reason: "bad_signature" }] });
+    expect(updates().view()).toMatchObject({ status: "skipped", skipped: "0.1.5" });
+    writeState(dir, memoryLogger(), { skipped: [{ version: "0.2.0", reason: "installer_failed" }] });
+    expect(updates().view()).toMatchObject({ status: "up_to_date", skipped: null });
   });
 });

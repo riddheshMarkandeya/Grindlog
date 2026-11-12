@@ -27,6 +27,14 @@ describe("mode", () => {
     expect(mode(["grindlog.exe", "--open", "--quit"])).toBe("quit");
   });
 
+  test("--update runs the updater and wins over --open and --supervisor, but --quit still wins", () => {
+    const exe = String.raw`C:\data\update\grindlog-updater.exe`;
+    expect(mode([exe, "--update", "--app-dir", String.raw`C:\Program Files\Grindlog`])).toBe("update");
+    expect(mode([exe, "--supervisor", "--update"])).toBe("update");
+    expect(mode([exe, "--open", "--update"])).toBe("update");
+    expect(mode([exe, "--update", "--quit"])).toBe("quit");
+  });
+
   test("the exe's own path never counts as a flag", () => {
     expect(mode(["--open"])).toBe("tracker");
   });

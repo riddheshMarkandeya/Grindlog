@@ -2,6 +2,7 @@ import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { LowDiskError } from "./db/backup";
 import { openDb } from "./db/sqlite";
 import { rawMigrations, trackerMigrations } from "./db/migrations";
 import { openStorage, type Storage } from "./storage";
@@ -130,6 +131,58 @@ describe("openStorage backups", () => {
     const tracker = openDb(join(dir, "tracker.db"));
     expect(tracker.pragma("user_version")).toBe(trackerMigrations.length);
     tracker.close();
+  });
+
+  test("pending raw migrations back raw.db up too, as raw-<stamp>-premigration.db", () => {
+    storage = openStorage({ dir, logger: memoryLogger(), now: clock("2026-10-16T12:00:00.000Z") });
+    storage.close();
+    storage = openStorage({ dir, logger: memoryLogger(), now: clock("2026-10-16T13:00:00.000Z"), migrations: { tracker: trackerMigrations, raw: [...rawMigrations, "CREATE TABLE extra(x);"] } });
+    expect(list()).toEqual(["raw-20261016-130000-000-premigration.db", "tracker-20261016-120000-000-daily.db"]);
+    const copy = openDb(join(backups(), "raw-20261016-130000-000-premigration.db"));
+    expect(copy.pragma("user_version")).toBe(rawMigrations.length);
+    copy.close();
+  });
+
+  test("a failing migration restarted a few minutes later makes no second pre-migration backup", () => {
+    storage = openStorage({ dir, logger: memoryLogger(), now: clock("2026-10-16T12:00:00.000Z") });
+    storage.close();
+    storage = undefined;
+    const broken = { tracker: [...trackerMigrations, "CREATE TABLE broken(;"], raw: rawMigrations };
+    expect(() => openStorage({ dir, logger: memoryLogger(), now: clock("2026-10-16T13:00:00.000Z"), migrations: broken })).toThrow();
+    expect(() => openStorage({ dir, logger: memoryLogger(), now: clock("2026-10-16T13:05:00.000Z"), migrations: broken })).toThrow();
+    expect(list().filter((f) => f.endsWith("-premigration.db"))).toEqual(["tracker-20261016-130000-000-premigration.db"]);
+  });
+
+  test("once the old version opens the DB again (a rollback), a later migration backs up afresh instead of reusing the stale copy", () => {
+    storage = openStorage({ dir, logger: memoryLogger(), now: clock("2026-10-16T12:00:00.000Z") });
+    storage.close();
+    storage = undefined;
+    const broken = { tracker: [...trackerMigrations, "CREATE TABLE broken(;"], raw: rawMigrations };
+    expect(() => openStorage({ dir, logger: memoryLogger(), now: clock("2026-10-16T13:00:00.000Z"), migrations: broken })).toThrow();
+    // The old version runs on and records a match after the failed update.
+    const logger = memoryLogger();
+    storage = openStorage({ dir, logger, now: clock("2026-10-16T14:00:00.000Z") });
+    storage.tracker.exec("CREATE TABLE recorded_after(x)");
+    storage.close();
+    expect(list().filter((f) => f.endsWith("-premigration.db"))).toEqual([]);
+    expect(logger.lines.find((l) => l.event === "premigration_superseded")).toMatchObject({ fields: { db: "tracker", version: trackerMigrations.length } });
+    storage = openStorage({ dir, logger: memoryLogger(), now: clock("2026-10-16T20:00:00.000Z"), migrations: fakeNext });
+    storage.close();
+    storage = undefined;
+    expect(list().filter((f) => f.endsWith("-premigration.db"))).toEqual(["tracker-20261016-200000-000-premigration.db"]);
+    const copy = openDb(join(backups(), "tracker-20261016-200000-000-premigration.db"), { readonly: true });
+    expect(copy.get("SELECT name FROM sqlite_master WHERE name = 'recorded_after'")).toBeDefined();
+    copy.close();
+  });
+
+  test("too little free space for the pre-migration backup stops startup before migrating, logged", () => {
+    storage = openStorage({ dir, logger: memoryLogger(), now });
+    storage.close();
+    storage = undefined;
+    const logger = memoryLogger();
+    expect(() => openStorage({ dir, logger, now, migrations: fakeNext, statfs: () => ({ bavail: 256, bsize: 4096 }) })).toThrow(LowDiskError);
+    expect(logger.events()).toContain("db/low_disk");
+    expect(logger.events()).not.toContain("db/migrated");
   });
 
   test("a failed daily backup is logged and startup continues", () => {

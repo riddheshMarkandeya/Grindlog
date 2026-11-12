@@ -215,6 +215,23 @@ export async function quitApp(deps: QuitDeps): Promise<number> {
   }
 }
 
+/** quitApp with the real process lookups: ends the install at `execPath` (and its tray beside it). */
+export function quitInstall(execPath: string, port: number, logger: Logger): Promise<number> {
+  return quitApp({
+    port,
+    execPath,
+    trayExe: join(dirname(execPath), identity().trayExe),
+    selfPid: process.pid,
+    exeProcesses: listExeProcesses,
+    probe: statusProbe,
+    requestStop: requestStopReal,
+    killPid: (pid) => process.kill(pid),
+    sleep: Bun.sleep,
+    now: Date.now,
+    logger,
+  });
+}
+
 /** The --open or --quit process: logs to its own file, reads the port, runs the mode, returns the exit code. */
 export async function runLauncher(role: "open" | "quit", env: Env = process.env): Promise<number> {
   // Its own file, apart from the long-lived roles' logs. Short launchers sharing it now and then is
@@ -244,18 +261,7 @@ export async function runLauncher(role: "open" | "quit", env: Env = process.env)
         logger,
       });
     }
-    return await quitApp({
-      port,
-      execPath,
-      trayExe: join(dirname(execPath), identity().trayExe),
-      selfPid: process.pid,
-      exeProcesses: listExeProcesses,
-      probe: statusProbe,
-      requestStop: requestStopReal,
-      killPid: (pid) => process.kill(pid),
-      ...clock,
-      logger,
-    });
+    return await quitInstall(execPath, port, logger);
   } catch (err) {
     // Broad on purpose: whatever escaped (PowerShell that won't start), the installer only sees the
     // exit code, and a friend's report needs this line.
