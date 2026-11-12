@@ -1,0 +1,55 @@
+# A pushed v* tag builds the installer and leaves it on a draft release. Signing and publishing
+# stay on the developer's machine (bun run sign-release), since the minisign key never comes here.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    # A hung step (a smoke run, a test) fails the job instead of running to GitHub's 6 h limit.
+    timeout-minutes: 45
+    steps:
+      # Pinned to commits, since a tag can be moved: actions/checkout v7.0.1, oven-sh/setup-bun v2.2.0.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          # The token stays out of .git/config, so dependency code run by install and the tests can't reach it.
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.3
+      - run: bun install --frozen-lockfile
+      - run: bunx playwright install chromium
+      - run: bun run check
+      - run: bun run e2e
+      # The tag goes through env, never inlined into the script.
+      - name: build-release
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          bun run build-release --tag $env:TAG | Tee-Object -FilePath build-release.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: draft release
+        env:
+          TAG: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # build-release empties release/ first, so this is the one installer it built.
+          $asset = (Get-ChildItem release/Grindlog-Setup-*.exe).FullName
+          $flags = @()
+          if (Select-String -Path build-release.log -Pattern '^prerelease=true$' -Quiet) { $flags += '--prerelease' }
+          # A re-run for the same tag replaces the installer on the draft it made before, but never on a
+          # published release, whose signature would then no longer match.
+          $draft = gh release view $env:TAG --json isDraft --jq .isDraft 2> $null
+          if ($LASTEXITCODE -eq 0) {
+            if ($draft -ne 'true') { Write-Error "$env:TAG is already published; tag a new version."; exit 1 }
+            gh release upload $env:TAG $asset --clobber
+          } else {
+            gh release create $env:TAG --draft --title "Grindlog $env:TAG" --notes "" @flags $asset
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

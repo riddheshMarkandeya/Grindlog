@@ -13,11 +13,11 @@ import { DASHBOARD_HOST } from "../src/shared/constants";
 import { version as appVersion } from "../package.json";
 import { killExe } from "../src/server/control";
 import { parseTaskState } from "../src/server/logon-task";
+import { compileArgs } from "./build-exe";
 import { buildTray, TrayBuildFailed } from "./build-tray";
 import { stopTracker } from "./stop";
 
 const ID = identity();
-const PUBLISHER = "Grindlog";
 const REPO = join(import.meta.dirname, "..");
 const ENTRY = join(REPO, "src", "server", "grindlog.ts");
 // Absolute, because the builds run with no cwd.
@@ -48,28 +48,6 @@ export function taskXml({ userId, exe, args, workDir }: { userId: string; exe: s
 /** A Start menu Internet Shortcut: it opens the URL in the default browser and never runs the tracker. */
 export function shortcutFile(url: string, iconFile: string): string {
   return `[InternetShortcut]\r\nURL=${url}\r\nIconFile=${iconFile}\r\nIconIndex=0\r\n`;
-}
-
-/** The `bun` arguments that compile an entry. Task Manager's Processes tab shows the description. */
-export function compileArgs({ entry, outfile, description, icon, version }: { entry: string; outfile: string; description: string; icon: string; version: string }): string[] {
-  return [
-    "build",
-    "--compile",
-    "--windows-hide-console",
-    "--windows-icon",
-    icon,
-    "--windows-title",
-    APP_NAME,
-    "--windows-publisher",
-    PUBLISHER,
-    "--windows-description",
-    description,
-    "--windows-version",
-    `${version}.0`,
-    entry,
-    "--outfile",
-    outfile,
-  ];
 }
 
 class StepFailed extends Error {}

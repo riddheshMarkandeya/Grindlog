@@ -1,10 +1,12 @@
 // Compiles the tray exe (src/tray/Tray.cs) with the csc.exe that ships with .NET Framework 4.8 in
-// every Windows 10/11, so the build needs no SDK. The install script calls buildTray, and so will
-// the release workflow.
+// every Windows 10/11, so the build needs no SDK. The install script and the release build call
+// buildTray.
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, win32 } from "node:path";
 import { appName, type Channel } from "../src/shared/channel";
+import { parseReleaseVersion } from "../src/shared/release";
+import { StepFailed } from "./steps";
 
 const REPO = join(import.meta.dirname, "..");
 const SOURCE = join(REPO, "src", "tray", "Tray.cs");
@@ -49,9 +51,9 @@ export function trayCompileArgs({ out, icon, trayIcons, manifest, sources }: { o
 
 const csString = (s: string) => `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 
-/** The generated attributes: Task Manager shows the title. The version is numeric x.y.z.0, as for the main exe. */
+/** The generated attributes: Task Manager shows the title. The version is numeric x.y.z.0 (any -rc suffix dropped), as for the main exe. */
 export function assemblyInfo({ title, version }: { title: string; version: string }): string {
-  const v = csString(`${version}.0`);
+  const v = csString(`${parseReleaseVersion(version).numeric}.0`);
   return `using System.Reflection;
 [assembly: AssemblyTitle(${csString(title)})]
 [assembly: AssemblyProduct(${csString(title)})]
@@ -60,7 +62,8 @@ export function assemblyInfo({ title, version }: { title: string; version: strin
 `;
 }
 
-export class TrayBuildFailed extends Error {}
+// A StepFailed, so the release build fails on it as is; the dev install catches it and goes on without a tray.
+export class TrayBuildFailed extends StepFailed {}
 
 /** Builds the tray exe to `out`; throws TrayBuildFailed with csc's output when there's no csc or it fails. */
 export function buildTray({ out, channel, version }: { out: string; channel: Channel; version: string }): void {

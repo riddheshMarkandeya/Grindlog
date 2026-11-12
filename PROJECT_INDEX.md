@@ -37,12 +37,18 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   DPI awareness; `icons/<channel>-<state>.ico` from `bun run icons`; built by `scripts/build-tray.ts`; live
   `tray.test.ts`),
   `src/shared/` (`channel.ts` the baked dev/prod channel and `APP_NAME`, `version.ts` the baked
-  `GRINDLOG_VERSION` (null in dev and source runs), `constants.ts`, `result.ts` your W/L, `playlists.ts` ID map, `goal-range.ts`
+  `GRINDLOG_VERSION` (null in dev and source runs), `release.ts` release version parsing, installer name and
+  minisign trusted comment, `constants.ts`, `result.ts` your W/L, `playlists.ts` ID map, `goal-range.ts`
   close/mid/long, `periods.ts` local days and periods, `playlist-filter.ts` filter groups, `schemas/` API params
   and response shapes),
   `scripts/` (standalone `capture.ts`; `make-icons.ts` packs `src/web/assets/icon.svg` and
   `icon-small.svg` into `src/web/public/favicon.ico` and the tray set with state dots and a teal dev line into
   `src/tray/icons/` (`bun run icons`, output committed); `build-tray.ts` compiles the tray with `csc.exe`;
+  `build-exe.ts` the shared `bun build --compile` args; `build-release.ts` (`bun run build-release [--tag vX.Y.Z]`:
+  prod web, exe and tray staged in `release/app`, `rcedit.ts` sets `InternalName`, a smoke run of the exe, then
+  `installer/grindlog.iss` through ISCC into `release/`); `sign-release.ts` (`bun run sign-release vX.Y.Z`: minisign
+  a CI draft and upload the `.minisig`); `.github/workflows/release.yml` builds a draft on a `v*` tag; how to
+  release: `docs/releasing.md`;
   `stop.ts`, `autostart.ts`, `move-data.ts` (`bun run move-data <from> <to> [--copy]`: a verified
   copy of a data dir without `bin`; a move keeps the source as `<to>.pre-move-backup`), `replay.ts` fake Stats API,
   `import-capture.ts` (also writes records), `recompute.ts`, `make-fixture.ts`, `definitions.ts`,
@@ -67,8 +73,8 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   the temp data dir and its logs). Bun lives at `~/.bun/bin/bun` and may not be on PATH.
 - Channel: every source run and the CLI install are the dev channel (`GrindlogDev`, port 49102,
   `grindlog-dev.exe`, task `GrindlogDev`, "Grindlog Dev" with a Dev badge). Only a build with
-  `GRINDLOG_CHANNEL=prod` baked in (`--define`, never read at runtime; no repo script passes it yet, the
-  release build in package 5 will, with `GRINDLOG_VERSION`) is prod (`Grindlog`, 49100,
+  `GRINDLOG_CHANNEL=prod` baked in (`--define`, never read at runtime; only `build-release` passes it, with
+  `GRINDLOG_VERSION`) is prod (`Grindlog`, 49100,
   `grindlog.exe`), so a friend's install and the developer's share no data, port, task or exe.
 - Background: `bun run install-autostart` compiles `grindlog-dev.exe` and the dashboard (`bin\web`,
   which the tracker serves) into `%LOCALAPPDATA%\GrindlogDev\bin\`, registers the `GrindlogDev`
@@ -109,6 +115,10 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   Task Scheduler doesn't restart a crashed task.
 
 ## Plans
+- `docs/reviews/2026-11-11-wp5-installer-release.md`: step 4 package 5 review summary (2 rounds, 1 disputed); what only
+  the clean-account checklist and the first tag can test.
+- `docs/plans/2026-11-11-wp5-installer-release.md`: step 4 package 5, installer and release pipeline: release build,
+  Inno script, tag workflow, `sign-release`, rcedit pin; clean-account checklist; review log.
 - `docs/reviews/2026-11-10-wp3b-tray-view.md`: step 4 package 3b review summary (2 rounds, 1 deferred); manual checks.
 - `docs/plans/2026-11-10-wp3b-tray-view.md`: step 4 package 3b, tray view: icon prototype verdict, icon set,
   `trayView`, notifier, `/api/tray`, Tray.cs poll loop; balloon check result; implementation notes; review log.

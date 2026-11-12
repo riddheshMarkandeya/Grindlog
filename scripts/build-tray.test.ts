@@ -54,6 +54,10 @@ describe("assemblyInfo", () => {
     expect(cs).toContain('[assembly: AssemblyFileVersion("1.2.3.0")]');
   });
 
+  test("a suffixed version keeps only its numeric part, which is all an assembly version takes", () => {
+    expect(assemblyInfo({ title: "Grindlog", version: "1.2.3-rc.1" })).toContain('[assembly: AssemblyVersion("1.2.3.0")]');
+  });
+
   test("escapes the title as a C# string", () => {
     expect(assemblyInfo({ title: String.raw`a"b\c`, version: "1.0.0" })).toContain(String.raw`AssemblyTitle("a\"b\\c")`);
   });

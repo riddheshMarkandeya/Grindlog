@@ -5,7 +5,7 @@ import { dashboardPort, dataDir, identity, logonTaskName, logsDir, staticDir, st
 
 describe("identity", () => {
   test("prod is a friend's install", () => {
-    expect(identity("prod")).toEqual({ dataDirName: "Grindlog", port: 49100, exe: "grindlog.exe", trayExe: "grindlog-tray.exe", task: "Grindlog", shortcut: "Grindlog.url" });
+    expect(identity("prod")).toEqual({ dataDirName: "Grindlog", port: 49100, exe: "grindlog.exe", trayExe: "grindlog-tray.exe", task: "Grindlog", shortcut: "Grindlog.lnk" });
   });
 
   test("dev shares none of prod's names or its port, so both can be installed side by side", () => {
@@ -65,10 +65,15 @@ describe("staticDir", () => {
     expect(staticDir({ GRINDLOG_STATIC_DIR: "D:/rl/dist", GRINDLOG_DATA_DIR: "D:\\x" })).toBe("D:/rl/dist");
   });
 
-  test("defaults to the web build beside the installed exe, following the data dir", () => {
+  test("dev defaults to the web build beside the dev install's exe, following the data dir", () => {
     expect(staticDir({ GRINDLOG_DATA_DIR: "D:\\x" })).toBe(join("D:\\x", "bin", "web"));
     expect(staticDir({ LOCALAPPDATA: "C:\\L" })).toBe(join("C:\\L", "GrindlogDev", "bin", "web"));
-    expect(staticDir({ LOCALAPPDATA: "C:\\L" }, "prod")).toBe(join("C:\\L", "Grindlog", "bin", "web"));
+  });
+
+  test("prod serves the web folder the installer puts beside the running exe, not the data dir", () => {
+    const exe = String.raw`C:\Users\me\AppData\Local\Programs\Grindlog\grindlog.exe`;
+    expect(staticDir({ LOCALAPPDATA: "C:\\L", GRINDLOG_DATA_DIR: "D:\\x" }, "prod", exe)).toBe(join(String.raw`C:\Users\me\AppData\Local\Programs\Grindlog`, "web"));
+    expect(staticDir({ GRINDLOG_STATIC_DIR: "D:/rl/dist" }, "prod", exe)).toBe("D:/rl/dist");
   });
 
   test("an empty GRINDLOG_STATIC_DIR counts as unset", () => {

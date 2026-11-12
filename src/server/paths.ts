@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { CHANNEL, type Channel } from "../shared/channel";
 
 type Env = Record<string, string | undefined>;
@@ -26,7 +26,7 @@ export interface Identity {
  */
 export function identity(channel: Channel = CHANNEL): Identity {
   return channel === "prod"
-    ? { dataDirName: "Grindlog", port: 49100, exe: "grindlog.exe", trayExe: "grindlog-tray.exe", task: "Grindlog", shortcut: "Grindlog.url" }
+    ? { dataDirName: "Grindlog", port: 49100, exe: "grindlog.exe", trayExe: "grindlog-tray.exe", task: "Grindlog", shortcut: "Grindlog.lnk" }
     : { dataDirName: "GrindlogDev", port: 49102, exe: "grindlog-dev.exe", trayExe: "grindlog-dev-tray.exe", task: "GrindlogDev", shortcut: "Grindlog Dev.url" };
 }
 
@@ -59,12 +59,14 @@ export function dashboardPort(env: Env = process.env, channel: Channel = CHANNEL
 }
 
 /**
- * The built dashboard to serve: GRINDLOG_STATIC_DIR, else the web build installed beside the exe in
- * `<dataDir>\bin\web`, so it is replaced with it and removed by uninstall. In dev that folder
+ * The built dashboard to serve: GRINDLOG_STATIC_DIR, else the web build installed beside the exe, so
+ * it is replaced with it and removed by uninstall. Prod's installer puts it in `<app>\web`, next to
+ * the running exe; the dev install keeps it in `<dataDir>\bin\web`. In a source run that folder
  * doesn't exist and the tracker answers "dashboard not built"; dev serves the UI with `web:dev`.
  */
-export function staticDir(env: Env = process.env, channel: Channel = CHANNEL): string {
+export function staticDir(env: Env = process.env, channel: Channel = CHANNEL, execPath: string = process.execPath): string {
   if (env.GRINDLOG_STATIC_DIR) return env.GRINDLOG_STATIC_DIR;
+  if (channel === "prod") return join(dirname(execPath), "web");
   return join(dataDir(env, channel), "bin", "web");
 }
 

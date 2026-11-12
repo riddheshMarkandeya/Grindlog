@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { compileArgs, iconIssue, removeShortcuts, shortcutFile, swapExe, taskXml, writeShortcut } from "./autostart";
+import { iconIssue, removeShortcuts, shortcutFile, swapExe, taskXml, writeShortcut } from "./autostart";
 
 describe("taskXml", () => {
   const xml = taskXml({ userId: String.raw`PC\me`, exe: String.raw`C:\Users\A&B\bin\grindlog-dev.exe`, args: "--supervisor", workDir: String.raw`C:\Users\A&B\bin` });
@@ -30,30 +30,6 @@ describe("taskXml", () => {
     expect(xml).toContain("<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>");
     expect(xml).toContain("<StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>");
     expect(xml).toContain("<RestartOnFailure><Interval>PT1M</Interval><Count>3</Count></RestartOnFailure>");
-  });
-});
-
-describe("compileArgs", () => {
-  const args = compileArgs({ entry: String.raw`C:\repo\main.ts`, outfile: String.raw`C:\bin\grindlog.new.exe`, description: "Grindlog Dev", icon: String.raw`C:\repo\favicon.ico`, version: "1.2.3" });
-  const flag = (name: string) => args[args.indexOf(name) + 1];
-
-  test("a hidden-console compile of the entry to the outfile", () => {
-    expect(args.slice(0, 2)).toEqual(["build", "--compile"]);
-    expect(args).toContain("--windows-hide-console");
-    expect(args).toContain(String.raw`C:\repo\main.ts`);
-    expect(flag("--outfile")).toBe(String.raw`C:\bin\grindlog.new.exe`);
-  });
-
-  test("sets what Task Manager and the file's properties show", () => {
-    expect(flag("--windows-description")).toBe("Grindlog Dev");
-    // Task Manager can show either; a dev build must say so in both.
-    expect(flag("--windows-title")).toBe("Grindlog Dev");
-    expect(flag("--windows-publisher")).toBe("Grindlog");
-    expect(flag("--windows-icon")).toBe(String.raw`C:\repo\favicon.ico`);
-  });
-
-  test("the version gets the four parts the flag takes", () => {
-    expect(flag("--windows-version")).toBe("1.2.3.0");
   });
 });
 

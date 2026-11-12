@@ -6,3 +6,5 @@ dist/
 .dev-data/
 test-results/
 playwright-report/
+release/
+.cache/

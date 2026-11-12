@@ -15,6 +15,8 @@
     "deploy": "bun run check && bun run e2e && bun run install-autostart && bun run recompute",
     "install-autostart": "bun run scripts/autostart.ts install",
     "uninstall-autostart": "bun run scripts/autostart.ts uninstall",
+    "build-release": "bun run scripts/build-release.ts",
+    "sign-release": "bun run scripts/sign-release.ts",
     "web:dev": "vite",
     "web:build": "vite build",
     "e2e": "vite build && playwright test",
