@@ -118,6 +118,18 @@ describe.skipIf(csc === null)("the tray exe", () => {
     expect(out.lines[1]).toMatchObject({ icon: "ready", status: "Starting…" });
   }, 15_000);
 
+  test("takes an https release URL prefix, and exits 2 (bad args) for any other", async () => {
+    const args = (prefix: string) => [exe, "--port", "1", "--name", "Grindlog Test", "--logs", dir, "--channel", "dev", "--release-url-prefix", prefix];
+    const good = Bun.spawn(args("https://github.com/o/r/releases/tag/"), { stdin: "pipe", stdout: "pipe", stderr: "pipe" });
+    running.push(good);
+    await Bun.sleep(1000);
+    expect(good.exitCode).toBeNull();
+    for (const bad of ["http://github.com/o/r/releases/tag/", "https://github.com/o/r/releases/tag", "file:///C:/"]) {
+      const tray = Bun.spawn(args(bad), { stdin: "pipe", stdout: "pipe", stderr: "pipe" });
+      expect(await Promise.race([tray.exited, Bun.sleep(5000).then(() => "timeout" as const)])).toBe(2);
+    }
+  }, 30_000);
+
   test("a killed tray exits nonzero", async () => {
     const tray = start();
     await collect(tray.stdout).waitFor({ event: "started" });

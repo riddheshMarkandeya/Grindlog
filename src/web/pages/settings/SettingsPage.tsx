@@ -10,7 +10,9 @@ import { EmptyState } from "../../components/EmptyState";
 import { filterLabel } from "../../logic/filter-options";
 import { SPEED_LABEL } from "../../logic/format";
 import { parseWindow } from "../../logic/settings";
-import { useAutostart, useSetAutostart, useSettingsQuery } from "../../queries";
+import type { UpdateResponse } from "../../../shared/schemas/responses";
+import { useAutostart, useInstallUpdate, useSetAutoApply, useSetAutostart, useSettingsQuery, useUpdate } from "../../queries";
+import { ApiError } from "../../api";
 import { SaveStatus, type SaveState } from "../../components/SaveStatus";
 import { codeOf, Section, SECTIONS, TableState, useSave } from "./parts";
 import { SeasonsSection } from "./SeasonsSection";
@@ -205,6 +207,89 @@ function StartupSection() {
   );
 }
 
+/** Says plainly that update checks are the app's only internet traffic. */
+const UPDATES_INTRO = "Grindlog's only internet use: it checks GitHub for new versions every few hours, and installs only ones signed by its developer.";
+
+function updateSentence(u: UpdateResponse): string {
+  switch (u.status) {
+    case "disabled": return u.version === null ? "Dev builds don't update." : "This build doesn't update.";
+    case "not_checked": return `Grindlog ${u.version ?? ""} hasn't checked for updates yet.`;
+    case "up_to_date": return `Grindlog ${u.version ?? ""} is up to date.`;
+    case "error": return "Couldn't check for updates. It tries again later.";
+    case "skipped": return `Update ${u.skipped ?? ""} was skipped: its signature didn't check out.`;
+    case "ready": return `Grindlog ${u.available?.version ?? ""} is ready to install.`;
+  }
+}
+
+/**
+ * The supervisor checks and downloads; this shows what it found and records the friend's choices, which
+ * it acts on. Install only asks: the update runs once Rocket League is closed.
+ */
+function UpdatesSection() {
+  const labelId = useId();
+  const q = useUpdate();
+  const autoApply = useSetAutoApply();
+  const install = useInstallUpdate();
+  const pending = useRef<HTMLSpanElement>(null);
+  const asked = useRef(false);
+  const u = q.data;
+  // The Install button gives way to the sentence saying when it happens; focus follows it there.
+  useEffect(() => {
+    if (!u?.installRequested || !asked.current) return;
+    asked.current = false;
+    pending.current?.focus();
+  }, [u?.installRequested]);
+  const saveAutoApply = (on: boolean) => {
+    autoApply.mutate(on, { onError: (error) => { console.warn("[grindlog] update/auto_apply_failed", { on, code: codeOf(error) }); } });
+  };
+  const ask = (version: string) => {
+    asked.current = true;
+    install.mutate(version, {
+      onError: (error) => {
+        asked.current = false;
+        console.warn("[grindlog] update/install_failed", { version, code: codeOf(error) });
+        // 409: a newer check replaced it; the fresh view shows what's there now.
+        if (error instanceof ApiError && error.status === 409) void q.refetch();
+      },
+    });
+  };
+  if (!u) {
+    return (
+      <Section anchor="updates" title="Updates" intro={UPDATES_INTRO}>
+        <TableState what="the update status" failed={q.isError} retry={() => { void q.refetch(); }} />
+      </Section>
+    );
+  }
+  const ready = u.available;
+  const refused = install.isError && install.error instanceof ApiError && install.error.status === 409;
+  return (
+    <Section anchor="updates" title="Updates" intro={UPDATES_INTRO}>
+      <div className={styles.row}>
+        <div className={styles.text}>
+          <div className={styles.label}>{updateSentence(u)}</div>
+          {ready && u.autoApply && <div className={styles.help}>Installs on its own when Rocket League is closed.</div>}
+          {install.isError && <div className={styles.help} role="status">{refused ? "That update isn't available any more." : "Couldn't ask for the install."}</div>}
+        </div>
+        {ready && (
+          <div className={cx(styles.control, styles.updateActions)}>
+            {!u.autoApply && (u.installRequested ? (
+              <span ref={pending} tabIndex={-1} className={styles.help}>Installs when Rocket League is closed.</span>
+            ) : (
+              <button type="button" className={styles.button} disabled={install.isPending} aria-busy={install.isPending} onClick={() => { ask(ready.version); }}>Install {ready.version}</button>
+            ))}
+            <a href={ready.page} target="_blank" rel="noreferrer" className={styles.small}>What changed in {ready.version}</a>
+          </div>
+        )}
+      </div>
+      {u.enabled && (
+        <RowFrame label="Install updates automatically" help="A ready update installs when Rocket League is closed." labelId={labelId} m={autoApply} save={saveAutoApply}>
+          <Switch labelId={labelId} checked={u.autoApply} onToggle={saveAutoApply} />
+        </RowFrame>
+      )}
+    </Section>
+  );
+}
+
 /**
  * A fragment jump scrolls but doesn't move focus, so the link scrolls and focuses the section's h2
  * itself. The URL keeps no hash: the sections render after their data loads, so a reload couldn't
@@ -242,6 +327,7 @@ export function SettingsPage() {
           </EmptyState>
         )}
         <StartupSection />
+        <UpdatesSection />
         <YouSection />
         <SeasonsSection />
       </div>

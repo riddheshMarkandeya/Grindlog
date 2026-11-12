@@ -147,6 +147,8 @@ describe("trayCmd", () => {
       String.raw`C:\Users\Zoë\logs`,
       "--channel",
       "prod",
+      "--release-url-prefix",
+      "https://github.com/riddheshMarkandeya/Grindlog/releases/tag/",
       "--version",
       "1.2.3",
     ]);

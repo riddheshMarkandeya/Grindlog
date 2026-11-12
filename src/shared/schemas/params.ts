@@ -79,6 +79,11 @@ export const periodParams = z
 /** `POST /api/autostart?on=true|false`: switch the logon task on or off. */
 export const autostartParams = z.object({ on: boolParam }).strict();
 
+/** `POST /api/update/install?version=X`: install the update now available, once it's safe. */
+export const updateInstallParams = z.object({ version: z.string().min(1) }).strict();
+/** `POST /api/update/auto-apply?on=true|false` */
+export const autoApplyParams = z.object({ on: boolParam }).strict();
+
 /** `POST /api/stats-setup/fix?port=1`: `port=1` is consent to move a custom WebPort to the tracker's. */
 export const statsSetupParams = z.object({ port: z.literal("1").optional() }).strict();
 

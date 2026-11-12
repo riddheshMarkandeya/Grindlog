@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { dashboardPort, dataDir, identity, logonTaskName, logsDir, staticDir, statsConfigDirOverride } from "./paths";
+import { dashboardPort, dataDir, identity, logonTaskName, logsDir, staticDir, statsConfigDirOverride, updateDir } from "./paths";
 
 describe("identity", () => {
   test("prod is a friend's install", () => {
@@ -43,6 +43,13 @@ describe("logsDir", () => {
   test("a logs folder inside the data dir", () => {
     expect(logsDir({ GRINDLOG_DATA_DIR: "D:\\x" })).toBe(join("D:\\x", "logs"));
     expect(logsDir({ LOCALAPPDATA: "C:\\L" }, "prod")).toBe(join("C:\\L", "Grindlog", "logs"));
+  });
+});
+
+describe("updateDir", () => {
+  test("an update folder inside the data dir", () => {
+    expect(updateDir({ GRINDLOG_DATA_DIR: "D:\\x" })).toBe(join("D:\\x", "update"));
+    expect(updateDir({ LOCALAPPDATA: "C:\\L" }, "prod")).toBe(join("C:\\L", "Grindlog", "update"));
   });
 });
 

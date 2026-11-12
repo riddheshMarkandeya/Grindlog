@@ -11,7 +11,7 @@ const THEMES = ["carbon", "slate", "oled"] as const;
 const DEFAULTS = "theme=carbon&clock=24h&speed=kmh&startPage=recap&recapFilter=everything&trendsFilter=ranked&rollingWindow=20&remarks=true&moodLine=true";
 const HEADER = { "X-Grindlog-Request": "1" };
 // The failed saves tests bring about on purpose.
-const SAVE_FAILED = /^Failed to load resource: .* 500 .*\/api\/(settings|autostart)/;
+const SAVE_FAILED = /^Failed to load resource: .* (500|409) .*\/api\/(settings|autostart|update)/;
 
 const put = async (request: APIRequestContext, query: string) => {
   const res = await request.post(`/api/settings?${query}`, { headers: HEADER });
@@ -270,4 +270,103 @@ test("passes axe in every theme, and fits at 320px", async ({ page, request }) =
   await page.goto("/settings");
   await expect(page.getByRole("radio", { name: "Carbon" })).toBeVisible();
   expect(await page.evaluate("document.documentElement.scrollWidth")).toBeLessThanOrEqual(320);
+});
+
+const PAGE = "https://github.com/riddheshMarkandeya/Grindlog/releases/tag/v0.2.0";
+const UPDATE = { enabled: true, version: "0.1.0", status: "up_to_date", available: null, skipped: null, autoApply: true, installRequested: false, checkedAt: "2026-11-12T10:00:00.000Z" };
+const READY = { ...UPDATE, status: "ready", available: { version: "0.2.0", page: PAGE } };
+
+/** Answers /api/update from `view`; the writes change it the way the tracker does, or fail with `fail`. */
+async function fakeUpdate(page: Page, start: Record<string, unknown>) {
+  const fake = { view: { ...start }, fail: null as null | number, installs: [] as string[] };
+  await page.route("**/api/update**", (route) => {
+    const req = route.request();
+    const url = new URL(req.url());
+    if (req.method() !== "POST") return route.fulfill({ json: fake.view });
+    if (fake.fail !== null) return route.fulfill({ status: fake.fail, json: { error: fake.fail === 409 ? "not_available" : "write_failed" } });
+    if (url.pathname.endsWith("/auto-apply")) fake.view = { ...fake.view, autoApply: url.searchParams.get("on") === "true" };
+    else {
+      fake.installs.push(url.searchParams.get("version") ?? "");
+      fake.view = { ...fake.view, installRequested: true };
+    }
+    return route.fulfill({ json: fake.view });
+  });
+  return fake;
+}
+
+test("Updates: the stack is a dev build, so it says it doesn't update", async ({ page }) => {
+  await page.goto("/settings");
+  const updates = section(page, "Updates");
+  await expect(updates).toContainText("Dev builds don't update.");
+  await expect(updates.getByRole("switch")).toHaveCount(0);
+});
+
+test("Updates: each status reads as a sentence", async ({ page }) => {
+  const fake = await fakeUpdate(page, UPDATE);
+  const updates = section(page, "Updates");
+  const cases: [Record<string, unknown>, string][] = [
+    [UPDATE, "Grindlog 0.1.0 is up to date."],
+    [{ ...UPDATE, status: "not_checked", checkedAt: null }, "Grindlog 0.1.0 hasn't checked for updates yet."],
+    [{ ...UPDATE, status: "error" }, "Couldn't check for updates. It tries again later."],
+    [{ ...UPDATE, status: "skipped", skipped: "0.3.0" }, "Update 0.3.0 was skipped: its signature didn't check out."],
+    [READY, "Grindlog 0.2.0 is ready to install."],
+  ];
+  for (const [view, text] of cases) {
+    fake.view = view;
+    await page.goto("/settings");
+    await expect(updates).toContainText(text);
+  }
+});
+
+test("Updates: with auto-apply on, a ready update needs nothing and links to what changed", async ({ page }) => {
+  await fakeUpdate(page, READY);
+  await page.goto("/settings");
+  const updates = section(page, "Updates");
+  await expect(updates).toContainText("Installs on its own when Rocket League is closed.");
+  await expect(updates.getByRole("button", { name: /Install/ })).toHaveCount(0);
+  const link = updates.getByRole("link", { name: "What changed in 0.2.0" });
+  await expect(link).toHaveAttribute("href", PAGE);
+  await expect(link).toHaveAttribute("target", "_blank");
+});
+
+test("Updates: auto-apply switches off, then Install asks for the version and says when it happens", async ({ page }) => {
+  const fake = await fakeUpdate(page, READY);
+  await page.goto("/settings");
+  const toggle = page.getByRole("switch", { name: "Install updates automatically" });
+  await expect(toggle).toBeChecked();
+  await toggle.click();
+  await expect(saved(page, "Install updates automatically")).toHaveText("✓ Saved");
+  await expect(toggle).not.toBeChecked();
+  const install = page.getByRole("button", { name: "Install 0.2.0" });
+  await install.click();
+  const pending = section(page, "Updates").getByText("Installs when Rocket League is closed.", { exact: true });
+  await expect(pending).toBeVisible();
+  await expect(pending).toBeFocused();
+  expect(fake.installs).toEqual(["0.2.0"]);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+test("Updates: an Install the tracker refuses says why, and Install can be pressed again", async ({ page }) => {
+  const fake = await fakeUpdate(page, { ...READY, autoApply: false });
+  fake.fail = 409;
+  await page.goto("/settings");
+  await page.getByRole("button", { name: "Install 0.2.0" }).click();
+  await expect(section(page, "Updates")).toContainText("That update isn't available any more.");
+  fake.fail = 500;
+  await page.getByRole("button", { name: "Install 0.2.0" }).click();
+  await expect(section(page, "Updates")).toContainText("Couldn't ask for the install.");
+  fake.fail = null;
+  await page.getByRole("button", { name: "Install 0.2.0" }).click();
+  await expect(section(page, "Updates").getByText("Installs when Rocket League is closed.", { exact: true })).toBeVisible();
+});
+
+test("Updates: a failed read offers Retry", async ({ page }) => {
+  let fail = true;
+  await page.route("**/api/update", (route) => (fail ? route.fulfill({ status: 500, json: { error: "internal" } }) : route.fulfill({ json: UPDATE })));
+  await page.goto("/settings");
+  const updates = section(page, "Updates");
+  await expect(updates).toContainText("Couldn't load the update status.");
+  fail = false;
+  await updates.getByRole("button", { name: "Retry" }).click();
+  await expect(updates).toContainText("Grindlog 0.1.0 is up to date.");
 });

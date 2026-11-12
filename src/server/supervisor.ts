@@ -1,14 +1,18 @@
 // The process Task Scheduler starts: it runs the tracker hidden and restarts it after a crash,
 // which Task Scheduler itself doesn't do once a task has launched. Beside it, it runs the tray
-// icon, whose "Quit" stops the app, and restarts that too. It stays idle otherwise.
+// icon, whose "Quit" stops the app, and restarts that too, and checks for updates (a crash-looping
+// tracker can still be fixed by the next release).
 import { dirname, join } from "node:path";
 import { APP_NAME, CHANNEL, type Channel } from "../shared/channel";
+import { RELEASE_PAGE_PREFIX } from "../shared/release";
+import { UPDATE_KEY } from "../shared/update-key";
 import { VERSION } from "../shared/version";
 import { QUIT_TIMEOUT_MS, requestStop as requestStopReal, statusProbe, stopAccepted, type Probe, type StopOutcome } from "./control";
 import { EXIT_CONFIG_INVALID, EXIT_OK, EXIT_PORT_TAKEN, EXIT_START_FAILED, TRAY_EXIT_BAD_ARGS, TRAY_EXIT_CRASHED, TRAY_EXIT_QUIT, TRAY_EXIT_STDIN_CLOSED } from "./exit-codes";
 import { createLogger, type Logger } from "./log";
-import { dashboardPort, identity, logsDir } from "./paths";
+import { dashboardPort, identity, logsDir, updateDir } from "./paths";
 import { runtimeInfo } from "./runtime-info";
+import { startSupervisorUpdates } from "./update/checker";
 
 const RESTART_MIN_MS = 5_000;
 const RESTART_MAX_MS = 5 * 60_000;
@@ -57,7 +61,8 @@ export function decideTray(code: number, uptimeMs: number, shortFailures: number
 
 /** The tray's command line: everything it needs, so it reads no config. A dev build has no version. */
 export function trayCmd({ trayExe, name, channel, logs, port, version }: { trayExe: string; name: string; channel: Channel; logs: string; port: number; version: string | null }): string[] {
-  const cmd = [trayExe, "--port", String(port), "--name", name, "--logs", logs, "--channel", channel];
+  // The release page prefix is the one https URL the tray may open; passed so it has one source.
+  const cmd = [trayExe, "--port", String(port), "--name", name, "--logs", logs, "--channel", channel, "--release-url-prefix", RELEASE_PAGE_PREFIX];
   return version === null ? cmd : [...cmd, "--version", version];
 }
 
@@ -367,5 +372,9 @@ export function superviseSelf(): void {
     // A bad GRINDLOG_PORT: the tracker exits EXIT_CONFIG_INVALID and says why; a tray could only point at nothing.
     logger.warn("tray", "skipped", { err });
   }
-  void runSupervisor({ cmd: [exe], cwd: bin, logger, tray }).then(() => process.exit(EXIT_OK));
+  const updates = startSupervisorUpdates({ logger, channel: CHANNEL, version: VERSION, key: UPDATE_KEY, dir: updateDir(), env: process.env });
+  void runSupervisor({ cmd: [exe], cwd: bin, logger, tray }).then(() => {
+    updates.stop();
+    process.exit(EXIT_OK);
+  });
 }

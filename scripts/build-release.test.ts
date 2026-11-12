@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { identity } from "../src/server/paths";
-import { findIscc, isccArgs, taskTemplate } from "./build-release";
+import { findIscc, isccArgs, readUpdateKey, taskTemplate } from "./build-release";
+import { StepFailed } from "./steps";
 
 describe("findIscc", () => {
   const env = { "ProgramFiles(x86)": String.raw`C:\PF86`, ProgramFiles: String.raw`C:\PF`, LOCALAPPDATA: String.raw`C:\Users\me\AppData\Local` };
@@ -57,5 +58,25 @@ describe("isccArgs", () => {
       String.raw`/OC:\r\release`,
       String.raw`C:\r\installer\grindlog.iss`,
     ]);
+  });
+});
+
+describe("readUpdateKey", () => {
+  const PUB = "untrusted comment: minisign public key 5CD2F0718BEE8E7\nRWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3\n";
+
+  test("is the key line of the minisign.pub it reads", () => {
+    expect(readUpdateKey("minisign.pub", () => PUB)).toBe("RWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3");
+  });
+
+  test("a missing file fails the build, saying how to make the key", () => {
+    const missing = () => {
+      throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+    };
+    expect(() => readUpdateKey("minisign.pub", missing)).toThrow(StepFailed);
+    expect(() => readUpdateKey("minisign.pub", missing)).toThrow(/minisign -G/);
+  });
+
+  test("a file that isn't a minisign public key fails the build", () => {
+    expect(() => readUpdateKey("minisign.pub", () => "untrusted comment: x\nnot-a-key\n")).toThrow(/not a minisign public key/);
   });
 });

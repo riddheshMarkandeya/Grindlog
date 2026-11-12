@@ -30,6 +30,7 @@ import {
   statusSchema,
   suggestionsResponse,
   trayResponse,
+  updateResponse,
   type Status,
   type TrayResponse,
 } from "../../shared/schemas/responses";
@@ -42,6 +43,8 @@ import { createRecordWriter } from "../records/save";
 import { openStorage, type Storage } from "../storage";
 import { ME, memoryLogger, player, record, THEM } from "../testing";
 import type { FixResult } from "../stats-setup";
+import { writeState } from "../update/state";
+import { createUpdates } from "../update/view";
 import { createApi, type Api } from "./index";
 
 let dir: string;
@@ -118,6 +121,7 @@ beforeEach(() => {
         return Promise.resolve(fixAnswer);
       },
     },
+    updates: createUpdates({ dir: join(dir, "update"), logger, running: "0.1.0", enabled: true }),
   });
   host.mount(api.handle);
 });
@@ -621,5 +625,55 @@ describe("friends", () => {
     const res = await post(`/api/friends/suggest-again?${q(SAM)}`);
     expect(neverSuggestResponse.parse(await res.json())).toEqual({ players: [] });
     expect((await post(`/api/friends/suggest-again?${q(SAM)}`)).status).toBe(404);
+  });
+});
+
+describe("update", () => {
+  const post = (path: string, headers: Record<string, string> = { [REQUEST_HEADER]: "1" }) => fetch(url(path), { method: "POST", headers });
+  const ready = () => {
+    writeState(join(dir, "update"), memoryLogger(), { checkedAt: "2026-11-12T10:00:00.000Z", lastOutcome: "downloaded", available: { version: "0.2.0", file: "Grindlog-Setup-0.2.0.exe", verifiedAt: "x" } });
+  };
+
+  test("reads as not checked before the supervisor's first check", async () => {
+    expect(await get(updateResponse, "/api/update")).toEqual({ enabled: true, version: "0.1.0", status: "not_checked", available: null, skipped: null, autoApply: true, installRequested: false, checkedAt: null });
+  });
+
+  test("a ready update can be asked for, and then reads as requested", async () => {
+    ready();
+    const res = await post("/api/update/install?version=0.2.0");
+    expect(res.status).toBe(200);
+    expect(updateResponse.parse(await res.json())).toMatchObject({ status: "ready", installRequested: true, available: { version: "0.2.0", page: "https://github.com/riddheshMarkandeya/Grindlog/releases/tag/v0.2.0" } });
+    expect(logger.lines.find((l) => l.cat === "update")?.fields).toEqual({ kind: "install", version: "0.2.0" });
+  });
+
+  test("asking for a version that isn't available is 409", async () => {
+    expect((await post("/api/update/install?version=0.2.0")).status).toBe(409);
+    ready();
+    const res = await post("/api/update/install?version=0.3.0");
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "not_available" });
+  });
+
+  test("auto-apply switches off and on", async () => {
+    const off = await post("/api/update/auto-apply?on=false");
+    expect(updateResponse.parse(await off.json()).autoApply).toBe(false);
+    expect((await get(updateResponse, "/api/update")).autoApply).toBe(false);
+    expect(updateResponse.parse(await (await post("/api/update/auto-apply?on=true")).json()).autoApply).toBe(true);
+  });
+
+  test("no request header is 403 and bad params are 400, writing nothing", async () => {
+    ready();
+    expect((await post("/api/update/install?version=0.2.0", {})).status).toBe(403);
+    expect((await post("/api/update/auto-apply?on=false", {})).status).toBe(403);
+    expect((await post("/api/update/install")).status).toBe(400);
+    expect((await post("/api/update/install?version=0.2.0&x=1")).status).toBe(400);
+    expect((await post("/api/update/auto-apply?on=no")).status).toBe(400);
+    expect(await get(updateResponse, "/api/update")).toMatchObject({ autoApply: true, installRequested: false });
+  });
+
+  test("a corrupt state file reads as not checked", async () => {
+    mkdirSync(join(dir, "update"), { recursive: true });
+    writeFileSync(join(dir, "update", "state.json"), "{");
+    expect((await get(updateResponse, "/api/update")).status).toBe("not_checked");
   });
 });

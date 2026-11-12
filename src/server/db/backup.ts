@@ -1,5 +1,6 @@
-import { mkdirSync, readdirSync, renameSync, rmSync, statSync } from "node:fs";
+import { mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { renameRetry } from "../fs-retry";
 import type { Logger } from "../log";
 import type { Db } from "./sqlite";
 
@@ -58,7 +59,7 @@ export function backupTracker(db: Db, { dir, reason, now, logger }: BackupOption
     mkdirSync(dir, { recursive: true });
     db.run("VACUUM INTO ?", partial);
     const { size } = statSync(partial);
-    renameSync(partial, path);
+    renameRetry(partial, path, { logger });
     logger.info("backup", "created", { reason, path, bytes: size, ms: Math.round(performance.now() - started) });
   } catch (err) {
     logger.error("backup", "failed", { reason, path, err });

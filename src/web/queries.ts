@@ -11,6 +11,7 @@ import type { PeriodSpec } from "../shared/periods";
 import { pairKey, teammateValue, type TeammateFilter } from "../shared/teammate-filter";
 import {
   autostartResponse,
+  updateResponse,
   currentResponse,
   friendDetailResponse,
   friendsResponse,
@@ -313,6 +314,23 @@ export function useAutostart() {
 /** Switches "Run at Windows startup" on or off; the answer is what Windows now holds. */
 export function useSetAutostart() {
   return useWholeWrite(AUTOSTART_KEY, (on: boolean) => postJson(`/api/autostart?on=${String(on)}`, WRITE, autostartResponse));
+}
+
+const UPDATE_QUERY_KEY = ["update"] as const;
+
+/** The supervisor's latest update check, re-read every 30 s while a page shows it (a check can land any time); that refetch is also the retry. */
+export function useUpdate() {
+  return useQuery({ queryKey: UPDATE_QUERY_KEY, queryFn: () => getJson("/api/update", updateResponse), retry: false, refetchInterval: 30_000 });
+}
+
+/** "Install updates automatically"; the answer is the whole update view. */
+export function useSetAutoApply() {
+  return useWholeWrite(UPDATE_QUERY_KEY, (on: boolean) => postJson(`/api/update/auto-apply?on=${String(on)}`, WRITE, updateResponse));
+}
+
+/** Asks for the ready update to install once Rocket League is closed; a 409 means it's no longer the one available. */
+export function useInstallUpdate() {
+  return useWholeWrite(UPDATE_QUERY_KEY, (version: string) => postJson(`/api/update/install?${new URLSearchParams({ version }).toString()}`, WRITE, updateResponse));
 }
 
 /** The setup card's fix of the game's Stats API settings; `port` consents to moving a custom WebPort. The status catches up over the stream. */

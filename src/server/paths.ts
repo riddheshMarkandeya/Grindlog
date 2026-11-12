@@ -49,6 +49,11 @@ export function logsDir(env: Env = process.env, channel: Channel = CHANNEL): str
   return join(dataDir(env, channel), "logs");
 }
 
+/** The updater's state, requests and downloads, inside the data dir (the installer keeps `previous\` here too). */
+export function updateDir(env: Env = process.env, channel: Channel = CHANNEL): string {
+  return join(dataDir(env, channel), "update");
+}
+
 /** The dashboard's port. GRINDLOG_PORT overrides it (tests, dev). */
 export function dashboardPort(env: Env = process.env, channel: Channel = CHANNEL): number {
   const raw = env.GRINDLOG_PORT;

@@ -1,11 +1,13 @@
 // Builds the friends release: the prod exe, tray and dashboard staged in release/app, smoke-run, then
 // packed by Inno Setup into release/Grindlog-Setup-<version>.exe. The tag workflow runs it with
-// --tag; locally it runs bare. `bun run build-release [--tag vX.Y.Z]`.
+// --tag; locally it runs bare. `bun run build-release [--tag vX.Y.Z] [--update-key <minisign.pub>]`;
+// --update-key bakes in another public key, for a local rehearsal signed with a test key.
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, win32 } from "node:path";
 import { version as packageVersion } from "../package.json";
 import { identity, type Identity } from "../src/server/paths";
+import { publicKeyLine } from "../src/server/update/minisign";
 import { appName } from "../src/shared/channel";
 import { installerName, parseReleaseVersion, type ReleaseVersion } from "../src/shared/release";
 import { taskXml } from "./autostart";
@@ -25,6 +27,7 @@ const ISS = join(REPO, "installer", "grindlog.iss");
 const RELEASE = join(REPO, "release");
 const APP = join(RELEASE, "app");
 const RCEDIT_CACHE = join(REPO, ".cache", "rcedit");
+const UPDATE_KEY_FILE = join(REPO, "minisign.pub");
 const SMOKE_TIMEOUT_MS = 30_000;
 // Per request, so a tracker that accepts the connection and never answers can't outlast the deadline.
 const FETCH_TIMEOUT_MS = 5_000;
@@ -64,6 +67,28 @@ export function isccArgs({ version, sourceDir, outDir, iss, id }: { version: Rel
     `/O${outDir}`,
     iss,
   ];
+}
+
+/** The base64 key line of a minisign public key file, which the exe trusts for updates. */
+export function readUpdateKey(path: string, read: (path: string) => string = (p) => readFileSync(p, "utf8")): string {
+  let text: string;
+  try {
+    text = read(path);
+  } catch (err) {
+    throw new StepFailed(`${path} can't be read (${(err as Error).message}); create the release key with \`minisign -G -p minisign.pub\` (docs/releasing.md).`);
+  }
+  const line = publicKeyLine(text);
+  if (line === null) throw new StepFailed(`${path} is not a minisign public key.`);
+  return line;
+}
+
+/** The value after `flag` in argv, undefined when the flag is absent; a flag with no value fails. */
+function option(flag: string): string | undefined {
+  const i = process.argv.indexOf(flag);
+  if (i === -1) return undefined;
+  const value = process.argv[i + 1];
+  if (value === undefined || value.startsWith("--")) throw new StepFailed("usage: bun run build-release [--tag vX.Y.Z] [--update-key <minisign.pub>]");
+  return value;
 }
 
 function releaseVersion(tag: string | undefined): ReleaseVersion {
@@ -154,7 +179,15 @@ async function smokeRun(exe: string, webDir: string, version: ReleaseVersion): P
       throw new StepFailed(`Smoke run: GET / failed (${(err as Error).message}).`);
     }
     if (page.status !== 200) throw new StepFailed(`Smoke run: GET / answered ${String(page.status)}, so the dashboard beside the exe isn't served.`);
-    console.log(`Version ${version.full}, channel prod, dashboard served from ${webDir}.`);
+    // A build without the baked key would never update, and nothing else would show it.
+    let update: { enabled?: unknown };
+    try {
+      update = (await (await fetch(`${base}/api/update`, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })).json()) as { enabled?: unknown };
+    } catch (err) {
+      throw new StepFailed(`Smoke run: GET /api/update failed (${(err as Error).message}).`);
+    }
+    if (update.enabled !== true) throw new StepFailed(`Smoke run: /api/update says enabled ${JSON.stringify(update.enabled)}, so this build wouldn't update.`);
+    console.log(`Version ${version.full}, channel prod, updates on, dashboard served from ${webDir}.`);
   } finally {
     const stopped = await stopTracker(port, true);
     if (stopped.exitCode !== 0) {
@@ -167,14 +200,17 @@ async function smokeRun(exe: string, webDir: string, version: ReleaseVersion): P
 }
 
 async function main(): Promise<void> {
-  const tagIndex = process.argv.indexOf("--tag");
-  const tag = tagIndex === -1 ? undefined : process.argv[tagIndex + 1];
-  if (tagIndex !== -1 && !tag) throw new StepFailed("usage: bun run build-release [--tag vX.Y.Z]");
+  const tag = option("--tag");
+  const keyFile = option("--update-key") ?? UPDATE_KEY_FILE;
   const id = identity("prod");
 
   step("Version");
   const version = releaseVersion(tag);
   console.log(`${version.full}${version.prerelease ? " (prerelease)" : ""}`);
+
+  step("Update key");
+  const updateKey = readUpdateKey(keyFile);
+  console.log(`${updateKey} from ${keyFile}`);
 
   // Checked up front, so a missing Inno Setup fails before minutes of building.
   const iscc = findIscc();
@@ -189,7 +225,7 @@ async function main(): Promise<void> {
 
   step("Exe");
   const exe = join(APP, id.exe);
-  run([process.execPath, ...compileArgs({ entry: ENTRY, outfile: exe, description: appName("prod"), icon: EXE_ICON, version: version.full, defines: { GRINDLOG_CHANNEL: "prod", GRINDLOG_VERSION: version.full } })]);
+  run([process.execPath, ...compileArgs({ entry: ENTRY, outfile: exe, description: appName("prod"), icon: EXE_ICON, version: version.full, defines: { GRINDLOG_CHANNEL: "prod", GRINDLOG_VERSION: version.full, GRINDLOG_UPDATE_KEY: updateKey } })]);
 
   step("Tray");
   // Unlike the dev install, a release without its tray is a broken release, so its failure isn't caught.

@@ -12,7 +12,7 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   recording tracker), `control.ts` probing, listing, ending and starting this install's processes
   (shared with `stop.ts` and `autostart.ts`), `runtime-info.ts` version, channel, Windows and Bun for
   `started` lines, `game-watch.ts` game detection and the "Stats API off" toast, `notifier.ts` routes toasts through the
-  tray (acked queue, 10 s PowerShell fallback) or PowerShell, `tray-view.ts` the pure tray view for `/api/tray`, `exit-codes.ts`, `log.ts`
+  tray (acked queue, 10 s PowerShell fallback) or PowerShell, `tray-view.ts` the pure tray view for `/api/tray` (update lines included), `fs-retry.ts` `renameRetry` (EPERM/EBUSY/EACCES, for antivirus holds), `exit-codes.ts`, `log.ts`
   logger, `paths.ts` per-channel `identity()` (data dir, port, exe, task, shortcut) and paths from it, `storage.ts` opens both DBs, `maintenance.ts` schedules retention and backups, `release-recompute.ts` rebuilds every match record in
   the background when a release build's version differs from tracker.db's `meta.recomputed_version` (dev builds
   never; pauses while a match records; ends with the `records_recomputed` event); `db/`: `sqlite.ts` driver seam, `migrate.ts`, `migrations.ts`,
@@ -26,7 +26,12 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   `events.ts` SSE (`status`, `match_ended`, `session_break`, `records_recomputed`), `router.ts` (a `quiet` route
   logs no 2xx request lines), `static.ts` built web app (every file `Cache-Control: no-cache`); `remarks/`: the recap headline,
   `copy.ts` line pool, `triggers.ts` mood and quip triggers, `pick.ts` the pure picker, `store.ts`
-  stored picks and history),
+  stored picks and history); `update/` (WP6a): `checker.ts` the supervisor's check loop (3 min, then 6 h
+  plus jitter; prod builds with a baked key only), `feed.ts` GitHub `releases/latest` or the
+  `GRINDLOG_UPDATE_FEED` override (http or a folder with `latest.json`) and the candidate pick, `download.ts`
+  capped, timed downloads through `.partial`, `minisign.ts` the verifier (node:crypto, both algorithms),
+  `state.ts` `<data>/update/state.json` (supervisor writes) and `request.json` (tracker writes), `view.ts` the
+  tracker's `/api/update` view and writes, `fixtures/` real minisign-made signatures),
   `src/web/` (the dashboard: Vite + React + React Router + TanStack Query; `main.tsx`, `App.tsx`
   routes, `api.ts` fetch + Zod parse; `events/`: `hub.ts` one `/api/events` stream fanned out to
   tabs from a SharedWorker (`worker.ts`, in-page fallback in `client.ts`; it reads each status's `version`
@@ -37,8 +42,8 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   DPI awareness; `icons/<channel>-<state>.ico` from `bun run icons`; built by `scripts/build-tray.ts`; live
   `tray.test.ts`),
   `src/shared/` (`channel.ts` the baked dev/prod channel and `APP_NAME`, `version.ts` the baked
-  `GRINDLOG_VERSION` (null in dev and source runs), `release.ts` release version parsing, installer name and
-  minisign trusted comment, `constants.ts`, `result.ts` your W/L, `playlists.ts` ID map, `goal-range.ts`
+  `GRINDLOG_VERSION` (null in dev and source runs), `release.ts` release version parsing and compare, installer name, the
+  minisign trusted comment and its parser, the update repo URLs, `update-key.ts` the baked `GRINDLOG_UPDATE_KEY`, `constants.ts`, `result.ts` your W/L, `playlists.ts` ID map, `goal-range.ts`
   close/mid/long, `periods.ts` local days and periods, `playlist-filter.ts` filter groups, `schemas/` API params
   and response shapes),
   `scripts/` (standalone `capture.ts`; `make-icons.ts` packs `src/web/assets/icon.svg` and
@@ -115,6 +120,8 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   Task Scheduler doesn't restart a crashed task.
 
 ## Plans
+- `docs/plans/2026-11-12-wp6a-updater-check.md`: step 4 package 6a, updater check, download and verify (state
+  files, minisign verifier, feed override, `/api/update`, tray lines, Settings Updates); what 6b inherits.
 - `docs/reviews/2026-11-11-wp5-installer-release.md`: step 4 package 5 review summary (2 rounds, 1 disputed); what only
   the clean-account checklist and the first tag can test.
 - `docs/plans/2026-11-11-wp5-installer-release.md`: step 4 package 5, installer and release pipeline: release build,

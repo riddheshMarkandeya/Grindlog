@@ -12,7 +12,10 @@ because the signing key never leaves it.
    saved the secret key (`minisign.key`, outside the repo).
 4. Keep the secret key and its password in the password manager, plus one offline copy (a USB stick). A lost
    key means every friend reinstalls by hand once, since the updater only trusts this public key.
-5. Commit `minisign.pub` at the repo root. The updater (package 6) bakes it in.
+5. Commit `minisign.pub` at the repo root. `build-release` bakes its key line into the exe and refuses to build
+   without it (`--update-key <path>` points a rehearsal build at another key), and its smoke run checks
+   `/api/update` says `enabled: true`. Update checks are the app's only outbound requests: the supervisor asks
+   GitHub's `releases/latest` 3 min after start and every ~6 h, and the Settings page's Updates section says so.
 6. For local builds, Inno Setup 6: `winget install JRSoftware.InnoSetup`. `build-release` finds it under
    Program Files or `%LOCALAPPDATA%\Programs`, or set `ISCC` to `ISCC.exe`'s path.
 
@@ -39,6 +42,9 @@ because the signing key never leaves it.
 - **A broken draft**: delete it on GitHub, delete the tag as above, and tag again.
 - **`sign-release` says the release is already published**: it never re-signs a published release. Publish
   a new version instead.
+- **A published release with a bad signature or the wrong file**: installs that checked it have skipped that
+  version for good, and they won't retry it even if its files are re-uploaded. Delete the release and
+  publish a new version.
 - **The installer itself**: Inno writes a log to `%TEMP%` on every install and uninstall (`Setup Log <date>
   #<n>.txt`, or wherever the updater's `/LOG=` points). It says
   whether `--quit` ran before the files were replaced (with its exit code), whether the logon task was

@@ -3,7 +3,7 @@
 import type { Server } from "bun";
 import type { z } from "zod";
 import { REQUEST_HEADER, TRAY_HEADER } from "../../shared/constants";
-import { autostartParams, filterOnly, monthsParams, periodParams, playedDaysParams, sessionsParams, statsSetupParams, trayParams, type TrayAck } from "../../shared/schemas/params";
+import { autoApplyParams, autostartParams, filterOnly, monthsParams, periodParams, playedDaysParams, sessionsParams, statsSetupParams, trayParams, updateInstallParams, type TrayAck } from "../../shared/schemas/params";
 import {
   autostartResponse,
   breakResponse,
@@ -28,6 +28,7 @@ import {
   statusSchema,
   suggestionsResponse,
   trayResponse,
+  updateResponse,
   type Status,
   type TrayResponse,
 } from "../../shared/schemas/responses";
@@ -43,6 +44,7 @@ import { createRemarks } from "../remarks/store";
 import { createSeasons, type SeasonWrite } from "../seasons";
 import { createSettings } from "../settings";
 import type { FixResult } from "../stats-setup";
+import type { Updates } from "../update/view";
 import { createEventHub, type EventHubOptions } from "./events";
 import { createPages } from "./pages";
 import { matchRoute, type Route } from "./router";
@@ -65,6 +67,8 @@ export interface ApiOptions {
   tray?: (ack: TrayAck | null) => TrayResponse;
   /** The setup card's one-click fix of the game's Stats API settings. */
   statsSetup: { fix: (portConsent: boolean) => Promise<FixResult> };
+  /** The update view and the user's update choices, which the supervisor acts on. */
+  updates: Pick<Updates, "view" | "install" | "setAutoApply">;
 }
 
 interface Ctx {
@@ -111,7 +115,7 @@ function friendWritten(write: FriendWrite, answer: () => Response): Response {
   return write.error === "not_found" ? notFound() : Response.json({ error: "conflict" }, { status: 409 });
 }
 
-export function createApi({ tracker, reader, status, staticDir, logger, now = Date.now, events: eventOptions, logonTask, tray, statsSetup }: ApiOptions) {
+export function createApi({ tracker, reader, status, staticDir, logger, now = Date.now, events: eventOptions, logonTask, tray, statsSetup, updates }: ApiOptions) {
   const pages = createPages({ reader, logger, now });
   const hub = createEventHub({ status, logger, ...eventOptions });
   const remarks = createRemarks({ tracker, pages, logger, now });
@@ -279,6 +283,13 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
     // Not a settings row: the logon task itself is the record, read from schtasks on each request.
     { method: "GET", path: "/api/autostart", handler: async () => ok(autostartResponse, { state: await logonTask.get() }) },
     { method: "POST", path: "/api/autostart", handler: async ({ query }) => ok(autostartResponse, { state: await logonTask.set(parse(autostartParams, query).on) }) },
+    { method: "GET", path: "/api/update", handler: () => ok(updateResponse, updates.view()) },
+    { method: "POST", path: "/api/update/install", handler: ({ query }) => updateInstalled(updates.install(parse(updateInstallParams, query).version)) },
+    {
+      method: "POST",
+      path: "/api/update/auto-apply",
+      handler: ({ query }) => (updates.setAutoApply(parse(autoApplyParams, query).on) ? ok(updateResponse, updates.view()) : Response.json({ error: "write_failed" }, { status: 500 })),
+    },
     {
       method: "POST",
       path: "/api/stats-setup/fix",
@@ -288,6 +299,12 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
     // Its state changes show as notice/* here and tray/* in the supervisor's log.
     ...(tray ? [{ method: "GET" as const, path: "/api/tray", handler: trayHandler(tray), quiet: true }] : []),
   ];
+
+  /** 409 when the version isn't the one available (it changed, or none is); the request file failing is 500. */
+  function updateInstalled(result: ReturnType<Updates["install"]>): Response {
+    if (result === "ok") return ok(updateResponse, updates.view());
+    return result === "conflict" ? Response.json({ error: "not_available" }, { status: 409 }) : Response.json({ error: "write_failed" }, { status: 500 });
+  }
 
   function trayHandler(view: NonNullable<ApiOptions["tray"]>): RouteHandler {
     return ({ req, query }) => {

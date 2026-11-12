@@ -360,6 +360,21 @@ export const trayResponse = z.object({
 export type TrayResponse = z.infer<typeof trayResponse>;
 export type TrayNotice = TrayResponse["notices"][number];
 
+/** `GET /api/update` and the update writes: what the Updates section and the tray show. */
+export const updateResponse = z.object({
+  enabled: z.boolean(),
+  version: z.string().nullable(),
+  status: z.enum(["disabled", "not_checked", "up_to_date", "ready", "skipped", "error"]),
+  available: z.object({ version: z.string(), page: z.string() }).nullable(),
+  /** The newest version skipped (failed its signature check) above the running one. */
+  skipped: z.string().nullable(),
+  autoApply: z.boolean(),
+  /** An install was asked for, for the version now available. */
+  installRequested: z.boolean(),
+  checkedAt: z.string().nullable(),
+});
+export type UpdateResponse = z.infer<typeof updateResponse>;
+
 /** The "Run at Windows startup" switch: the logon task on or off, or unavailable when it's missing or can't be read. */
 export const autostartResponse = z.object({ state: z.enum(["on", "off", "unavailable"]) });
 

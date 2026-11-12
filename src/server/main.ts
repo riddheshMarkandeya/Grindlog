@@ -1,13 +1,13 @@
 import { createApi, type Api } from "./api";
 import { EXIT_CONFIG_INVALID, EXIT_OK, EXIT_PORT_TAKEN, EXIT_START_FAILED } from "./exit-codes";
-import { APP_NAME } from "../shared/channel";
+import { APP_NAME, CHANNEL } from "../shared/channel";
 import { startGameWatch, TOAST_TITLE, type GameWatch } from "./game-watch";
 import { PortTakenError, startHost, type Host } from "./host";
 import { log } from "./log";
 import { createLogonTask } from "./logon-task";
 import { scheduleMaintenance, type Maintenance } from "./maintenance";
 import { createNotifier } from "./notifier";
-import { dashboardPort, dataDir, logonTaskName, staticDir, statsConfigDirOverride } from "./paths";
+import { dashboardPort, dataDir, logonTaskName, staticDir, statsConfigDirOverride, updateDir } from "./paths";
 import { createQueryReader } from "./query/read";
 import { startStatsClient, statsApiUrl, type StatsClient } from "./recorder/client";
 import { createRecorder, type Recorder } from "./recorder/recorder";
@@ -20,6 +20,8 @@ import { checkStatsConfig, expectedPort, LOCATORS, userIniPath } from "./stats-c
 import { applyStatsFix, runStatsFix, SETUP_CHECK_MS } from "./stats-setup";
 import { openStorage, type Storage } from "./storage";
 import { trayView } from "./tray-view";
+import { disabledReason, UPDATE_KEY } from "../shared/update-key";
+import { createUpdates } from "./update/view";
 
 /** What has been started so far: a stop can arrive mid-startup, and tears down only these. */
 interface Parts {
@@ -166,6 +168,7 @@ function main(): void {
       pid: process.pid,
     };
   };
+  const updates = createUpdates({ dir: updateDir(), logger: log, running: VERSION, enabled: disabledReason(CHANNEL, VERSION, UPDATE_KEY) === null });
   const api = (parts.api = createApi({
     tracker: storage.tracker,
     reader: createQueryReader({ tracker: storage.tracker, logger: log }),
@@ -173,11 +176,12 @@ function main(): void {
     staticDir: staticDir(),
     logger: log,
     logonTask: createLogonTask({ task: logonTaskName(), logger: log }),
-    tray: (ack) => trayView({ ...status(), recomputeFailed }, notifier.poll(ack)),
+    tray: (ack) => trayView({ ...status(), recomputeFailed, update: updates.view() }, notifier.poll(ack)),
     statsSetup: {
       fix: (portConsent) =>
         runStatsFix({ recheck: () => gameWatch.recheck(SETUP_CHECK_MS), apply: (iniPath, want) => applyStatsFix({ iniPath, want, logger: log }), expectedWebPort, portConsent, logger: log }),
     },
+    updates,
   }));
   parts.host.mount(api.handle);
   // After the mount, so its end event reaches open pages. Health doesn't wait for it.

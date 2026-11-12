@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { installerName, parseReleaseVersion, trustedComment } from "./release";
+import { compareNumeric, installerName, isNewer, parseReleaseVersion, parseTrustedComment, releasePage, trustedComment } from "./release";
 
 describe("parseReleaseVersion", () => {
   test("a plain release is its own numeric version and not a prerelease", () => {
@@ -24,5 +24,57 @@ describe("installerName", () => {
 describe("trustedComment", () => {
   test("states the version and the file it signs", () => {
     expect(trustedComment("0.2.0")).toBe("version=0.2.0 file=Grindlog-Setup-0.2.0.exe");
+  });
+});
+
+describe("isNewer", () => {
+  test("compares numeric parts only, so an rc is no newer than its final", () => {
+    expect(isNewer("0.2.0", "0.1.9")).toBe(true);
+    expect(isNewer("0.10.0", "0.9.0")).toBe(true);
+    expect(isNewer("0.1.0", "0.1.0")).toBe(false);
+    expect(isNewer("0.2.0", "0.2.0-rc.1")).toBe(false);
+    expect(isNewer("0.1.0", "0.2.0")).toBe(false);
+  });
+});
+
+describe("compareNumeric", () => {
+  test.each([
+    ["0.1.0", "0.1.0", 0],
+    ["0.1.0", "0.1.1", -1],
+    ["0.2.0", "0.1.9", 1],
+    ["0.10.0", "0.9.0", 1],
+    ["1.0.0", "0.99.99", 1],
+    ["2.0.0", "10.0.0", -1],
+  ])("%s vs %s is %i", (a, b, want) => {
+    expect(compareNumeric(a, b)).toBe(want);
+  });
+});
+
+describe("parseTrustedComment", () => {
+  test("reads the version and file the release build signs", () => {
+    expect(parseTrustedComment(trustedComment("0.2.0"))).toEqual({ version: "0.2.0", file: "Grindlog-Setup-0.2.0.exe" });
+  });
+
+  test("accepts minisign's tab-separated hashed suffix", () => {
+    expect(parseTrustedComment("version=0.2.0 file=Grindlog-Setup-0.2.0.exe	hashed")).toEqual({ version: "0.2.0", file: "Grindlog-Setup-0.2.0.exe" });
+  });
+
+  test.each([
+    "",
+    "timestamp:1700000000	file:Grindlog-Setup-0.2.0.exe	hashed",
+    "version=0.2.0",
+    "version=0.2.0 file=Grindlog-Setup-0.2.0.exe extra",
+    "version=0.2.0 file=Grindlog-Setup-0.2.0.exe	other",
+    "version=0.2.0 file=Grindlog-Setup-0.2.0.exe	hashed	hashed",
+    " version=0.2.0 file=Grindlog-Setup-0.2.0.exe",
+    "version=0.2.0  file=Grindlog-Setup-0.2.0.exe",
+  ])("rejects %j", (line) => {
+    expect(parseTrustedComment(line)).toBeNull();
+  });
+});
+
+describe("releasePage", () => {
+  test("is the repo's tag page for the version", () => {
+    expect(releasePage("0.2.0")).toBe("https://github.com/riddheshMarkandeya/Grindlog/releases/tag/v0.2.0");
   });
 });

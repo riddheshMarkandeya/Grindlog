@@ -84,8 +84,12 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
     "Is this you?" card.
   - [x] **[feature, Med, Substantial]** 5. Installer and release pipeline: Inno script, Start menu `.lnk`, tag workflow,
     `sign-release`, `rcedit` on `InternalName`.
-  - [ ] **[feature, Med, Substantial]** 6. Updater: check, download, minisign, apply, health check, rollback, shared
-    state file, feed override. Fold-in: the antivirus backup-rename retry. Detached starts use `spawnDetached` (`Bun.spawn` with
+  - [ ] **[feature, Med, Substantial]** 6a. Updater check: minisign verifier, feed and `GRINDLOG_UPDATE_FEED`,
+    download, shared state file, supervisor check loop, `/api/update`, auto-apply choice, tray and dashboard lines.
+    Fold-in: the antivirus backup-rename retry. Plan: `docs/plans/2026-11-12-wp6a-updater-check.md`.
+  - [ ] **[feature, Med, Substantial]** 6b. Updater apply: `--update` mode, apply gate, apply, health check, rollback,
+    raw.db pre-migration backup, free-space check, interrupted updates, `updater.log`; see 6a's "Handed to 6b". No
+    release tag between 6a and 6b: a 6a build downloads but can't apply. Detached starts use `spawnDetached` (`Bun.spawn` with
     `detached: true`), which survives the parent's exit, a force-kill and Task Scheduler's End (spike result in
     `docs/plans/2026-11-10-wp2a-process-control.md`). The migrator refuses a database newer than the code
     (`newer_than_code` in `db/migrate.ts`), so a rollback across a schema change must restore the pre-migration
@@ -265,9 +269,9 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   `retention/kept_whole` with reason `open` → let recompute close it (as `restart`) or add a
   manual close. Record: Review log
   round 2 in `docs/plans/2026-10-20-wp4a-match-records.md`.
-- [ ] **[bug (latent), Low, Trivial]** Windows antivirus may hold a fresh backup `.partial` and
-  fail its rename (EPERM/EBUSY), aborting a pre-migration startup. Trigger: a real
-  `backup/failed` on the rename → retry it briefly. Record: Review log round 3 #8 in
+- [x] **[bug (latent), Low, Trivial]** Windows antivirus may hold a fresh backup `.partial` and
+  fail its rename (EPERM/EBUSY), aborting a pre-migration startup. Fixed in WP6a: `renameRetry`
+  (`src/server/fs-retry.ts`, logs `fs/rename_retried`). Record: Review log round 3 #8 in
   `docs/plans/2026-10-16-wp2-storage.md`.
 - [ ] **[bug (latent), Low, Standard]** Trigger: a match whose clock stepped back (it fails the car_ms range). The woodwork window compares `ev.ts - lastWoodworkTs` unclamped, so crossbar hits after the step go uncounted until the clock catches up. Record: Review log round 11, BB7, in `docs/plans/2026-10-20-wp4b-match-extras.md`.
 - [ ] **[feature, Low, Standard]** Trigger: a `goals_placed` flag (a goal whose scorer didn't

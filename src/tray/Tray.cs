@@ -89,6 +89,8 @@ namespace Grindlog.Tray
         public string Logs;
         public string Version;
         public string Channel;
+        /// <summary>The one https prefix the view may link to (a release page); null allows none.</summary>
+        public string ReleaseUrlPrefix;
 
         /// <summary>Null when a required argument is missing or malformed.</summary>
         public static Options Parse(string[] args)
@@ -106,6 +108,10 @@ namespace Grindlog.Tray
                     case "--logs": o.Logs = v; break;
                     case "--version": o.Version = v; break;
                     case "--channel": o.Channel = v; break;
+                    case "--release-url-prefix":
+                        if (!v.StartsWith("https://", StringComparison.Ordinal) || !v.EndsWith("/", StringComparison.Ordinal)) return null;
+                        o.ReleaseUrlPrefix = v;
+                        break;
                     default: return null;
                 }
             }
@@ -301,11 +307,14 @@ namespace Grindlog.Tray
         }
 
         /// <summary>
-        /// A dashboard path from the view as a full URL, or null. Only "/..." paths open: the view
-        /// comes from whatever holds the port, and Process.Start would open a file or any scheme.
+        /// A dashboard path from the view as a full URL, or a release page, or null. Only "/..." paths
+        /// and the exact release prefix plus "v&lt;version&gt;" open: the view comes from whatever holds
+        /// the port, and Process.Start would open a file or any scheme. The version may not hold "/",
+        /// so a "../" can't leave the repo's release pages.
         /// </summary>
         string ViewUrl(string url)
         {
+            if (IsReleasePage(url)) return url;
             bool ok = url != null && url.StartsWith("/", StringComparison.Ordinal) && !url.StartsWith("//", StringComparison.Ordinal);
             if (ok)
             {
@@ -317,6 +326,20 @@ namespace Grindlog.Tray
             if (ok) return Origin() + url;
             Log.Write("url_rejected", "url", url);
             return null;
+        }
+
+        bool IsReleasePage(string url)
+        {
+            string prefix = options.ReleaseUrlPrefix;
+            if (prefix == null || url == null || !url.StartsWith(prefix + "v", StringComparison.Ordinal)) return false;
+            string version = url.Substring(prefix.Length + 1);
+            if (version.Length == 0) return false;
+            foreach (char c in version)
+            {
+                bool allowed = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '.' || c == '-';
+                if (!allowed) return false;
+            }
+            return true;
         }
 
         static System.Drawing.Icon LoadIcon(string state)
