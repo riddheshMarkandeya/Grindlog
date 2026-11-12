@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { dashboardPort, dataDir, identity, logonTaskName, logsDir, staticDir } from "./paths";
+import { dashboardPort, dataDir, identity, logonTaskName, logsDir, staticDir, statsConfigDirOverride } from "./paths";
 
 describe("identity", () => {
   test("prod is a friend's install", () => {
@@ -84,5 +84,13 @@ describe("logonTaskName", () => {
   test("defaults to the channel's task; an empty GRINDLOG_TASK counts as unset", () => {
     expect(logonTaskName({})).toBe("GrindlogDev");
     expect(logonTaskName({ GRINDLOG_TASK: "" }, "prod")).toBe("Grindlog");
+  });
+});
+
+describe("statsConfigDirOverride", () => {
+  test("GRINDLOG_STATS_CONFIG_DIR names the Config folder itself; unset or empty is no override", () => {
+    expect(statsConfigDirOverride({ GRINDLOG_STATS_CONFIG_DIR: "D:/tmp/Config" })).toBe("D:/tmp/Config");
+    expect(statsConfigDirOverride({})).toBeNull();
+    expect(statsConfigDirOverride({ GRINDLOG_STATS_CONFIG_DIR: "" })).toBeNull();
   });
 });

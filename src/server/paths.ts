@@ -73,3 +73,12 @@ export function logonTaskName(env: Env = process.env, channel: Channel = CHANNEL
   if (env.GRINDLOG_TASK) return env.GRINDLOG_TASK;
   return identity(channel).task;
 }
+
+/**
+ * GRINDLOG_STATS_CONFIG_DIR: the game's Documents Config folder itself (the one holding
+ * TAStatsAPI.ini), so tests and dev never read or write the real one. Null when unset or empty.
+ */
+export function statsConfigDirOverride(env: Env = process.env): string | null {
+  if (env.GRINDLOG_STATS_CONFIG_DIR) return env.GRINDLOG_STATS_CONFIG_DIR;
+  return null;
+}

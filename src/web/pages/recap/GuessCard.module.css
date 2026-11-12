@@ -1,0 +1,10 @@
+/* "Is this you?": one quiet line above the recap, its answers at the right; wraps on a narrow window. */
+.card { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin: 0 0 var(--s4); padding: var(--s2) var(--s3); background: var(--surf); border: 1px solid var(--line); border-radius: var(--r); font-size: 14px; }
+.text { margin: 0; flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.actions { display: flex; align-items: center; gap: var(--s2); }
+.button { background: var(--surf2); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r); padding: 4px 12px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: border-color .12s; white-space: nowrap; }
+.button:hover:not(:disabled) { border-color: var(--accent); }
+.button:disabled { opacity: .45; cursor: default; }
+.close { background: none; border: 0; border-radius: var(--r); padding: 0 6px; color: var(--muted); font: inherit; font-size: 20px; line-height: 1; cursor: pointer; }
+.close:hover { color: var(--ink); }
+.button:focus-visible, .close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

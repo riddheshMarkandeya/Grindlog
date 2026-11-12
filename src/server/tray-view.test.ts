@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { trayView, type TrayInputs } from "./tray-view";
 
-const base: TrayInputs = { connection: "waiting", statsApiOff: false, configProblems: [], recomputeFailed: 0 };
+const base: TrayInputs = { connection: "waiting", statsApiOff: false, configProblems: [], configUnknown: false, recomputeFailed: 0 };
 const view = (over: Partial<TrayInputs>) => trayView({ ...base, ...over }, { instance: "run1", notices: [] });
 
 describe("trayView", () => {
@@ -13,6 +13,7 @@ describe("trayView", () => {
     [{ configProblems: ["user_missing"] }, "attention", "Open Rocket League once to finish setup", "/"],
     [{ configProblems: ["send_rate_off"] }, "attention", "Stats API needs setting up", "/"],
     [{ configProblems: ["web_port_mismatch"] }, "attention", "Stats API needs setting up", "/"],
+    [{ configUnknown: true }, "attention", "Stats API needs setting up", "/"],
     [{}, "ready", "Ready, waiting for Rocket League", null],
   ] as const)("%o → %s, %s", (over, icon, status, setupUrl) => {
     expect(view(over)).toMatchObject({ icon, status, setupUrl });

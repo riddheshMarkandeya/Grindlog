@@ -3,7 +3,7 @@
 import type { Server } from "bun";
 import type { z } from "zod";
 import { REQUEST_HEADER, TRAY_HEADER } from "../../shared/constants";
-import { autostartParams, filterOnly, monthsParams, periodParams, playedDaysParams, sessionsParams, trayParams, type TrayAck } from "../../shared/schemas/params";
+import { autostartParams, filterOnly, monthsParams, periodParams, playedDaysParams, sessionsParams, statsSetupParams, trayParams, type TrayAck } from "../../shared/schemas/params";
 import {
   autostartResponse,
   breakResponse,
@@ -23,6 +23,8 @@ import {
   seasonsResponse,
   sessionDetailResponse,
   sessionsResponse,
+  statsSetupError,
+  statsSetupFixed,
   statusSchema,
   suggestionsResponse,
   trayResponse,
@@ -40,6 +42,7 @@ import type { QueryReader } from "../query/read";
 import { createRemarks } from "../remarks/store";
 import { createSeasons, type SeasonWrite } from "../seasons";
 import { createSettings } from "../settings";
+import type { FixResult } from "../stats-setup";
 import { createEventHub, type EventHubOptions } from "./events";
 import { createPages } from "./pages";
 import { matchRoute, type Route } from "./router";
@@ -60,6 +63,8 @@ export interface ApiOptions {
   logonTask: Pick<LogonTask, "get" | "set">;
   /** The tray's view, acking notices up to `ack`; GET /api/tray answers 404 without it. */
   tray?: (ack: TrayAck | null) => TrayResponse;
+  /** The setup card's one-click fix of the game's Stats API settings. */
+  statsSetup: { fix: (portConsent: boolean) => Promise<FixResult> };
 }
 
 interface Ctx {
@@ -87,6 +92,12 @@ const ok = <S extends z.ZodType>(_schema: S, body: z.infer<S>) => Response.json(
 const notFound = () => Response.json({ error: "not_found" }, { status: 404 });
 const orNotFound = <S extends z.ZodType>(schema: S, body: z.infer<S> | null) => (body === null ? notFound() : ok(schema, body));
 
+function statsSetupAnswer(result: FixResult): Response {
+  if (result.ok) return ok(statsSetupFixed, { changed: result.changed, added: result.added });
+  const body: z.infer<typeof statsSetupError> = { error: result.error };
+  return Response.json(body, { status: result.error === "no_file" || result.error === "port_needs_consent" ? 409 : 500 });
+}
+
 function seasonWritten(write: SeasonWrite): Response {
   if (write.ok) return ok(seasonsResponse, { seasons: write.seasons });
   if (write.error === "not_found") return notFound();
@@ -100,7 +111,7 @@ function friendWritten(write: FriendWrite, answer: () => Response): Response {
   return write.error === "not_found" ? notFound() : Response.json({ error: "conflict" }, { status: 409 });
 }
 
-export function createApi({ tracker, reader, status, staticDir, logger, now = Date.now, events: eventOptions, logonTask, tray }: ApiOptions) {
+export function createApi({ tracker, reader, status, staticDir, logger, now = Date.now, events: eventOptions, logonTask, tray, statsSetup }: ApiOptions) {
   const pages = createPages({ reader, logger, now });
   const hub = createEventHub({ status, logger, ...eventOptions });
   const remarks = createRemarks({ tracker, pages, logger, now });
@@ -268,6 +279,11 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
     // Not a settings row: the logon task itself is the record, read from schtasks on each request.
     { method: "GET", path: "/api/autostart", handler: async () => ok(autostartResponse, { state: await logonTask.get() }) },
     { method: "POST", path: "/api/autostart", handler: async ({ query }) => ok(autostartResponse, { state: await logonTask.set(parse(autostartParams, query).on) }) },
+    {
+      method: "POST",
+      path: "/api/stats-setup/fix",
+      handler: async ({ query }) => statsSetupAnswer(await statsSetup.fix(parse(statsSetupParams, query).port === "1")),
+    },
     // The tray polls every 2 s: a line per answer would rotate match diagnostics out of the logs in days.
     // Its state changes show as notice/* here and tray/* in the supervisor's log.
     ...(tray ? [{ method: "GET" as const, path: "/api/tray", handler: trayHandler(tray), quiet: true }] : []),

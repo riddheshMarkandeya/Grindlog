@@ -1,12 +1,15 @@
 // The e2e stack, run under Bun by the Playwright fixture (seeding needs bun:sqlite): a temp data dir
-// seeded per the mode in argv (`rich`, the default, `empty`, `few`, `share`, `tables` or `friends`), the repo's web build copied to the
+// seeded per the mode in argv (`rich`, the default, `empty`, `few`, `share`, `tables`, `guess` or `friends`), the repo's web build copied to the
 // installed path, a gated replay of the completed fixture, and the real tracker. Protocol: prints
 // `ready {"url","dataDir"}` on stdout; the stdin line `go` releases the replay; the stdin line
 // `restart <version>` stops the tracker and starts it again on the same port and data as that
 // release (`--define GRINDLOG_VERSION`), then prints `restarted {"version"}`; stdin EOF tears
 // everything down. The `update` seed is `rich` with the first start already a release (UPDATE_FROM).
-// GRINDLOG_E2E_KEEP=1 keeps the temp dir (and its logs/tracker.log).
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+// GRINDLOG_E2E_KEEP=1 keeps the temp dir (and its logs/tracker.log). Every seed gets a stand-in for
+// the game's Documents Config folder (GRINDLOG_STATS_CONFIG_DIR) with a good TAStatsAPI.ini, so no
+// run reads or writes the real one; the `setup` seed is `empty` with the Stats API off in that ini
+// and STATS_API_URL at a port nothing listens on, so the setup card shows.
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
@@ -21,7 +24,8 @@ import { openStorage } from "../../src/server/storage";
 import { freePort, goal, ME, player, readFixture, record, THEM } from "../../src/server/testing";
 import { dayStart, dayOf } from "../../src/shared/periods";
 import type { Seed } from "./fixtures";
-import { DASHBOARD_HOST } from "../../src/shared/constants";
+import { STATS_CONFIG_SUBDIR } from "./stats-config-dir";
+import { DASHBOARD_HOST, STATS_INI } from "../../src/shared/constants";
 
 const REPO = join(import.meta.dirname, "..", "..");
 const MIN = 60_000;
@@ -84,6 +88,7 @@ const HAT_TRICK: Parameters<typeof record>[2] = {
  * is on Ranked Doubles.
  * `tables`: `rich`, plus a pending guess per You test that answers one and a rejected id, none of
  * them a player in any match (TABLE_IDS).
+ * `guess`: `rich`, plus GUESS_IDS: two pending guesses for the recap's "Is this you?" card.
  * `empty`: no matches at all.
  * `friends`: last month, a 22-match session (e2e-fr-00) with FRIEND, nicknamed FRIEND_NICK, on
  * your team in its first four (a loss, two wins, a loss) and on the other team in the fifth, its
@@ -106,8 +111,8 @@ function seed(dir: string, mode: Seed): void {
   const storage = openStorage({ dir, logger });
   try {
     storage.tracker.run("INSERT INTO my_ids (primary_id, name, status, added_at) VALUES (?, 'me', 'confirmed', ?)", ME, Date.now());
-    if (mode === "tables") {
-      for (const [i, [id, name, status]] of TABLE_IDS.entries()) {
+    if (mode === "tables" || mode === "guess") {
+      for (const [i, [id, name, status]] of (mode === "tables" ? TABLE_IDS : GUESS_IDS).entries()) {
         storage.tracker.run("INSERT INTO my_ids (primary_id, name, status, added_at) VALUES (?, ?, ?, ?)", id, name, status, Date.now() + i + 1);
       }
     }
@@ -179,6 +184,16 @@ const TABLE_IDS = [
   ["PS4|e2e-not-me|0", "NotMe", "rejected"],
 ] as const;
 
+/** The recap card's e2e guesses, asked in this order: the spec answers the first and dismisses the second. */
+const GUESS_IDS = [
+  ["Steam|e2e-card-yes|0", "CardYes", "pending"],
+  ["XboxOne|e2e-card-later|0", "CardLater", "pending"],
+] as const;
+
+/** A TAStatsAPI.ini as the game writes it, CRLF, with a line the setup spec checks is left alone. */
+const statsIni = (rate: number, webPort: number) =>
+  ["[TAGame.MatchStatsExporter_TA]", "; e2e sentinel: left as it is", "Port=49123", `WebPort=${String(webPort)}`, `PacketSendRate=${String(rate)}`, ""].join("\r\n");
+
 // 32 characters, the most a name has, and wide ones: it has to be cut.
 const SHARE_NAME = "WWW_MaximumWidthNameWWWWWWWWWWWW";
 // 32 characters too, the most a nickname has.
@@ -218,6 +233,21 @@ function removeDir(dir: string): void {
   }
 }
 
+/**
+ * The data a seed's stack holds, `rich` when unlisted: `settings` and `update` seed as `rich`, and
+ * `friends-page` as `friends`; their own names only buy a separate stack, so what they do stays there.
+ */
+const SEED_DATA: Partial<Record<string, Seed>> = {
+  empty: "empty",
+  few: "few",
+  share: "share",
+  tables: "tables",
+  guess: "guess",
+  friends: "friends",
+  "friends-page": "friends",
+  setup: "empty",
+};
+
 async function main(): Promise<void> {
   const dist = join(REPO, "dist");
   if (!existsSync(join(dist, "index.html"))) throw new Error(`${dist}\\index.html is missing; run vite build first (bun run e2e does)`);
@@ -227,9 +257,7 @@ async function main(): Promise<void> {
   try {
     // The installed path, so the tracker's default staticDir is what's served.
     cpSync(dist, join(dir, "bin", "web"), { recursive: true });
-    // `settings` and `update` seed as `rich`, and `friends-page` as `friends`; their own names only
-    // buy a separate stack, so what they do stays there.
-    seed(dir, mode === "empty" || mode === "few" || mode === "share" || mode === "tables" || mode === "friends" ? mode : mode === "friends-page" ? "friends" : "rich");
+    seed(dir, SEED_DATA[mode ?? ""] ?? "rich");
   } catch (err) {
     removeDir(dir);
     throw err;
@@ -240,9 +268,21 @@ async function main(): Promise<void> {
   const replay = startReplayServer({ lines: readFixture("completed"), speed: REPLAY_SPEED, gate });
   const port = await freePort();
   const url = `http://${DASHBOARD_HOST}:${String(port)}`;
-  say("starting", { dataDir: dir, trackerPort: port, replayPort: replay.port });
+  // `setup`: a port nothing listens on, so the tracker stays waiting and the card stays up.
+  const statsPort = mode === "setup" ? await freePort() : replay.port;
+  const configDir = join(dir, STATS_CONFIG_SUBDIR);
+  mkdirSync(configDir);
+  writeFileSync(join(configDir, STATS_INI), statsIni(mode === "setup" ? 0 : 30, statsPort));
+  say("starting", { dataDir: dir, trackerPort: port, replayPort: replay.port, statsPort });
 
-  const env: Record<string, string | undefined> = { ...process.env, GRINDLOG_DATA_DIR: dir, GRINDLOG_PORT: String(port), GRINDLOG_TASK: E2E_TASK, STATS_API_URL: `ws://127.0.0.1:${String(replay.port)}` };
+  const env: Record<string, string | undefined> = {
+    ...process.env,
+    GRINDLOG_DATA_DIR: dir,
+    GRINDLOG_PORT: String(port),
+    GRINDLOG_TASK: E2E_TASK,
+    GRINDLOG_STATS_CONFIG_DIR: configDir,
+    STATS_API_URL: `ws://127.0.0.1:${String(statsPort)}`,
+  };
   delete env.GRINDLOG_STATIC_DIR;
 
   let tearingDown = false;

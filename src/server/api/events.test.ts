@@ -18,7 +18,7 @@ function reader(res: Response) {
   };
 }
 
-const waiting: Status = { connection: "waiting", statsApiOff: false, configProblems: [], version: null, pid: 1234 };
+const waiting: Status = { connection: "waiting", statsApiOff: false, configProblems: [], configUnknown: false, statsIni: null, expectedWebPort: 49124, version: null, pid: 1234 };
 
 function hub(opts: { cap?: number } = {}) {
   let status = waiting;
@@ -48,10 +48,10 @@ describe("event hub", () => {
     const r = reader(h.subscribe(new AbortController().signal));
     await r.next();
     vi.advanceTimersByTime(3000); // unchanged: nothing sent
-    set({ connection: "recording", statsApiOff: false, configProblems: [], version: null, pid: 1234 });
+    set({ connection: "recording", statsApiOff: false, configProblems: [], configUnknown: false, statsIni: null, expectedWebPort: 49124, version: null, pid: 1234 });
     vi.advanceTimersByTime(1000);
     h.publish("session_break", { at: 5 });
-    expect(await r.next()).toBe(`event: status\ndata: {"connection":"recording","statsApiOff":false,"configProblems":[],"version":null,"pid":1234}\n\n`);
+    expect(await r.next()).toBe(`event: status\ndata: {"connection":"recording","statsApiOff":false,"configProblems":[],"configUnknown":false,"statsIni":null,"expectedWebPort":49124,"version":null,"pid":1234}\n\n`);
     expect(await r.next()).toBe(`event: session_break\ndata: {"at":5}\n\n`);
   });
 

@@ -13,6 +13,7 @@ import { TeammateFilter } from "../../components/TeammateFilter";
 import { parseFilter, parseTeammate, recapReset } from "../../logic/filter-options";
 import { recapPath, type RecapView } from "../../logic/recap";
 import { useLatestSession, useSessionDetail, useSettings } from "../../queries";
+import { GuessCard } from "./GuessCard";
 import { Matches } from "./Matches";
 import { MatchView } from "./MatchView";
 import { Overview } from "./Overview";
@@ -50,6 +51,7 @@ function Notice({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <>
       <Title />
+      <GuessCard />
       <EmptyState title={title}>{children}</EmptyState>
     </>
   );
@@ -87,6 +89,7 @@ export function RecapIndex() {
   return (
     <>
       <Title />
+      <GuessCard />
       <div className={styles.bar}>
         <PlaylistFilter value={filter} present={playlistsPresent} onChange={(f) => { void navigate(recapPath(null, f)); }} />
       </div>
@@ -176,6 +179,7 @@ export function RecapSession({ view }: { view: SessionView }) {
   const d = detail.data;
   return (
     <div data-session={d.key} ref={page}>
+      <GuessCard />
       <div className={styles.bar}>
         <SessionPicker detail={d} filter={filter} teammate={teammate} view={view === "overview" ? "overview" : "matches"} buttonRef={pickerButton} />
         <div className={styles.end}>

@@ -25,7 +25,7 @@ export interface Stack {
  * "friends" for the Friends page spec, and "update" is "rich" with the tracker started as a
  * release, since its spec restarts the tracker).
  */
-export type Seed = "rich" | "empty" | "few" | "share" | "settings" | "tables" | "friends" | "friends-page" | "update";
+export type Seed = "rich" | "empty" | "few" | "share" | "settings" | "tables" | "friends" | "friends-page" | "update" | "setup" | "guess";
 
 export const test = base.extend<{ consoleErrors: string[] }, { stack: Stack; seed: Seed }>({
   seed: ["rich", { scope: "worker", option: true }],

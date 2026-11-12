@@ -4,6 +4,7 @@
 import { useEffect, useId, useRef } from "react";
 import type { IdRow } from "../../../shared/schemas/responses";
 import type { IdAnswer } from "../../../shared/schemas/tables";
+import { ANSWER_TEXT } from "../../logic/guess";
 import { useIds, useSetIdStatus } from "../../queries";
 import { cx } from "../../components/cx";
 import { SaveStatus } from "../../components/SaveStatus";
@@ -14,7 +15,6 @@ const STATUS: Record<IdRow["status"], string> = { pending: "Waiting for you", co
 
 /** The answers a row offers: a guess both, an answered row the other one. */
 const ANSWERS: Record<IdRow["status"], readonly IdAnswer[]> = { pending: ["confirmed", "rejected"], confirmed: ["rejected"], rejected: ["confirmed"] };
-const ANSWER_TEXT: Record<IdAnswer, string> = { confirmed: "That's me", rejected: "Not me" };
 
 function IdLine({ row }: { row: IdRow }) {
   const m = useSetIdStatus();

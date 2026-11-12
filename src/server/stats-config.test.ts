@@ -49,6 +49,16 @@ describe("parseStatsIni", () => {
   test("a non-numeric value stays undefined; a commented-out key is skipped", () => {
     expect(parseStatsIni("[TAGame.MatchStatsExporter_TA]\nPacketSendRate=fast\n;WebPort=49124\nPort=\n")).toEqual({});
   });
+
+  test("Psyonix documents the rate as a float: 30.0 is on, 0.0 is off, 0.5 is kept", () => {
+    expect(parseStatsIni("[TAGame.MatchStatsExporter_TA]\nPacketSendRate=30.0\n")).toEqual({ packetSendRate: 30 });
+    expect(parseStatsIni("[TAGame.MatchStatsExporter_TA]\nPacketSendRate=0.0\n")).toEqual({ packetSendRate: 0 });
+    expect(parseStatsIni("[TAGame.MatchStatsExporter_TA]\nPacketSendRate=0.5\n")).toEqual({ packetSendRate: 0.5 });
+  });
+
+  test("a trailing or leading dot alone is still not a number", () => {
+    expect(parseStatsIni("[TAGame.MatchStatsExporter_TA]\nPacketSendRate=30.\nWebPort=.5\n")).toEqual({});
+  });
 });
 
 describe("diagnose", () => {

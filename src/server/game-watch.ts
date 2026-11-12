@@ -1,10 +1,11 @@
 // Tells "the game is closed" apart from "the game is running with its Stats API off", which the
 // WebSocket alone can't: both look like a refused connection.
+import { statSync } from "node:fs";
 import { APP_NAME } from "../shared/channel";
 import type { Logger } from "./log";
 import { runCommand } from "./powershell";
 import type { ConnectionStatus, StatsClient } from "./recorder/client";
-import { checkStatsConfig, describeProblem, LOCATORS, type ConfigCheck } from "./stats-config";
+import { describeProblem, isNodeError, userIniPath, type ConfigCheck } from "./stats-config";
 
 const POLL_MS = 20_000;
 /** Backstop over the config check's own spawn timeouts, so nothing it does can stall the poll. */
@@ -62,7 +63,18 @@ async function detectGame(): Promise<boolean> {
 export const TOAST_TITLE = `${APP_NAME} isn't getting data`;
 const TOAST_BODY = "Rocket League is running but its Stats API is off. Set PacketSendRate above 0 in TAGame\\Config\\TAStatsAPI.ini, then restart the game.";
 
-export type CheckPhase = "startup" | "game_running";
+/** Why a check ran: "setup" is the dashboard's fix reading fresh settings, "file_changed" an edit to the Documents ini. */
+export type CheckPhase = "startup" | "game_running" | "setup" | "file_changed";
+
+/** A file's modified time, null when it doesn't exist; throws on any other failure. */
+function mtimeOf(path: string): number | null {
+  try {
+    return statSync(path).mtimeMs;
+  } catch (err) {
+    if (isNodeError(err, "ENOENT")) return null;
+    throw err;
+  }
+}
 
 export interface GameWatchOptions {
   client: Pick<StatsClient, "status" | "retryNow">;
@@ -74,8 +86,10 @@ export interface GameWatchOptions {
   detect?: () => Promise<boolean>;
   /** Shows a toast with this body, under TOAST_TITLE. */
   toast: (body: string) => Promise<void>;
-  checkConfig?: (phase: CheckPhase) => Promise<ConfigCheck | null>;
+  checkConfig: (phase: CheckPhase) => Promise<ConfigCheck | null>;
   checkTimeoutMs?: number;
+  /** The Documents ini's modified time, null when it's missing; may throw. */
+  fileMtime?: (path: string) => number | null;
 }
 
 export interface GameWatch {
@@ -83,6 +97,10 @@ export interface GameWatch {
   statsApiOff(): boolean;
   /** The latest Stats API config check; null until one finds the install. */
   statsConfig(): ConfigCheck | null;
+  /** Some check has ended, found something or not. */
+  statsConfigChecked(): boolean;
+  /** Checks now and keeps the result, as the poll's checks do; "timeout" past timeoutMs (default the poll's backstop). */
+  recheck(timeoutMs?: number): Promise<ConfigCheck | null | "timeout">;
   stop(): void;
 }
 
@@ -96,31 +114,67 @@ export function startGameWatch(opts: GameWatchOptions): GameWatch {
     client,
     logger,
     expectedWebPort,
+    checkConfig,
     pollMs = POLL_MS,
     now = Date.now,
     detect = detectGame,
     toast,
-    checkConfig = () => checkStatsConfig({ expectedWebPort, logger, locators: LOCATORS }),
     checkTimeoutMs = CHECK_TIMEOUT_MS,
+    fileMtime = mtimeOf,
   } = opts;
   let state = initialWatchState;
   let off = false;
   let detectFailing = false;
   let busy = false;
   let config: ConfigCheck | null = null;
+  let checked = false;
+  /** Checks overlap (a poll's and the setup's): only a newer one's result may replace a stored one. */
+  let started = 0;
+  let stored = 0;
+  /** The watched ini's mtime when the stored check ended; "failed" when it couldn't be read. */
+  let iniMtime: number | null | "failed" = null;
+  let statFailing = false;
 
-  /** Runs a check and keeps its result; "timeout" when it outlasts checkTimeoutMs. */
-  async function runCheck(phase: CheckPhase): Promise<ConfigCheck | null | "timeout"> {
+  /**
+   * The Documents ini, watched while the stored check found a problem: the result is otherwise only
+   * refreshed at startup and when the game runs without data, so a fix made by hand would stay
+   * flagged while the game is closed.
+   */
+  const watchedIni = () => (config && config.problems.length > 0 ? userIniPath(config) : null);
+
+  function statIni(path: string): number | null | "failed" {
+    try {
+      const m = fileMtime(path);
+      statFailing = false;
+      return m;
+    } catch (err) {
+      // Logged once per failing stretch: a poll every 20 s would flood the log.
+      if (!statFailing) logger.warn("game", "stats_config_stat_failed", { path, err });
+      statFailing = true;
+      return "failed";
+    }
+  }
+
+  /** Runs a check and keeps its result unless a later one already ended; "timeout" when it outlasts checkTimeoutMs. */
+  async function runCheck(phase: CheckPhase, timeoutMs = checkTimeoutMs): Promise<ConfigCheck | null | "timeout"> {
+    const seq = ++started;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<"timeout">((resolve) => {
       timer = setTimeout(() => {
         resolve("timeout");
-      }, checkTimeoutMs);
+      }, timeoutMs);
     });
     try {
       const result = await Promise.race([checkConfig(phase), timeout]);
-      if (result === "timeout") logger.warn("game", "stats_config_timeout", { phase, timeoutMs: checkTimeoutMs });
-      else config = result;
+      checked = true;
+      if (result === "timeout") logger.warn("game", "stats_config_timeout", { phase, timeoutMs });
+      else if (seq > stored) {
+        config = result;
+        stored = seq;
+        // Taken right after the check read the file; an edit in the few ms between is missed until the next one.
+        const ini = watchedIni();
+        if (ini !== null) iniMtime = statIni(ini);
+      } else logger.info("game", "stats_config_stale", { phase });
       return result;
     } finally {
       clearTimeout(timer);
@@ -156,6 +210,19 @@ export function startGameWatch(opts: GameWatchOptions): GameWatch {
     }
     // The settings are re-read only here: the game may have been reinstalled or edited since startup.
     if (out.toast) await toast(await toastBody());
+    await recheckIfEdited();
+  }
+
+  /** A fresh check when the watched ini's mtime moved since the stored check (or the file appeared). */
+  async function recheckIfEdited(): Promise<void> {
+    const ini = watchedIni();
+    if (ini === null) return;
+    const m = statIni(ini);
+    if (m === "failed" || m === iniMtime) return;
+    logger.info("game", "stats_config_file_changed", { path: ini });
+    // Moved first, so a check that times out isn't retried every poll for the same edit.
+    iniMtime = m;
+    await runCheck("file_changed");
   }
 
   void runCheck("startup");
@@ -171,6 +238,8 @@ export function startGameWatch(opts: GameWatchOptions): GameWatch {
   return {
     statsApiOff: () => off,
     statsConfig: () => config,
+    statsConfigChecked: () => checked,
+    recheck: (timeoutMs) => runCheck("setup", timeoutMs),
     stop: () => {
       clearInterval(timer);
     },

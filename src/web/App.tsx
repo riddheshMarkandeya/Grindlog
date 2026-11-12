@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import { Header } from "./components/Header";
 import { Loading } from "./components/Loading";
+import { SetupCard } from "./components/SetupCard";
 import { useLiveEvents } from "./events/useLiveEvents";
 import { rememberTheme } from "./logic/settings";
 import { FriendPage } from "./pages/friends/FriendPage";
@@ -37,6 +38,8 @@ export function App() {
     <>
       <Header />
       <main>
+        {/* Above every page, so the tray's "Set up Stats API…" lands on it wherever the start page is. */}
+        <SetupCard />
         {/* The start page and each page's default filter are settings: wait for them once. */}
         {isPending ? (
           <Loading label="Loading" />

@@ -30,3 +30,9 @@ export const TRAY_HEADER = "X-Grindlog-Tray";
  * 127.0.0.1; a cross-site request can't add a custom header without a preflight, which is never answered.
  */
 export const REQUEST_HEADER = "X-Grindlog-Request";
+/** The game's per-user Stats API settings file. */
+export const STATS_INI = "TAStatsAPI.ini";
+/** Where that file usually is, for text that can't name the real path. */
+export const USER_INI_HINT = `Documents\\My Games\\Rocket League\\TAGame\\Config\\${STATS_INI}`;
+/** The send rate the setup suggests and writes; any value above 0 works. */
+export const SUGGESTED_RATE = 30;

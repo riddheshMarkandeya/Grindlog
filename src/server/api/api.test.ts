@@ -25,6 +25,8 @@ import {
   seasonsResponse,
   sessionDetailResponse,
   sessionsResponse,
+  statsSetupError,
+  statsSetupFixed,
   statusSchema,
   suggestionsResponse,
   trayResponse,
@@ -39,6 +41,7 @@ import { createQueryReader } from "../query/read";
 import { createRecordWriter } from "../records/save";
 import { openStorage, type Storage } from "../storage";
 import { ME, memoryLogger, player, record, THEM } from "../testing";
+import type { FixResult } from "../stats-setup";
 import { createApi, type Api } from "./index";
 
 let dir: string;
@@ -51,7 +54,10 @@ let clock: number;
 let autostart: AutostartState;
 let getFails: Error | null;
 let setFails: boolean;
-const status: Status = { connection: "connected", statsApiOff: false, configProblems: ["user_missing"], version: null, pid: 1234 };
+/** What the fake setup fix answers, and the consents it was called with. */
+let fixAnswer: FixResult;
+let fixCalls: boolean[];
+const status: Status = { connection: "connected", statsApiOff: false, configProblems: ["user_missing"], configUnknown: false, statsIni: null, expectedWebPort: 49124, version: null, pid: 1234 };
 /** The acks the tray option was called with: it isn't reached unless the header check passed. */
 let trayAcks: (TrayAck | null)[];
 const trayView: TrayResponse = {
@@ -80,6 +86,8 @@ beforeEach(() => {
   logger = memoryLogger();
   autostart = "on";
   trayAcks = [];
+  fixAnswer = { ok: true, changed: ["packetSendRate"], added: [] };
+  fixCalls = [];
   getFails = null;
   setFails = false;
   host = startHost({ port: 0, logger, onShutdown: () => undefined });
@@ -103,6 +111,12 @@ beforeEach(() => {
     tray: (ack) => {
       trayAcks.push(ack);
       return trayView;
+    },
+    statsSetup: {
+      fix: (portConsent) => {
+        fixCalls.push(portConsent);
+        return Promise.resolve(fixAnswer);
+      },
     },
   });
   host.mount(api.handle);
@@ -378,6 +392,37 @@ describe("autostart", () => {
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     expect(await res.json()).toEqual({ error: "internal" });
     expect(logger.lines.find((l) => l.event === "failed")?.fields).toMatchObject({ route: "/api/autostart" });
+  });
+});
+
+describe("stats setup", () => {
+  const fix = (query = "", headers: Record<string, string> = { [REQUEST_HEADER]: "1" }) => fetch(url(`/api/stats-setup/fix${query}`), { method: "POST", headers });
+
+  test("a fix answers what changed; port=1 passes the consent to move a custom WebPort", async () => {
+    const res = await fix();
+    expect(res.status).toBe(200);
+    expect(statsSetupFixed.parse(await res.json())).toEqual({ changed: ["packetSendRate"], added: [] });
+    await fix("?port=1");
+    expect(fixCalls).toEqual([false, true]);
+  });
+
+  test("no request header is 403 and a bad port is 400, both before any fix", async () => {
+    expect((await fix("", {})).status).toBe(403);
+    expect((await fix("?port=yes")).status).toBe(400);
+    expect((await fix("?port=1&x=1")).status).toBe(400);
+    expect(fixCalls).toEqual([]);
+  });
+
+  test.each([
+    ["no_file", 409],
+    ["port_needs_consent", 409],
+    ["write_failed", 500],
+    ["check_failed", 500],
+  ] as const)("%s is %i with the error", async (error, code) => {
+    fixAnswer = { ok: false, error };
+    const res = await fix();
+    expect(res.status).toBe(code);
+    expect(statsSetupError.parse(await res.json())).toEqual({ error });
   });
 });
 

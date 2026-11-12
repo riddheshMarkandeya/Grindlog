@@ -80,7 +80,7 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   - [ ] **[misc, Low, Standard]** Rate-limit the rejected-request warn lines (`api/tray_rejected`, `write_rejected`,
     host `shutdown_rejected`): a page looping header-less requests writes one each and can rotate match diagnostics
     out of the logs. Deferred from 3b's review (`docs/reviews/2026-11-10-wp3b-tray-view.md`).
-  - [ ] **[feature, Med, Standard]** 4. Stats API setup card: the one-click ini write, decimal `parseStatsIni`, the
+  - [x] **[feature, Med, Standard]** 4. Stats API setup card: the one-click ini write, decimal `parseStatsIni`, the
     "Is this you?" card.
   - [ ] **[feature, Med, Substantial]** 5. Installer and release pipeline: Inno script, Start menu `.lnk`, tag workflow,
     `sign-release`, `rcedit` on `InternalName`.
@@ -126,6 +126,10 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
 - [ ] **[improvement, Low, Standard]** Trigger: a friend's other tool needs a `WebPort` other than 49124. One-click
   setup moves the game to 49124 after a warning, and there is no port setting. Then consider a setting, or following
   the port in the file.
+- [ ] **[bug (latent), Low, Standard]** Trigger: a `game/stats_setup_key_added` line in a friend's log. The setup
+  card's fix inserts a wrong exporter key the Documents ini lacks (after the section's last setting), or appends the
+  whole section. No game-written Documents ini has been seen without them, so the insert is fitted to an assumption.
+  Check that the game read the inserted line, and fit `fixStatsIni` to that file.
 - [ ] **[bug (latent), Low, Standard]** Trigger: the first Steam user. Nothing confirms the Documents ini path for Steam;
   Epic is the only install locator. `user_missing` flags a wrong path, so fit it to that user's log.
 - [ ] **[bug (latent), Low, Standard]** Trigger: `send_rate_off` returns after a game patch on a machine that had it on.

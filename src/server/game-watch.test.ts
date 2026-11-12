@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { initialWatchState, parseTasklist, startGameWatch, step, TOAST_TITLE, type GameWatch, type WatchState } from "./game-watch";
+import { initialWatchState, parseTasklist, startGameWatch, step, TOAST_TITLE, type CheckPhase, type GameWatch, type WatchState } from "./game-watch";
 import type { ConfigCheck } from "./stats-config";
 import { memoryLogger } from "./testing";
 
@@ -91,7 +91,7 @@ describe("startGameWatch", () => {
   });
 
   /** A watch over a running game whose Stats API never answers; each now() call is 61 s after the last. */
-  const start = (checkConfig: (phase: "startup" | "game_running") => Promise<ConfigCheck | null>) => {
+  const start = (checkConfig: (phase: CheckPhase) => Promise<ConfigCheck | null>) => {
     let t = 0;
     const logger = memoryLogger();
     const toast = vi.fn<(body: string) => Promise<void>>(() => Promise.resolve());
@@ -143,6 +143,120 @@ describe("startGameWatch", () => {
     await vi.waitFor(() => {
       expect(detect.mock.calls.length).toBeGreaterThan(polls + 2);
     });
+  });
+
+  /** A watch with no game running, whose checks resolve only when the test says. */
+  const startIdle = () => {
+    const pending: ((r: ConfigCheck | null) => void)[] = [];
+    const check = vi.fn((): Promise<ConfigCheck | null> => new Promise<ConfigCheck | null>((resolve) => pending.push(resolve)));
+    watch = startGameWatch({
+      client: { status: () => "waiting", retryNow: () => undefined },
+      logger: memoryLogger(),
+      expectedWebPort: 49124,
+      pollMs: 60_000,
+      detect: () => Promise.resolve(false),
+      toast: () => Promise.resolve(),
+      checkConfig: check,
+      checkTimeoutMs: 1_000,
+    });
+    return { pending, check, watch };
+  };
+
+  test("recheck runs a 'setup' check and keeps its result; checked turns true once any check ends, even with nothing found", async () => {
+    const { pending, check, watch } = startIdle();
+    expect(watch.statsConfigChecked()).toBe(false);
+    pending[0]?.(null);
+    await vi.waitFor(() => {
+      expect(watch.statsConfigChecked()).toBe(true);
+    });
+    expect(watch.statsConfig()).toBeNull();
+    const rechecked = watch.recheck();
+    expect(check).toHaveBeenLastCalledWith("setup");
+    pending[1]?.(offCheck);
+    expect(await rechecked).toEqual(offCheck);
+    expect(watch.statsConfig()).toEqual(offCheck);
+  });
+
+  test("recheck takes its own timeout, shorter than the poll's backstop", async () => {
+    const { watch } = startIdle();
+    expect(await watch.recheck(10)).toBe("timeout");
+  });
+
+  test("a check that started earlier but ends later doesn't overwrite a newer result", async () => {
+    const { pending, watch } = startIdle();
+    const rechecked = watch.recheck();
+    pending[1]?.(goodCheck);
+    await rechecked;
+    pending[0]?.(offCheck);
+    await new Promise((r) => setTimeout(r, 10));
+    expect(watch.statsConfig()).toEqual(goodCheck);
+  });
+
+  /** No game running; each check answers from `answers` in turn, and the Documents ini's mtime is whatever `mtime.value` holds. */
+  const startWatching = (answers: (ConfigCheck | null)[], fileMtime?: (path: string) => number | null) => {
+    const mtime = { value: 1 as number | null, paths: [] as string[] };
+    const check = vi.fn((phase: CheckPhase) => Promise.resolve(phase === "startup" ? (answers[0] ?? null) : (answers[Math.min(check.mock.calls.length - 1, answers.length - 1)] ?? null)));
+    const logger = memoryLogger();
+    watch = startGameWatch({
+      client: { status: () => "waiting", retryNow: () => undefined },
+      logger,
+      expectedWebPort: 49124,
+      pollMs: 10,
+      detect: () => Promise.resolve(false),
+      toast: () => Promise.resolve(),
+      checkConfig: check,
+      fileMtime:
+        fileMtime ??
+        ((path) => {
+          mtime.paths.push(path);
+          return mtime.value;
+        }),
+    });
+    return { check, mtime, logger, watch };
+  };
+
+  test("a stored problem is rechecked once the Documents ini changes, and only then", async () => {
+    const { check, mtime, logger, watch } = startWatching([offCheck, goodCheck]);
+    await vi.waitFor(() => {
+      expect(mtime.paths.length).toBeGreaterThan(3);
+    });
+    expect(check.mock.calls).toEqual([["startup"]]);
+    expect(mtime.paths[0]).toBe(offCheck.path);
+    mtime.value = 2;
+    await vi.waitFor(() => {
+      expect(watch.statsConfig()).toEqual(goodCheck);
+    });
+    expect(check.mock.calls).toEqual([["startup"], ["file_changed"]]);
+    expect(logger.lines).toContainEqual({ level: "info", cat: "game", event: "stats_config_file_changed", fields: { path: offCheck.path } });
+    // No problem left: the file isn't watched any more.
+    const watched = mtime.paths.length;
+    await new Promise((r) => setTimeout(r, 50));
+    expect(mtime.paths.length).toBe(watched);
+  });
+
+  test("a settings file that appears (the game's first run) counts as a change", async () => {
+    const missing: ConfigCheck = { ...offCheck, file: "install", problems: ["user_missing"] };
+    const { check, mtime, watch } = startWatching([missing, goodCheck]);
+    mtime.value = null;
+    await vi.waitFor(() => {
+      expect(mtime.paths.length).toBeGreaterThan(2);
+    });
+    mtime.value = 5;
+    await vi.waitFor(() => {
+      expect(watch.statsConfig()).toEqual(goodCheck);
+    });
+    expect(check).toHaveBeenLastCalledWith("file_changed");
+  });
+
+  test("a failing stat is logged once and polling goes on", async () => {
+    const fail = vi.fn((): number | null => {
+      throw Object.assign(new Error("EPERM: operation not permitted"), { code: "EPERM" });
+    });
+    const { logger } = startWatching([offCheck], fail);
+    await vi.waitFor(() => {
+      expect(fail.mock.calls.length).toBeGreaterThan(3);
+    });
+    expect(logger.events().filter((e) => e === "game/stats_config_stat_failed")).toHaveLength(1);
   });
 });
 

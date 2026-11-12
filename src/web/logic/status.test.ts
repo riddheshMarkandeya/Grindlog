@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import type { Status } from "../../shared/schemas/responses";
 import { statusLabel } from "./status";
 
-const live = (over: Partial<Status> = {}): Status => ({ connection: "waiting", statsApiOff: false, configProblems: [], version: null, pid: 1234, ...over });
+const live = (over: Partial<Status> = {}): Status => ({ connection: "waiting", statsApiOff: false, configProblems: [], configUnknown: false, statsIni: null, expectedWebPort: 49124, version: null, pid: 1234, ...over });
 
 describe("statusLabel", () => {
   test("names each connection state the way the map does", () => {
@@ -15,6 +15,7 @@ describe("statusLabel", () => {
     expect(statusLabel({ link: "open", status: live({ connection: "connected", statsApiOff: true, configProblems: ["no_ini"] }), stopped: false }))
       .toEqual({ label: "Stats API off", tone: "warn" });
     expect(statusLabel({ link: "open", status: live({ configProblems: ["send_rate_off"] }), stopped: false })).toEqual({ label: "setup problem", tone: "warn" });
+    expect(statusLabel({ link: "open", status: live({ configUnknown: true }), stopped: false })).toEqual({ label: "setup problem", tone: "warn" });
     // Data is flowing, so the connection is the news; the problem stays for Settings to show.
     expect(statusLabel({ link: "open", status: live({ connection: "recording", configProblems: ["web_port_mismatch"] }), stopped: false }))
       .toEqual({ label: "recording match", tone: "ok" });

@@ -25,6 +25,6 @@ export function statusLabel({ link, status, stopped }: StatusInput): { label: st
   if (!status) return { label: "connecting…", tone: "busy" };
   if (status.statsApiOff) return { label: "Stats API off", tone: "warn" };
   // A setup problem explains a game that never connects; once data flows, the connection is the news.
-  if (status.connection === "waiting" && status.configProblems.length > 0) return { label: "setup problem", tone: "warn" };
+  if (status.connection === "waiting" && (status.configProblems.length > 0 || status.configUnknown)) return { label: "setup problem", tone: "warn" };
   return BY_CONNECTION[status.connection];
 }

@@ -7,7 +7,7 @@ import { log } from "./log";
 import { createLogonTask } from "./logon-task";
 import { scheduleMaintenance, type Maintenance } from "./maintenance";
 import { createNotifier } from "./notifier";
-import { dashboardPort, dataDir, logonTaskName, staticDir } from "./paths";
+import { dashboardPort, dataDir, logonTaskName, staticDir, statsConfigDirOverride } from "./paths";
 import { createQueryReader } from "./query/read";
 import { startStatsClient, statsApiUrl, type StatsClient } from "./recorder/client";
 import { createRecorder, type Recorder } from "./recorder/recorder";
@@ -16,7 +16,8 @@ import { createRecordWriter } from "./records/save";
 import { startReleaseRecompute, type ReleaseRecompute } from "./release-recompute";
 import { runtimeInfo } from "./runtime-info";
 import { VERSION } from "../shared/version";
-import { expectedPort } from "./stats-config";
+import { checkStatsConfig, expectedPort, LOCATORS, userIniPath } from "./stats-config";
+import { applyStatsFix, runStatsFix, SETUP_CHECK_MS } from "./stats-setup";
 import { openStorage, type Storage } from "./storage";
 import { trayView } from "./tray-view";
 
@@ -133,15 +134,38 @@ function main(): void {
 
   parts.maintenance = scheduleMaintenance({ storage, isRecording: recorder.isRecording });
   const client = (parts.client = startStatsClient({ url, recorder, logger: log }));
+  const expectedWebPort = expectedPort(url);
+  // The override reads no install layers either, so results match on any PC and e2e never touches the real ini.
+  const configDir = statsConfigDirOverride();
   const gameWatch = (parts.gameWatch = startGameWatch({
     client,
     logger: log,
-    expectedWebPort: expectedPort(url),
+    expectedWebPort,
     toast: (body) => notifier.notify({ title: TOAST_TITLE, body }),
+    checkConfig: () =>
+      checkStatsConfig({
+        expectedWebPort,
+        logger: log,
+        locators: configDir === null ? LOCATORS : [],
+        ...(configDir !== null && { userDir: () => Promise.resolve({ dir: configDir, foundBy: "override" as const, tried: [] }) }),
+      }),
   }));
+  if (configDir !== null) log.info("game", "stats_config_override", { dir: configDir });
   // 0 until a release recompute finishes; a crashed run leaves it 0 and logs release_recompute_crashed.
   let recomputeFailed = 0;
-  const status = () => ({ connection: client.status(), statsApiOff: gameWatch.statsApiOff(), configProblems: gameWatch.statsConfig()?.problems ?? [], version: VERSION, pid: process.pid });
+  const status = () => {
+    const config = gameWatch.statsConfig();
+    return {
+      connection: client.status(),
+      statsApiOff: gameWatch.statsApiOff(),
+      configProblems: config?.problems ?? [],
+      configUnknown: config === null && gameWatch.statsConfigChecked(),
+      statsIni: config ? userIniPath(config) : null,
+      expectedWebPort,
+      version: VERSION,
+      pid: process.pid,
+    };
+  };
   const api = (parts.api = createApi({
     tracker: storage.tracker,
     reader: createQueryReader({ tracker: storage.tracker, logger: log }),
@@ -150,6 +174,10 @@ function main(): void {
     logger: log,
     logonTask: createLogonTask({ task: logonTaskName(), logger: log }),
     tray: (ack) => trayView({ ...status(), recomputeFailed }, notifier.poll(ack)),
+    statsSetup: {
+      fix: (portConsent) =>
+        runStatsFix({ recheck: () => gameWatch.recheck(SETUP_CHECK_MS), apply: (iniPath, want) => applyStatsFix({ iniPath, want, logger: log }), expectedWebPort, portConsent, logger: log }),
+    },
   }));
   parts.host.mount(api.handle);
   // After the mount, so its end event reaches open pages. Health doesn't wait for it.

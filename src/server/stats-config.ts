@@ -4,6 +4,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Logger } from "./log";
 import { runCommand } from "./powershell";
+import { STATS_INI, SUGGESTED_RATE, USER_INI_HINT } from "../shared/constants";
 
 const SECTION = "tagame.matchstatsexporter_ta";
 const KEYS = { packetsendrate: "packetSendRate", port: "port", webport: "webPort" } as const;
@@ -14,31 +15,51 @@ export interface StatsIni {
   webPort?: number;
 }
 
+/** The exporter section's name as written in the game's own files. */
+export const SECTION_HEADER = "[TAGame.MatchStatsExporter_TA]";
+/** The ini key each StatsIni field is written as. */
+export const INI_KEY_NAMES: Record<keyof StatsIni, string> = { packetSendRate: "PacketSendRate", port: "Port", webPort: "WebPort" };
+
+/**
+ * One ini line (without its ending): a section header, saying whether it opens the exporter section;
+ * a line naming an exporter key, with where its trimmed value sits in `raw`; or anything else.
+ */
+export type IniLine =
+  | { kind: "section"; exporter: boolean }
+  | { kind: "key"; key: keyof StatsIni; value: string; valueStart: number; valueEnd: number }
+  | { kind: "other" };
+
+export function classifyIniLine(raw: string): IniLine {
+  const line = raw.trim();
+  if (line === "" || line.startsWith(";")) return { kind: "other" };
+  const header = /^\[(.*)\]$/.exec(line);
+  if (header) return { kind: "section", exporter: header[1]?.trim().toLowerCase() === SECTION };
+  const eq = raw.indexOf("=");
+  if (eq < 0) return { kind: "other" };
+  const key = KEYS[raw.slice(0, eq).trim().toLowerCase() as keyof typeof KEYS] as keyof StatsIni | undefined;
+  if (!key) return { kind: "other" };
+  const after = raw.slice(eq + 1);
+  const valueStart = eq + 1 + (after.length - after.trimStart().length);
+  const value = after.trim();
+  return { kind: "key", key, value, valueStart, valueEnd: valueStart + value.length };
+}
+
+/** A value the game reads as a number: Psyonix documents the send rate as a float, so `30.0` counts. */
+export const INI_NUMBER = /^-?\d+(\.\d+)?$/;
+
 /** The exporter section of a Stats API ini. Keys are case-insensitive; a non-numeric value is left out. */
 export function parseStatsIni(text: string): StatsIni {
   const out: StatsIni = {};
   let inSection = false;
   for (const raw of (text.charCodeAt(0) === 0xfeff ? text.slice(1) : text).split(/\r?\n/)) {
-    const line = raw.trim();
-    if (line === "" || line.startsWith(";")) continue;
-    const header = /^\[(.*)\]$/.exec(line);
-    if (header) {
-      inSection = header[1]?.trim().toLowerCase() === SECTION;
-      continue;
-    }
-    const eq = line.indexOf("=");
-    if (!inSection || eq < 0) continue;
-    const key = KEYS[line.slice(0, eq).trim().toLowerCase() as keyof typeof KEYS] as keyof StatsIni | undefined;
-    const value = line.slice(eq + 1).trim();
-    if (key && /^-?\d+$/.test(value)) out[key] = Number(value);
+    const line = classifyIniLine(raw);
+    if (line.kind === "section") inSection = line.exporter;
+    else if (line.kind === "key" && inSection && INI_NUMBER.test(line.value)) out[line.key] = Number(line.value);
   }
   return out;
 }
 
-const TA_INI = "TAStatsAPI.ini";
 const DEFAULT_INI = "DefaultStatsAPI.ini";
-/** The send rate suggested in fixes; any value above 0 works. */
-const SUGGESTED_RATE = 30;
 
 export type ConfigProblem = "no_ini" | "user_missing" | "send_rate_off" | "web_port_off" | "web_port_mismatch";
 /** Which copy of the settings is in effect: the per-user one in Documents, or the install's. */
@@ -79,13 +100,11 @@ export function diagnose(layers: IniLayers, expectedWebPort: number): Diagnosis 
   return { file: user ? "user" : install ? "install" : "default", effective, problems };
 }
 
-const USER_INI_HINT = `Documents\\My Games\\Rocket League\\TAGame\\Config\\${TA_INI}`;
-
 /** One fix-first sentence for the toast, which shows about two lines; undefined is "no problem found". */
 export function describeProblem(problem: ConfigProblem | undefined, expectedWebPort: number, file: IniLayer | null): string {
   const rate = String(SUGGESTED_RATE);
   const port = String(expectedWebPort);
-  const where = file === "user" ? USER_INI_HINT : `${TA_INI} in the game's TAGame\\Config folder`;
+  const where = file === "user" ? USER_INI_HINT : `${STATS_INI} in the game's TAGame\\Config folder`;
   switch (problem) {
     case "no_ini":
     case "user_missing":
@@ -179,7 +198,7 @@ export const fromEpic: Locator = {
 export const LOCATORS: Locator[] = [fromEpic];
 
 /** The Documents config dir, how it was found and what failed first; `outcome` when there's none. */
-export type UserDirResult = { dir: string; foundBy: "registry" | "userprofile"; tried: Attempt[] } | { outcome: string };
+export type UserDirResult = { dir: string; foundBy: "registry" | "userprofile" | "override"; tried: Attempt[] } | { outcome: string };
 
 const SHELL_FOLDERS_KEY = "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders";
 const REG_TIMEOUT_MS = 5_000;
@@ -221,13 +240,36 @@ export interface ConfigCheck extends Diagnosis {
   path: string | null;
 }
 
-function isNodeError(err: unknown, code: string): boolean {
-  return err instanceof Error && (err as NodeJS.ErrnoException).code === code;
+/** The Documents ini, the copy the setup fix writes; null when the Documents folder wasn't found. */
+export function userIniPath(check: Pick<ConfigCheck, "userConfigDir">): string | null {
+  return check.userConfigDir === null ? null : join(check.userConfigDir, STATS_INI);
+}
+
+/** A Node error with this code, or with any code when none is given (an fs failure rather than a bug). */
+export function isNodeError(err: unknown, code?: string): err is NodeJS.ErrnoException {
+  const c = err instanceof Error ? (err as NodeJS.ErrnoException).code : undefined;
+  return typeof c === "string" && (code === undefined || c === code);
 }
 
 const errorText = (err: unknown) => `error: ${err instanceof Error ? err.message : String(err)}`;
 
-/** A parsed ini, or null when the file doesn't exist. Windows editors may save UTF-16, marked by its FF FE BOM. */
+export type IniEncoding = "utf16le" | "utf8" | "utf8bom";
+
+/** An ini's text without its BOM, and how to write it back. Windows editors may save UTF-16, marked by its FF FE BOM. */
+export function decodeIni(buf: Buffer): { text: string; encoding: IniEncoding } {
+  if (buf[0] === 0xff && buf[1] === 0xfe) return { text: new TextDecoder("utf-16le").decode(buf.subarray(2)), encoding: "utf16le" };
+  if (buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) return { text: buf.subarray(3).toString("utf8"), encoding: "utf8bom" };
+  return { text: buf.toString("utf8"), encoding: "utf8" };
+}
+
+/** The bytes decodeIni read `text` from, BOM included. */
+export function encodeIni(text: string, encoding: IniEncoding): Buffer {
+  if (encoding === "utf16le") return Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(text, "utf16le")]);
+  if (encoding === "utf8bom") return Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(text, "utf8")]);
+  return Buffer.from(text, "utf8");
+}
+
+/** A parsed ini, or null when the file doesn't exist. */
 function readIni(path: string): StatsIni | null {
   let buf: Buffer;
   try {
@@ -236,8 +278,7 @@ function readIni(path: string): StatsIni | null {
     if (isNodeError(err, "ENOENT")) return null;
     throw err;
   }
-  const text = buf[0] === 0xff && buf[1] === 0xfe ? new TextDecoder("utf-16le").decode(buf.subarray(2)) : buf.toString("utf8");
-  return parseStatsIni(text);
+  return parseStatsIni(decodeIni(buf).text);
 }
 
 /** The first install whose TAGame\Config exists, recording every miss in `tried`. */
@@ -290,8 +331,8 @@ export async function checkStatsConfig(opts: {
   }
 
   const paths: Record<IniLayer, string | null> = {
-    user: user && join(user.dir, TA_INI),
-    install: install && join(install.configDir, TA_INI),
+    user: user && join(user.dir, STATS_INI),
+    install: install && join(install.configDir, STATS_INI),
     default: install && join(install.configDir, DEFAULT_INI),
   };
   let reading: string | null = null;

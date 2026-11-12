@@ -79,6 +79,9 @@ export const periodParams = z
 /** `POST /api/autostart?on=true|false`: switch the logon task on or off. */
 export const autostartParams = z.object({ on: boolParam }).strict();
 
+/** `POST /api/stats-setup/fix?port=1`: `port=1` is consent to move a custom WebPort to the tracker's. */
+export const statsSetupParams = z.object({ port: z.literal("1").optional() }).strict();
+
 /**
  * `GET /api/tray?ack=<n>&instance=<run>`: the highest notice id the tray has shown (0 before any), and
  * the tracker run that numbered it, from the last answer; both absent before the tray's first answer.

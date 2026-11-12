@@ -31,7 +31,7 @@ class FakeSource implements HubSource {
   }
 }
 
-const status = { connection: "connected", statsApiOff: false, configProblems: [], version: null, pid: 1234 };
+const status = { connection: "connected", statsApiOff: false, configProblems: [], configUnknown: false, statsIni: null, expectedWebPort: 49124, version: null, pid: 1234 };
 const port = () => {
   const got: HubMessage[] = [];
   return { got, postMessage: (m: HubMessage) => { got.push(m); } };

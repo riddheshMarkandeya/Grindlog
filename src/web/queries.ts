@@ -27,6 +27,7 @@ import {
   seasonsResponse,
   sessionDetailResponse,
   sessionsResponse,
+  statsSetupFixed,
 } from "../shared/schemas/responses";
 import { DEFAULT_SETTINGS, settingsSchema, type Settings, type SettingsPatch } from "../shared/schemas/settings";
 import type { IdAnswer, SeasonInput } from "../shared/schemas/tables";
@@ -312,4 +313,9 @@ export function useAutostart() {
 /** Switches "Run at Windows startup" on or off; the answer is what Windows now holds. */
 export function useSetAutostart() {
   return useWholeWrite(AUTOSTART_KEY, (on: boolean) => postJson(`/api/autostart?on=${String(on)}`, WRITE, autostartResponse));
+}
+
+/** The setup card's fix of the game's Stats API settings; `port` consents to moving a custom WebPort. The status catches up over the stream. */
+export function useStatsSetupFix() {
+  return useMutation({ mutationFn: ({ port }: { port: boolean }) => postJson(`/api/stats-setup/fix${port ? "?port=1" : ""}`, WRITE, statsSetupFixed) });
 }

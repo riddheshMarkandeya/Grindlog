@@ -14,7 +14,7 @@ describe("statusProbe", () => {
     const host = startHost({ port, logger: memoryLogger(), onShutdown: () => undefined });
     try {
       expect(await statusProbe(port)).toBe("starting");
-      host.mount(() => Response.json({ connection: "waiting", statsApiOff: false, configProblems: [], version: null, pid: 4321 }));
+      host.mount(() => Response.json({ connection: "waiting", statsApiOff: false, configProblems: [], configUnknown: false, statsIni: null, expectedWebPort: 49124, version: null, pid: 4321 }));
       expect(await statusProbe(port)).toEqual({ pid: 4321 });
     } finally {
       host.stop();

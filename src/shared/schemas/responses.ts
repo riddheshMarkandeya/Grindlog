@@ -327,6 +327,12 @@ export const statusSchema = z.object({
   /** The game has run a minute or more without the Stats API answering. */
   statsApiOff: z.boolean(),
   configProblems: z.array(z.enum(["no_ini", "user_missing", "send_rate_off", "web_port_off", "web_port_mismatch"])),
+  /** A config check ended without finding the game's settings (or couldn't read them); false while the first runs. */
+  configUnknown: z.boolean(),
+  /** The Documents ini's full path, when the Documents folder was found, so setup text names the real file. */
+  statsIni: z.string().nullable(),
+  /** The port the tracker connects to, which the game's WebPort must be. */
+  expectedWebPort: z.number().int(),
   /**
    * The release this build is; null for dev and source runs. An open tab reloads when it changes,
    * and an old tab's worker reads it even from a status its own schema rejects, so it must stay a
@@ -356,6 +362,16 @@ export type TrayNotice = TrayResponse["notices"][number];
 
 /** The "Run at Windows startup" switch: the logon task on or off, or unavailable when it's missing or can't be read. */
 export const autostartResponse = z.object({ state: z.enum(["on", "off", "unavailable"]) });
+
+const fixKey = z.enum(["packetSendRate", "webPort"]);
+/** `POST /api/stats-setup/fix`: the settings it changed and those it inserted (both empty when they were already right). */
+export const statsSetupFixed = z.object({ changed: z.array(fixKey), added: z.array(fixKey) });
+/**
+ * Why the fix wrote nothing: 409 no_file (the game hasn't created its settings yet) or
+ * port_needs_consent (a custom WebPort; retry with port=1); 500 write_failed or check_failed.
+ */
+export const statsSetupError = z.object({ error: z.enum(["no_file", "port_needs_consent", "write_failed", "check_failed"]) });
+export type StatsSetupError = z.infer<typeof statsSetupError>["error"];
 
 export const breakResponse = z.object({ at: z.number() });
 
