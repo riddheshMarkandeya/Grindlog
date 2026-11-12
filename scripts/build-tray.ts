@@ -9,8 +9,16 @@ import { appName, type Channel } from "../src/shared/channel";
 const REPO = join(import.meta.dirname, "..");
 const SOURCE = join(REPO, "src", "tray", "Tray.cs");
 const ICON = join(REPO, "src", "web", "public", "favicon.ico");
-/** The manifest resource name Tray.cs loads its icon from. */
-const ICON_RESOURCE = "Grindlog.tray.ico";
+const TRAY_ICONS = join(REPO, "src", "tray", "icons");
+// Marks the exe DPI-aware, or Windows stretches the 16 px icon frame and the menu at 125/150 %.
+const MANIFEST = join(REPO, "src", "tray", "tray.manifest");
+const TRAY_STATES = ["ready", "active", "attention", "stopped"] as const;
+type TrayIcons = Record<(typeof TRAY_STATES)[number], string>;
+
+/** The channel's state icons from `bun run icons`; Tray.cs loads them as Grindlog.tray.<state>.ico. */
+export function trayIconPaths(channel: Channel, dir = TRAY_ICONS): TrayIcons {
+  return Object.fromEntries(TRAY_STATES.map((state) => [state, win32.join(dir, `${channel}-${state}.ico`)])) as TrayIcons;
+}
 
 /** The framework's csc.exe, 64-bit first, or null when neither is there. */
 export function findCsc(windir = process.env.WINDIR, exists: (path: string) => boolean = existsSync): string | null {
@@ -22,15 +30,18 @@ export function findCsc(windir = process.env.WINDIR, exists: (path: string) => b
   return null;
 }
 
-export function trayCompileArgs({ out, icon, sources }: { out: string; icon: string; sources: string[] }): string[] {
+export function trayCompileArgs({ out, icon, trayIcons, manifest, sources }: { out: string; icon: string; trayIcons: TrayIcons; manifest: string; sources: string[] }): string[] {
   return [
     "/nologo",
     "/target:winexe",
     "/optimize+",
     `/win32icon:${icon}`,
-    `/resource:${icon},${ICON_RESOURCE}`,
+    `/win32manifest:${manifest}`,
+    ...TRAY_STATES.map((state) => `/resource:${trayIcons[state]},Grindlog.tray.${state}.ico`),
     "/reference:System.Windows.Forms.dll",
     "/reference:System.Drawing.dll",
+    // JavaScriptSerializer, to read /api/tray.
+    "/reference:System.Web.Extensions.dll",
     `/out:${out}`,
     ...sources,
   ];
@@ -59,7 +70,7 @@ export function buildTray({ out, channel, version }: { out: string; channel: Cha
   try {
     const info = join(dir, "AssemblyInfo.cs");
     writeFileSync(info, assemblyInfo({ title: appName(channel), version }));
-    const res = Bun.spawnSync([csc, ...trayCompileArgs({ out, icon: ICON, sources: [SOURCE, info] })], { stdout: "pipe", stderr: "pipe", timeout: 60_000 });
+    const res = Bun.spawnSync([csc, ...trayCompileArgs({ out, icon: ICON, trayIcons: trayIconPaths(channel), manifest: MANIFEST, sources: [SOURCE, info] })], { stdout: "pipe", stderr: "pipe", timeout: 60_000 });
     // csc prints its errors to stdout.
     if (res.exitCode !== 0) throw new TrayBuildFailed(`csc failed (exit ${String(res.exitCode)}):\n${(res.stdout.toString() + res.stderr.toString()).trim()}`);
   } finally {

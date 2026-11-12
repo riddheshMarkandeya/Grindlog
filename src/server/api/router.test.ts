@@ -10,7 +10,7 @@ const routes: Route<string>[] = [
 
 describe("matchRoute", () => {
   test("captures a :param", () => {
-    expect(matchRoute(routes, "GET", "/api/sessions/abc-123")).toEqual({ kind: "found", handler: "detail", path: "/api/sessions/:key", params: { key: "abc-123" } });
+    expect(matchRoute(routes, "GET", "/api/sessions/abc-123")).toEqual({ kind: "found", handler: "detail", path: "/api/sessions/:key", quiet: false, params: { key: "abc-123" } });
   });
 
   test("a literal segment beats a :param listed before it", () => {

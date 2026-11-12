@@ -23,6 +23,8 @@ export const STATS_API_PORT = 49124;
 export const DASHBOARD_HOST = "127.0.0.1";
 /** Required on the shutdown POST, so a cross-site form can't stop the tracker. */
 export const SHUTDOWN_HEADER = "X-Grindlog-Shutdown";
+/** Required on GET /api/tray, which acks notices, so a cross-site page can't drain the tray's toasts. */
+export const TRAY_HEADER = "X-Grindlog-Tray";
 /**
  * Required on every other write. The Host check stops DNS rebinding but not a cross-site form POST to
  * 127.0.0.1; a cross-site request can't add a custom header without a preflight, which is never answered.

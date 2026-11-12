@@ -2,8 +2,8 @@
 // events, and the built web app for every other path. No CORS headers: only same-origin pages read it.
 import type { Server } from "bun";
 import type { z } from "zod";
-import { REQUEST_HEADER } from "../../shared/constants";
-import { autostartParams, filterOnly, monthsParams, periodParams, playedDaysParams, sessionsParams } from "../../shared/schemas/params";
+import { REQUEST_HEADER, TRAY_HEADER } from "../../shared/constants";
+import { autostartParams, filterOnly, monthsParams, periodParams, playedDaysParams, sessionsParams, trayParams, type TrayAck } from "../../shared/schemas/params";
 import {
   autostartResponse,
   breakResponse,
@@ -25,7 +25,9 @@ import {
   sessionsResponse,
   statusSchema,
   suggestionsResponse,
+  trayResponse,
   type Status,
+  type TrayResponse,
 } from "../../shared/schemas/responses";
 import { settingsPatch, settingsSchema } from "../../shared/schemas/settings";
 import { friendIdParams, friendNicknameParams, idStatusParams, pairParams, seasonIdParams, seasonInput } from "../../shared/schemas/tables";
@@ -56,6 +58,8 @@ export interface ApiOptions {
   events?: Partial<Omit<EventHubOptions, "status" | "logger">>;
   /** The logon task behind the "Run at Windows startup" setting. */
   logonTask: Pick<LogonTask, "get" | "set">;
+  /** The tray's view, acking notices up to `ack`; GET /api/tray answers 404 without it. */
+  tray?: (ack: TrayAck | null) => TrayResponse;
 }
 
 interface Ctx {
@@ -96,7 +100,7 @@ function friendWritten(write: FriendWrite, answer: () => Response): Response {
   return write.error === "not_found" ? notFound() : Response.json({ error: "conflict" }, { status: 409 });
 }
 
-export function createApi({ tracker, reader, status, staticDir, logger, now = Date.now, events: eventOptions, logonTask }: ApiOptions) {
+export function createApi({ tracker, reader, status, staticDir, logger, now = Date.now, events: eventOptions, logonTask, tray }: ApiOptions) {
   const pages = createPages({ reader, logger, now });
   const hub = createEventHub({ status, logger, ...eventOptions });
   const remarks = createRemarks({ tracker, pages, logger, now });
@@ -264,7 +268,21 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
     // Not a settings row: the logon task itself is the record, read from schtasks on each request.
     { method: "GET", path: "/api/autostart", handler: async () => ok(autostartResponse, { state: await logonTask.get() }) },
     { method: "POST", path: "/api/autostart", handler: async ({ query }) => ok(autostartResponse, { state: await logonTask.set(parse(autostartParams, query).on) }) },
+    // The tray polls every 2 s: a line per answer would rotate match diagnostics out of the logs in days.
+    // Its state changes show as notice/* here and tray/* in the supervisor's log.
+    ...(tray ? [{ method: "GET" as const, path: "/api/tray", handler: trayHandler(tray), quiet: true }] : []),
   ];
+
+  function trayHandler(view: NonNullable<ApiOptions["tray"]>): RouteHandler {
+    return ({ req, query }) => {
+      // A GET that acks notices: a cross-site page can't add the header without an unanswered preflight.
+      if (req.headers.get(TRAY_HEADER) !== "1") {
+        logger.warn(C, "tray_rejected", { origin: req.headers.get("origin") });
+        return new Response("Forbidden", { status: 403 });
+      }
+      return ok(trayResponse, view(parse(trayParams, query)));
+    };
+  }
 
   async function api(req: Request, server: Server<undefined>, url: URL): Promise<Response> {
     const started = performance.now();
@@ -272,10 +290,12 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
     const match = matchRoute(routes, req.method === "HEAD" ? "GET" : req.method, url.pathname);
     let res: Response;
     let route = url.pathname;
+    let quiet = false;
     if (match.kind === "not_found") res = notFound();
     else if (match.kind === "method_not_allowed") res = Response.json({ error: "method_not_allowed" }, { status: 405 });
     else {
       route = match.path;
+      quiet = match.quiet;
       try {
         // Awaited inside the try, so an async handler's rejection lands in these branches too.
         res = await match.handler({ req, server, query: Object.fromEntries(url.searchParams), params: match.params });
@@ -292,7 +312,9 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
         }
       }
     }
-    logger.info(C, "request", { method: req.method, route, status: res.status, ms: Math.round(performance.now() - started) });
+    if (!(quiet && res.ok)) {
+      logger.info(C, "request", { method: req.method, route, status: res.status, ms: Math.round(performance.now() - started) });
+    }
     return res;
   }
 

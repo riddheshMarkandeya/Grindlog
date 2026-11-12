@@ -78,3 +78,13 @@ export const periodParams = z
 
 /** `POST /api/autostart?on=true|false`: switch the logon task on or off. */
 export const autostartParams = z.object({ on: boolParam }).strict();
+
+/**
+ * `GET /api/tray?ack=<n>&instance=<run>`: the highest notice id the tray has shown (0 before any), and
+ * the tracker run that numbered it, from the last answer; both absent before the tray's first answer.
+ */
+export const trayParams = z
+  .object({ ack: wholeId.optional(), instance: z.string().regex(/^[0-9a-z]{1,32}$/).optional() })
+  .strict()
+  .transform(({ ack, instance }) => (ack !== undefined && instance !== undefined ? { id: ack, instance } : null));
+export type TrayAck = NonNullable<z.output<typeof trayParams>>;

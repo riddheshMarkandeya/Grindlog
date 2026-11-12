@@ -1,22 +1,43 @@
 import { describe, expect, test } from "vitest";
-import { assemblyInfo, findCsc, trayCompileArgs } from "./build-tray";
+import { assemblyInfo, findCsc, trayCompileArgs, trayIconPaths } from "./build-tray";
+
+describe("trayIconPaths", () => {
+  test("picks the channel's set: dev gets the tinted icons", () => {
+    const icons = trayIconPaths("dev", String.raw`C:\repo\icons`);
+    expect(icons.ready).toBe(String.raw`C:\repo\icons\dev-ready.ico`);
+    expect(icons.stopped).toBe(String.raw`C:\repo\icons\dev-stopped.ico`);
+    expect(trayIconPaths("prod", String.raw`C:\repo\icons`).attention).toBe(String.raw`C:\repo\icons\prod-attention.ico`);
+  });
+});
 
 describe("trayCompileArgs", () => {
   const args = trayCompileArgs({
     out: String.raw`C:\bin\grindlog-dev-tray.new.exe`,
     icon: String.raw`C:\repo\favicon.ico`,
+    trayIcons: {
+      ready: String.raw`C:\repo\icons\dev-ready.ico`,
+      active: String.raw`C:\repo\icons\dev-active.ico`,
+      attention: String.raw`C:\repo\icons\dev-attention.ico`,
+      stopped: String.raw`C:\repo\icons\dev-stopped.ico`,
+    },
+    manifest: String.raw`C:\repo\src\tray\tray.manifest`,
     sources: [String.raw`C:\repo\src\tray\Tray.cs`, String.raw`C:\tmp\AssemblyInfo.cs`],
   });
 
-  test("an optimised windowed exe with the icon as both file icon and the tray's resource", () => {
+  test("an optimised, DPI-aware windowed exe: the favicon as file icon and the four state icons as resources", () => {
     expect(args).toEqual([
       "/nologo",
       "/target:winexe",
       "/optimize+",
       String.raw`/win32icon:C:\repo\favicon.ico`,
-      String.raw`/resource:C:\repo\favicon.ico,Grindlog.tray.ico`,
+      String.raw`/win32manifest:C:\repo\src\tray\tray.manifest`,
+      String.raw`/resource:C:\repo\icons\dev-ready.ico,Grindlog.tray.ready.ico`,
+      String.raw`/resource:C:\repo\icons\dev-active.ico,Grindlog.tray.active.ico`,
+      String.raw`/resource:C:\repo\icons\dev-attention.ico,Grindlog.tray.attention.ico`,
+      String.raw`/resource:C:\repo\icons\dev-stopped.ico,Grindlog.tray.stopped.ico`,
       "/reference:System.Windows.Forms.dll",
       "/reference:System.Drawing.dll",
+      "/reference:System.Web.Extensions.dll",
       String.raw`/out:C:\bin\grindlog-dev-tray.new.exe`,
       String.raw`C:\repo\src\tray\Tray.cs`,
       String.raw`C:\tmp\AssemblyInfo.cs`,

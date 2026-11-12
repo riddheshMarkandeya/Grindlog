@@ -4,10 +4,12 @@ export interface Route<H> {
   method: "GET" | "POST";
   path: string;
   handler: H;
+  /** A 2xx answer writes no request line: for a route polled often enough to flood the log. */
+  quiet?: boolean;
 }
 
 export type RouteMatch<H> =
-  | { kind: "found"; handler: H; path: string; params: Record<string, string> }
+  | { kind: "found"; handler: H; path: string; quiet: boolean; params: Record<string, string> }
   | { kind: "not_found" }
   | { kind: "method_not_allowed" };
 
@@ -49,6 +51,6 @@ export function matchRoute<H>(routes: readonly Route<H>[], method: string, pathn
     return params ? [{ route: r, params }] : [];
   });
   const [best] = fits.filter((f) => f.route.method === method).sort((a, b) => bySpecificity(a.route.path, b.route.path));
-  if (best) return { kind: "found", handler: best.route.handler, path: best.route.path, params: best.params };
+  if (best) return { kind: "found", handler: best.route.handler, path: best.route.path, quiet: best.route.quiet ?? false, params: best.params };
   return fits.length ? { kind: "method_not_allowed" } : { kind: "not_found" };
 }

@@ -45,20 +45,20 @@ function fakeSteps(n: number, failed = 0) {
 const noYield = () => Promise.resolve();
 
 function start(over: Partial<ReleaseRecomputeOptions> = {}) {
-  let doneCalls = 0;
+  const done: RecomputeResult[] = [];
   const handle = startReleaseRecompute({
     storage,
     version: "0.2.0",
     isRecording: () => false,
-    onDone: () => {
-      doneCalls++;
+    onDone: (result) => {
+      done.push(result);
     },
     logger,
     yieldFn: noYield,
     sleep: noYield,
     ...over,
   });
-  return { handle, doneCalls: () => doneCalls };
+  return { handle, doneCalls: () => done.length, done };
 }
 
 describe("startReleaseRecompute", () => {
@@ -105,10 +105,11 @@ describe("startReleaseRecompute", () => {
   test("a failed match leaves the marker unwritten, and onDone still runs since others may have changed", async () => {
     setMarker("0.1.0");
     const { steps } = fakeSteps(3, 1);
-    const { handle, doneCalls } = start({ steps });
+    const { handle, doneCalls, done } = start({ steps });
     await handle.done;
     expect(marker()).toBe("0.1.0");
     expect(doneCalls()).toBe(1);
+    expect(done[0]).toMatchObject({ failed: 1 });
     expect(line("release_recompute_done")?.fields).toMatchObject({ failed: 1, markerWritten: false });
   });
 

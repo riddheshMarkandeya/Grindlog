@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import type { z } from "zod";
-import { REQUEST_HEADER } from "../../shared/constants";
+import { REQUEST_HEADER, TRAY_HEADER } from "../../shared/constants";
 import {
   autostartResponse,
   breakResponse,
@@ -27,8 +27,11 @@ import {
   sessionsResponse,
   statusSchema,
   suggestionsResponse,
+  trayResponse,
   type Status,
+  type TrayResponse,
 } from "../../shared/schemas/responses";
+import type { TrayAck } from "../../shared/schemas/params";
 import { DEFAULT_SETTINGS, settingsSchema } from "../../shared/schemas/settings";
 import { startHost, type Host } from "../host";
 import { LogonTaskError, type AutostartState } from "../logon-task";
@@ -49,6 +52,16 @@ let autostart: AutostartState;
 let getFails: Error | null;
 let setFails: boolean;
 const status: Status = { connection: "connected", statsApiOff: false, configProblems: ["user_missing"], version: null, pid: 1234 };
+/** The acks the tray option was called with: it isn't reached unless the header check passed. */
+let trayAcks: (TrayAck | null)[];
+const trayView: TrayResponse = {
+  icon: "attention",
+  status: "Stats API needs setting up",
+  lines: [{ text: "1 match couldn't be rebuilt after the update" }],
+  setupUrl: "/",
+  instance: "run1",
+  notices: [{ id: 3, title: "Grindlog", body: "hi" }],
+};
 
 const T0 = Date.UTC(2026, 9, 10, 18);
 const MIN = 60_000;
@@ -66,6 +79,7 @@ beforeEach(() => {
   clock = T0 + 20 * MIN;
   logger = memoryLogger();
   autostart = "on";
+  trayAcks = [];
   getFails = null;
   setFails = false;
   host = startHost({ port: 0, logger, onShutdown: () => undefined });
@@ -85,6 +99,10 @@ beforeEach(() => {
         autostart = on ? "on" : "off";
         return Promise.resolve(autostart);
       },
+    },
+    tray: (ack) => {
+      trayAcks.push(ack);
+      return trayView;
     },
   });
   host.mount(api.handle);
@@ -284,6 +302,38 @@ describe("settings", () => {
     const at = (window: string) => get(periodResponse, `/api/period?kind=all&window=${window}`);
     expect((await at("5")).rolling).toEqual([]);
     expect((await fetch(url("/api/period?kind=all&window=4"))).status).toBe(400);
+  });
+});
+
+describe("tray", () => {
+  const poll = (query: string, headers: Record<string, string> = { [TRAY_HEADER]: "1" }) => fetch(url(`/api/tray${query}`), { headers });
+
+  test("answers the tray's view and passes the ack through with its run, or null without both", async () => {
+    const res = await poll("?ack=2&instance=a1b2");
+    expect(res.status).toBe(200);
+    expect(trayResponse.parse(await res.json())).toEqual(trayView);
+    await poll("");
+    await poll("?ack=2");
+    expect(trayAcks).toEqual([{ id: 2, instance: "a1b2" }, null, null]);
+  });
+
+  test("without the tray header it's 403 and logged, and the notices aren't touched", async () => {
+    const res = await fetch(url("/api/tray?ack=5"), { headers: { origin: "https://evil.example" } });
+    expect(res.status).toBe(403);
+    expect(trayAcks).toEqual([]);
+    expect(logger.lines.find((l) => l.event === "tray_rejected")?.fields).toMatchObject({ origin: "https://evil.example" });
+  });
+
+  test("a bad ack is 400", async () => {
+    for (const q of ["?ack=x", "?ack=-1", "?ack=1.5", "?ack=1&extra=1", "?ack=1&instance=A%20B"]) expect((await poll(q)).status, q).toBe(400);
+    expect(trayAcks).toEqual([]);
+  });
+
+  test("a 200 writes no request line, since it comes every 2 s; a rejected poll still does", async () => {
+    await poll("?ack=0");
+    expect(logger.lines.filter((l) => l.event === "request" && l.fields.route === "/api/tray")).toEqual([]);
+    await poll("?ack=x");
+    expect(logger.lines.filter((l) => l.event === "request" && l.fields.route === "/api/tray")).toHaveLength(1);
   });
 });
 

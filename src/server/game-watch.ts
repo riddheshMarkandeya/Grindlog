@@ -2,7 +2,7 @@
 // WebSocket alone can't: both look like a refused connection.
 import { APP_NAME } from "../shared/channel";
 import type { Logger } from "./log";
-import { runCommand, runPowerShell } from "./powershell";
+import { runCommand } from "./powershell";
 import type { ConnectionStatus, StatsClient } from "./recorder/client";
 import { checkStatsConfig, describeProblem, LOCATORS, type ConfigCheck } from "./stats-config";
 
@@ -59,33 +59,8 @@ async function detectGame(): Promise<boolean> {
   return parseTasklist(stdout);
 }
 
-const TOAST_TIMEOUT_MS = 10_000;
 export const TOAST_TITLE = `${APP_NAME} isn't getting data`;
 const TOAST_BODY = "Rocket League is running but its Stats API is off. Set PacketSendRate above 0 in TAGame\\Config\\TAStatsAPI.ini, then restart the game.";
-// PowerShell's own AppUserModelID: a toast needs a registered app, and this one always is.
-const POWERSHELL_APP_ID = String.raw`{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe`;
-const psQuote = (s: string) => `'${s.replace(/'/g, "''")}'`;
-
-/** Shows a Windows toast through PowerShell. Best-effort: never throws, logs toast/shown or toast/failed. */
-export async function showToast(logger: Logger, body = TOAST_BODY, title = TOAST_TITLE): Promise<void> {
-  const script = [
-    "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null",
-    "$t = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)",
-    "$x = $t.GetElementsByTagName('text')",
-    `$x.Item(0).AppendChild($t.CreateTextNode(${psQuote(title)})) > $null`,
-    `$x.Item(1).AppendChild($t.CreateTextNode(${psQuote(body)})) > $null`,
-    `[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier(${psQuote(POWERSHELL_APP_ID)}).Show([Windows.UI.Notifications.ToastNotification]::new($t))`,
-  ].join("\n");
-  try {
-    const { code, stderr, timedOut } = await runPowerShell(script, TOAST_TIMEOUT_MS);
-    if (code === 0) logger.info("toast", "shown", { title, body });
-    else logger.warn("toast", "failed", { code, timedOut, stderr: stderr.slice(0, 500) });
-  } catch (err) {
-    // Broad on purpose: a toast is a nicety, and whatever stops PowerShell from starting must not
-    // reach the recorder.
-    logger.warn("toast", "failed", { err });
-  }
-}
 
 export type CheckPhase = "startup" | "game_running";
 
@@ -97,7 +72,8 @@ export interface GameWatchOptions {
   pollMs?: number;
   now?: () => number;
   detect?: () => Promise<boolean>;
-  toast?: (body: string) => Promise<void>;
+  /** Shows a toast with this body, under TOAST_TITLE. */
+  toast: (body: string) => Promise<void>;
   checkConfig?: (phase: CheckPhase) => Promise<ConfigCheck | null>;
   checkTimeoutMs?: number;
 }
@@ -123,7 +99,7 @@ export function startGameWatch(opts: GameWatchOptions): GameWatch {
     pollMs = POLL_MS,
     now = Date.now,
     detect = detectGame,
-    toast = (body) => showToast(logger, body),
+    toast,
     checkConfig = () => checkStatsConfig({ expectedWebPort, logger, locators: LOCATORS }),
     checkTimeoutMs = CHECK_TIMEOUT_MS,
   } = opts;

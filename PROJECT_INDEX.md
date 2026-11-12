@@ -11,7 +11,8 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   installer and updater, asks the tracker to stop and ends supervisors and waiting `--open`s, never a
   recording tracker), `control.ts` probing, listing, ending and starting this install's processes
   (shared with `stop.ts` and `autostart.ts`), `runtime-info.ts` version, channel, Windows and Bun for
-  `started` lines, `game-watch.ts` game detection and toast, `exit-codes.ts`, `log.ts`
+  `started` lines, `game-watch.ts` game detection and the "Stats API off" toast, `notifier.ts` routes toasts through the
+  tray (acked queue, 10 s PowerShell fallback) or PowerShell, `tray-view.ts` the pure tray view for `/api/tray`, `exit-codes.ts`, `log.ts`
   logger, `paths.ts` per-channel `identity()` (data dir, port, exe, task, shortcut) and paths from it, `storage.ts` opens both DBs, `maintenance.ts` schedules retention and backups, `release-recompute.ts` rebuilds every match record in
   the background when a release build's version differs from tracker.db's `meta.recomputed_version` (dev builds
   never; pauses while a match records; ends with the `records_recomputed` event); `db/`: `sqlite.ts` driver seam, `migrate.ts`, `migrations.ts`,
@@ -22,7 +23,8 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   `definitions.ts` renders the doc; `query/`: `read.ts` match records for pages with "you"
   joined, `sessions.ts` session cutting, `aggregate.ts` stats and the 30-day baseline; `api/`: the
   dashboard API mounted on the host: `index.ts` routes and writes, `pages.ts` composes each page,
-  `events.ts` SSE (`status`, `match_ended`, `session_break`, `records_recomputed`), `router.ts`, `static.ts` built web app (every file `Cache-Control: no-cache`); `remarks/`: the recap headline,
+  `events.ts` SSE (`status`, `match_ended`, `session_break`, `records_recomputed`), `router.ts` (a `quiet` route
+  logs no 2xx request lines), `static.ts` built web app (every file `Cache-Control: no-cache`); `remarks/`: the recap headline,
   `copy.ts` line pool, `triggers.ts` mood and quip triggers, `pick.ts` the pure picker, `store.ts`
   stored picks and history),
   `src/web/` (the dashboard: Vite + React + React Router + TanStack Query; `main.tsx`, `App.tsx`
@@ -31,12 +33,16 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   leniently first and posts it on its own), `live.ts` header state, `useLiveEvents.ts` refetch on events and
   one reload when the tracker's version changes (`logic/version-watch.ts`); `logic/` pure header logic; `components/` header and empty
   state; `styles/tokens.css` themes carbon, slate, oled; `pages/` placeholders until WP6+),
+  `src/tray/` (`Tray.cs` the C# 5 tray exe: polls `/api/tray` every 2 s, icon states, menu, balloons; `tray.manifest`
+  DPI awareness; `icons/<channel>-<state>.ico` from `bun run icons`; built by `scripts/build-tray.ts`; live
+  `tray.test.ts`),
   `src/shared/` (`channel.ts` the baked dev/prod channel and `APP_NAME`, `version.ts` the baked
   `GRINDLOG_VERSION` (null in dev and source runs), `constants.ts`, `result.ts` your W/L, `playlists.ts` ID map, `goal-range.ts`
   close/mid/long, `periods.ts` local days and periods, `playlist-filter.ts` filter groups, `schemas/` API params
   and response shapes),
   `scripts/` (standalone `capture.ts`; `make-icons.ts` packs `src/web/assets/icon.svg` and
-  `icon-small.svg` into `src/web/public/favicon.ico` (`bun run icons`, output committed);
+  `icon-small.svg` into `src/web/public/favicon.ico` and the tray set with state dots and a teal dev line into
+  `src/tray/icons/` (`bun run icons`, output committed); `build-tray.ts` compiles the tray with `csc.exe`;
   `stop.ts`, `autostart.ts`, `move-data.ts` (`bun run move-data <from> <to> [--copy]`: a verified
   copy of a data dir without `bin`; a move keeps the source as `<to>.pre-move-backup`), `replay.ts` fake Stats API,
   `import-capture.ts` (also writes records), `recompute.ts`, `make-fixture.ts`, `definitions.ts`,
@@ -78,6 +84,8 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   rebuild gives a different record (`retention/thin_mismatch`), and every other event is kept).
 
 ## Decisions
+- `docs/decisions/2026-11-10-tray-view-contract.md`: `/api/tray` (header-gated GET, view from the pure `trayView`);
+  toasts through the tray, acked with a 10 s PowerShell fallback; acks name the tracker run; `/`-only urls.
 - `docs/decisions/2026-11-10-tray-process-model.md`: the tray exe as a second supervised child; exit 0 = Quit,
   3 = stdin closed; the quit protocol and own-pid check; tray logs through `supervisor.log`; corrects Task
   Scheduler End (it ends the whole tree).
@@ -101,6 +109,9 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   Task Scheduler doesn't restart a crashed task.
 
 ## Plans
+- `docs/reviews/2026-11-10-wp3b-tray-view.md`: step 4 package 3b review summary (2 rounds, 1 deferred); manual checks.
+- `docs/plans/2026-11-10-wp3b-tray-view.md`: step 4 package 3b, tray view: icon prototype verdict, icon set,
+  `trayView`, notifier, `/api/tray`, Tray.cs poll loop; balloon check result; implementation notes; review log.
 - `docs/reviews/2026-11-10-wp3a-tray-process-model.md`: step 4 package 3a review summary (4 rounds, 1 limit recorded).
 - `docs/plans/2026-11-10-wp3a-tray-process-model.md`: step 4 package 3a, the tray exe, supervisor with two
   children, quit protocol, `--quit` covering the tray, manual checks; 3b outline; review log.

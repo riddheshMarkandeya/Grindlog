@@ -1,10 +1,12 @@
 import { createApi, type Api } from "./api";
 import { EXIT_CONFIG_INVALID, EXIT_OK, EXIT_PORT_TAKEN, EXIT_START_FAILED } from "./exit-codes";
-import { startGameWatch, type GameWatch } from "./game-watch";
+import { APP_NAME } from "../shared/channel";
+import { startGameWatch, TOAST_TITLE, type GameWatch } from "./game-watch";
 import { PortTakenError, startHost, type Host } from "./host";
 import { log } from "./log";
 import { createLogonTask } from "./logon-task";
 import { scheduleMaintenance, type Maintenance } from "./maintenance";
+import { createNotifier } from "./notifier";
 import { dashboardPort, dataDir, logonTaskName, staticDir } from "./paths";
 import { createQueryReader } from "./query/read";
 import { startStatsClient, statsApiUrl, type StatsClient } from "./recorder/client";
@@ -16,6 +18,7 @@ import { runtimeInfo } from "./runtime-info";
 import { VERSION } from "../shared/version";
 import { expectedPort } from "./stats-config";
 import { openStorage, type Storage } from "./storage";
+import { trayView } from "./tray-view";
 
 /** What has been started so far: a stop can arrive mid-startup, and tears down only these. */
 interface Parts {
@@ -94,9 +97,12 @@ function main(): void {
     process.exit(EXIT_START_FAILED);
   }
 
+  // Before the recorder: startup recovery can finish the first match.
+  const notifier = createNotifier({ logger: log });
   let storage, recorder;
   try {
     storage = parts.storage = openStorage();
+    let hadMatch = storage.tracker.get<{ any: number }>("SELECT EXISTS (SELECT 1 FROM matches) AS any")?.any === 1;
     const writer = createRecordWriter({ tracker: storage.tracker, logger: log });
     recorder = parts.recorder = createRecorder({
       raw: storage.raw,
@@ -106,6 +112,11 @@ function main(): void {
         const record = toRecord(s);
         // An ignored playlist's match changed nothing a page shows.
         if (writer.save(record) !== "written") return;
+        if (!hadMatch) {
+          hadMatch = true;
+          log.info("app", "first_match", { guid: record.match.guid });
+          void notifier.notify({ title: `${APP_NAME} recorded your first match`, body: "Open the dashboard to see it." });
+        }
         // Startup recovery finishes matches before the API exists; no page is open then.
         parts.api?.matchEnded(record.match.guid);
       },
@@ -122,14 +133,23 @@ function main(): void {
 
   parts.maintenance = scheduleMaintenance({ storage, isRecording: recorder.isRecording });
   const client = (parts.client = startStatsClient({ url, recorder, logger: log }));
-  const gameWatch = (parts.gameWatch = startGameWatch({ client, logger: log, expectedWebPort: expectedPort(url) }));
+  const gameWatch = (parts.gameWatch = startGameWatch({
+    client,
+    logger: log,
+    expectedWebPort: expectedPort(url),
+    toast: (body) => notifier.notify({ title: TOAST_TITLE, body }),
+  }));
+  // 0 until a release recompute finishes; a crashed run leaves it 0 and logs release_recompute_crashed.
+  let recomputeFailed = 0;
+  const status = () => ({ connection: client.status(), statsApiOff: gameWatch.statsApiOff(), configProblems: gameWatch.statsConfig()?.problems ?? [], version: VERSION, pid: process.pid });
   const api = (parts.api = createApi({
     tracker: storage.tracker,
     reader: createQueryReader({ tracker: storage.tracker, logger: log }),
-    status: () => ({ connection: client.status(), statsApiOff: gameWatch.statsApiOff(), configProblems: gameWatch.statsConfig()?.problems ?? [], version: VERSION, pid: process.pid }),
+    status,
     staticDir: staticDir(),
     logger: log,
     logonTask: createLogonTask({ task: logonTaskName(), logger: log }),
+    tray: (ack) => trayView({ ...status(), recomputeFailed }, notifier.poll(ack)),
   }));
   parts.host.mount(api.handle);
   // After the mount, so its end event reaches open pages. Health doesn't wait for it.
@@ -137,7 +157,8 @@ function main(): void {
     storage,
     version: VERSION,
     isRecording: recorder.isRecording,
-    onDone: () => {
+    onDone: (result) => {
+      recomputeFailed = result.failed;
       api.recordsRecomputed();
     },
     logger: log,

@@ -337,6 +337,23 @@ export const statusSchema = z.object({
   pid: z.number().int(),
 });
 
+/**
+ * What the tray shows (GET /api/tray). The tray adds its own "Starting…" and "Not responding". Line and
+ * setup urls are dashboard paths starting with "/"; the tray opens nothing else. Notices are toasts for the
+ * tray to show, oldest first, until it acks their ids.
+ */
+export const trayResponse = z.object({
+  icon: z.enum(["ready", "active", "attention"]),
+  status: z.string(),
+  lines: z.array(z.object({ text: z.string(), url: z.string().optional() })),
+  setupUrl: z.string().nullable(),
+  /** Names this tracker run, so the tray can tell its acks apart from an earlier run's. */
+  instance: z.string(),
+  notices: z.array(z.object({ id: z.number().int(), title: z.string(), body: z.string() })),
+});
+export type TrayResponse = z.infer<typeof trayResponse>;
+export type TrayNotice = TrayResponse["notices"][number];
+
 /** The "Run at Windows startup" switch: the logon task on or off, or unavailable when it's missing or can't be read. */
 export const autostartResponse = z.object({ state: z.enum(["on", "off", "unavailable"]) });
 

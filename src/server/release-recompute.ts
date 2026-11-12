@@ -22,7 +22,7 @@ export interface ReleaseRecomputeOptions {
   version: string | null;
   isRecording: () => boolean;
   /** Called once when a run reaches the end, failures or not: records may have changed. */
-  onDone: () => void;
+  onDone: (result: RecomputeResult) => void;
   logger?: Logger;
   /** Lets other work run between matches. */
   yieldFn?: () => Promise<void>;
@@ -101,7 +101,7 @@ export function startReleaseRecompute(opts: ReleaseRecomputeOptions): ReleaseRec
       tracker.run("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", MARKER_KEY, to);
     }
     logger.info(C, "release_recompute_done", { from, to, ...result, activeMs: Math.round(activeMs), markerWritten });
-    onDone();
+    onDone(result);
   }
 
   async function guarded(): Promise<void> {

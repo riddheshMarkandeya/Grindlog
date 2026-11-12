@@ -1,6 +1,7 @@
 // Renders the icon SVGs in the installed Chrome and packs them into favicon.ico, for the browser tab,
-// the Start menu shortcut and the exes. `bun run icons`; the output is committed.
-import { readFileSync, writeFileSync } from "node:fs";
+// the Start menu shortcut and the exes, and into the tray's state icons. `bun run icons`; the output
+// is committed.
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Browser } from "@playwright/test";
 
@@ -10,6 +11,36 @@ const MASTER = join(REPO, "src", "web", "assets", "icon.svg");
 const SMALL = join(REPO, "src", "web", "assets", "icon-small.svg");
 const OUT = join(REPO, "src", "web", "public", "favicon.ico");
 const SIZES = [{ size: 16, svg: SMALL }, { size: 24, svg: SMALL }, ...[32, 48, 64, 128, 256].map((size) => ({ size, svg: MASTER }))];
+const TRAY_OUT = join(REPO, "src", "tray", "icons");
+
+const PROD_LINE = "#d95926";
+const TILE = "#161618";
+const TRAY_CHANNELS = { prod: PROD_LINE, dev: "#14b8a6" } as const;
+const TRAY_DOTS = { ready: null, active: "#3fb950", attention: "#f0a020", stopped: "#e5484d" } as const;
+/** The 16 and 32 px frames at 100/125/150 %; up to 24 is drawn from the 16 px master. */
+const TRAY_SIZES = [16, 20, 24, 32, 40, 48];
+const SMALL_MAX = 24;
+// On the 16 grid: a dot over the bottom-right corner, ringed in the tile colour so it parts from the bars.
+const DOT = { c: 12, r: 3.5, ring: 1 };
+
+export interface TrayIcon { file: string; line: string; dot: string | null; sizes: number[] }
+
+/** The tray's icons: one per channel (dev gets a teal line, so it can't pass for prod) and state. */
+export function traySet(): TrayIcon[] {
+  return Object.entries(TRAY_CHANNELS).flatMap(([channel, line]) =>
+    Object.entries(TRAY_DOTS).map(([state, dot]) => ({ file: `${channel}-${state}.ico`, line, dot, sizes: TRAY_SIZES })),
+  );
+}
+
+/** A master SVG (on a 16 or 64 grid) with the line recoloured and the state dot drawn on top. */
+export function traySvg(svg: string, grid: 16 | 64, { line, dot }: { line: string; dot: string | null }): string {
+  const recoloured = svg.replaceAll(PROD_LINE, line);
+  if (dot === null) return recoloured;
+  const k = grid / 16;
+  const n = (v: number) => String(v * k);
+  const circle = (r: number, fill: string) => `<circle cx="${n(DOT.c)}" cy="${n(DOT.c)}" r="${n(r)}" fill="${fill}"/>`;
+  return recoloured.replace("</svg>", `${circle(DOT.r + DOT.ring, TILE)}${circle(DOT.r, dot)}</svg>`);
+}
 
 const ICO_HEADER_BYTES = 6;
 const ICO_ENTRY_BYTES = 16;
@@ -35,10 +66,10 @@ export function packIco(pngs: { size: number; data: Uint8Array }[]): Uint8Array 
   return Buffer.concat([header, ...entries, ...pngs.map(({ data }) => data)]);
 }
 
-async function renderPng(browser: Browser, svgPath: string, size: number): Promise<Uint8Array> {
+async function renderPng(browser: Browser, svg: string, size: number): Promise<Uint8Array> {
   const page = await browser.newPage({ viewport: { width: size, height: size }, deviceScaleFactor: 1 });
   try {
-    await page.setContent(`<!doctype html><style>html,body{margin:0;background:transparent}svg{display:block;width:${String(size)}px;height:${String(size)}px}</style>${readFileSync(svgPath, "utf8")}`);
+    await page.setContent(`<!doctype html><style>html,body{margin:0;background:transparent}svg{display:block;width:${String(size)}px;height:${String(size)}px}</style>${svg}`);
     return await page.screenshot({ omitBackground: true });
   } finally {
     await page.close();
@@ -58,11 +89,23 @@ if (import.meta.main) {
   try {
     const pngs = [];
     for (const { size, svg } of SIZES) {
-      pngs.push({ size, data: await renderPng(browser, svg, size) });
+      pngs.push({ size, data: await renderPng(browser, readFileSync(svg, "utf8"), size) });
       console.log(`Rendered ${String(size)} px from ${svg}`);
     }
     writeFileSync(OUT, packIco(pngs));
     console.log(`Wrote ${OUT}`);
+    const small = readFileSync(SMALL, "utf8");
+    const master = readFileSync(MASTER, "utf8");
+    mkdirSync(TRAY_OUT, { recursive: true });
+    for (const icon of traySet()) {
+      const frames = [];
+      for (const size of icon.sizes) {
+        const svg = size <= SMALL_MAX ? traySvg(small, 16, icon) : traySvg(master, 64, icon);
+        frames.push({ size, data: await renderPng(browser, svg, size) });
+      }
+      writeFileSync(join(TRAY_OUT, icon.file), packIco(frames));
+      console.log(`Wrote ${icon.file}`);
+    }
   } finally {
     await browser.close();
   }
