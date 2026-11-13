@@ -6,6 +6,8 @@ All notable changes to Grindlog are listed here. The format is based on
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-11-13
+
 ### Added
 - A README, an MIT licence, this changelog and a contributing guide.
 - The installer puts `LICENSE.txt` and `THIRD_PARTY_NOTICES.txt` (the licences of the software Grindlog ships) next
@@ -36,6 +38,7 @@ The first release.
 - Update checks against GitHub releases, with signed downloads, installs only while the game is closed, and an
   automatic rollback if a new version doesn't start.
 
-[Unreleased]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.1...v0.1.3
 [0.1.1]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/riddheshMarkandeya/Grindlog/releases/tag/v0.1.0
