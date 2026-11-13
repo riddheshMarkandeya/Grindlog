@@ -97,6 +97,7 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
     Plan: `docs/plans/2026-11-12-wp6b-updater-apply.md`.
   - [ ] **[test-coverage, Med, Standard]** 7. Proof before friends: clean account, one Sandbox run, rollback through the
     feed override, copy history into prod, one live match on prod, one VirusTotal scan. Closes WP3b's autostart check.
+    In progress. Plan: `docs/plans/2026-11-12-wp7-proof-before-friends.md`.
 
 - [ ] **[feature, Med, Standard]** After the friends release map: set up new seasons automatically, and
   keep them editable. Source the user found: `ggseason.com/blog/rocket-league-all-seasons-dates/`, captured
