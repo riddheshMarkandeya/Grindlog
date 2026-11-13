@@ -114,6 +114,11 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   so check which is right, since it decides which season a match on that day counts in.
 
 ## Watch list
+- [ ] **[bug (latent), Low, Standard]** Trigger: a tray `exited` with code 4 outside a sign-out, or a sign-out that
+  hangs on Grindlog. At a clean account's sign-out (WP7 step 4) the tray exited with code 4, which isn't one of its
+  own codes (0-3), and the supervisor scheduled a 5 s restart that the logoff cut off. Harmless there. If it matters,
+  have the supervisor treat a session ending as a stop rather than a crash. Record:
+  `docs/plans/2026-11-12-wp7-proof-before-friends.md` Results.
 - [ ] **[bug (latent), Med, Standard]** Trigger: a `restore_no_backup` line, or a rollback restoring an older backup
   than expected, in a friend's `updater.log`. The restore picks the newest pre-migration backup at the old schema
   version from up to 24 h before the apply (the tracker reuses one that young rather than making another), and no

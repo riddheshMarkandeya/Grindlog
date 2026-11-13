@@ -184,3 +184,34 @@ Committed `7a075d6`. Review: code-review low, security; 1 round, clean.
   - `build-tray.test.ts` findCsc: `findCsc(undefined, …)` takes the default, the runner's real `WINDIR`. Fix: `""`.
   - Reproduced both locally (re-checkout under autocrlf; `WINDIR='C:\Windows'`), then green; full `check` 1766 passed.
   - No release or draft was created, so `v0.1.0` moves to the fix commit.
+- CI run 2 (`43337601827`, tag moved to `e116b39`): green, 9.5 min in all. Checkout 8 s, install 11 s, Playwright
+  chromium 24 s, `check` 2 min 42 s (1766 passed, tests 102 s; the tray test took 6303 ms against its 6500 ms
+  limit, so it passed but with only 0.2 s to spare), e2e 5 min 24 s (113 passed, no flake), `build-release` 27 s
+  (csc.exe compiled the tray, Inno built the installer, smoke run "Version 0.1.0, channel prod, updates on"),
+  draft 7 s. Draft `v0.1.0` holds `Grindlog-Setup-0.1.0.exe`, 36,108,649 bytes. No re-run and no CI-only fix needed.
+- Published by the user. `releases/latest` serves `v0.1.0`, not draft or prerelease, with `Grindlog-Setup-0.1.0.exe` (36,108,649 B) and its `.minisig` (309 B). sign-release verified the trusted comment "version=0.1.0 file=Grindlog-Setup-0.1.0.exe".
+
+### Step 4: clean account (Test-User, standard user)
+- Download (Edge, from GitHub): Microsoft Defender SmartScreen warned in the downloads list, "isn't commonly
+  downloaded. Make sure you trust Grindlog-Setup-0.1.0.exe before you open it", then "Microsoft Defender
+  SmartScreen couldn't verify if this file is safe because it isn't commonly downloaded … Publisher: Unknown". Keep
+  was needed twice. The user clicked "Report this app as safe". **No SmartScreen prompt when running the installer.**
+  Release notes cover both: the browser's download warning and the run-time "Windows protected your PC" (user's choice;
+  others may still get the second).
+- Install: no admin prompt, wizard "Setup - Grindlog version 0.1.0". Dashboard opened by itself at
+  `127.0.0.1:49100/recap`. Tray icon visible. Stats API card "Open Rocket League once" with "Do it by hand".
+  Settings › Updates "hasn't checked for updates yet", then "0.1.0 is up to date" after the first check
+  (`check_result up_to_date`, 282 ms, 3 min after start). Auto-apply turned off (`update/request auto_apply on:false`).
+- **WP3b autostart check passed**: after sign-out and sign-in, `supervisor/started` at 01:16:48.605Z, then
+  `app/started` at 01:16:49.367Z and `host/listening 49100`; tray "Open Rocket League once to finish setup".
+  `checks_started` source http, `firstDelayMs 180000` (its `apply:true` only means an apply step is wired up).
+- Found: at sign-out the tray exited with **code 4**, which isn't one of the tray's codes (0-3) and has never
+  appeared in the dev logs. The supervisor scheduled a restart (5 s) that the logoff cut off. Harmless here, so it
+  goes on the BACKLOG Watch list.
+- Seed: replay of `test/fixtures/completed.ndjson` at 20x on port 49130. **setx reaches the logon task**: after
+  the Test-User sign-in, `app/started` 01:41:58.336Z, then `stats_api/connected ws://127.0.0.1:49130` (before that it
+  waited on the default 49124). `match_closed` stored 724, storeFailed 0. `summary` completed, playlist 13, 1-2,
+  `flags: []`. No error lines. Tray "Recording a match", and Recap showed the 1-2 loss with "Is this you? Player 1".
+  Replay stopped after "replay finished".
+- Baseline (copied with the tracker quit, after a sign-in without the variable, which put it back on 49124):
+  `tracker.db` matches 1, match_players 6, match_goals 3, my_ids 1; `raw.db` events 724.
