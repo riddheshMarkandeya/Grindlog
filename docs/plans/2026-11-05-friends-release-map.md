@@ -49,6 +49,18 @@ docs and an update path. Polish comes after their feedback, not before.
 - `--windows-copyright` is set in `compileArgs`, so the exes no longer carry Bun's licensing URL.
 
 ### 6. Post-feedback UI polish
-- Controls drift first, then icons and animations.
+- Controls drift first, then icons. Animations are dropped for now (decided 2026-11-13).
+- Icons: the look was picked by a prototype on 2026-11-13 (branch `prototype/icons`, `c92c5c7`, never merged). The
+  build is its own planned package here, not before 0.1.3. Picked:
+  - Lucide, icon + text, on nav, action buttons, stat cards and tiles, match rows and markers. The Settings page
+    and the Highlights cards stay text.
+  - Goal is Phosphor's regular `SoccerBall`, because Lucide has no soccer ball (Phosphor is MIT; add it to
+    THIRD_PARTY_NOTICES with Lucide). Crossbar hits and Aerial touches are hand-drawn on Lucide's grid and stroke.
+  - The game's statfeed PNGs are replaced, so their THIRD_PARTY_NOTICES entry goes.
+  - The stood-out mark stays "!": a trend arrow read as a second up/down arrow next to ▲/▼. The share card keeps
+    plain tiles (icons looked too busy) and gets a trend arrow on its stood-out line.
+  - Avg boost is a half-full battery and Empty tank an empty one. Stat card labels align to the top, so a
+    two-line label keeps its icon level with the row.
+  - Rejected: Phosphor and Tabler as the set, the hand-made statfeed set, and icon-only density.
 - A guided tour only if friends got lost.
 - Also: data-line colour, a colour-pair setting, themes, playful touches.
