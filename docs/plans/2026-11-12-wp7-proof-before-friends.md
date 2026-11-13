@@ -215,3 +215,70 @@ Committed `7a075d6`. Review: code-review low, security; 1 round, clean.
   Replay stopped after "replay finished".
 - Baseline (copied with the tracker quit, after a sign-in without the variable, which put it back on 49124):
   `tracker.db` matches 1, match_players 6, match_goals 3, my_ids 1; `raw.db` events 724.
+
+### Step 5: v0.1.1 through GitHub
+- CI run `43348180704` attempt 1 failed `check`: `apply.test.ts` "a new version that keeps crashing is rolled back,
+  with the DBs it migrated put back from their backups" **timed out at 5000 ms** (75-83 ms locally over three runs,
+  342 ms in run 2). Unproven lead: `restore.ts` moves the DB and its -wal/-shm with `renameRetry`, which really sleeps
+  for up to 2 s per file while it's held; something on a fresh runner (Defender scanning new SQLite files?) could
+  hold them. Attempt 2 (re-run of the failed job) green: that test 718 ms, tray test 6319 ms, 1766 passed,
+  e2e 113 passed (5.8 min), smoke run "Version 0.1.1, channel prod, updates on". Draft holds
+  `Grindlog-Setup-0.1.1.exe`, 36,108,413 B. Watch-listed, not fixed.
+- Signed by the user (`sign-release` from their own terminal; the `!` shell lacked gh on PATH) and published. `releases/latest` serves `v0.1.1` with the installer and its 309 B `.minisig`.
+- Test-User, auto-apply off. Sign-in 02:59:27 → check 03:02:29: `download_done` 36,108,413 B in 1.8 s,
+  `check_result downloaded`, `apply_waiting not_chosen`. Settings: "Grindlog 0.1.1 is ready to install".
+- **Zone.Identifier: absent** on `update\download\Grindlog-Setup-0.1.1.exe` ("Could not open the alternate data
+  stream"). So an app-downloaded update carries no mark of the web and can't trip SmartScreen.
+- Install clicked 03:07:01 (`request install 0.1.1`; Settings then said "Installs when Rocket League is closed").
+  `apply_starting` 03:07:28. `updater.log`: stopping (87 ms) → installing (2.1 s) → `installer_exited code 0`
+  (6.3 s, `install-0.1.1.log` written) → checking → `supervisor_started` → `health 0.1.1 ok:true` at 122 s →
+  `done updated` (131 s in all). 0.1.1 `app/started` 03:07:38. `state.json lastApply` updated 0.1.0 → 0.1.1.
+- User saw: tray menu "Updated to 0.1.1" with the release-notes item; Settings "Grindlog 0.1.1 is up to date" with
+  "What changed in 0.1.1" opening the right GitHub page (before the install too, as the ready update's link);
+  recap still shows the 1-2 match.
+- **Counts match the baseline**: matches 1, match_players 6, match_goals 3, raw events 724 (user_version 7).
+
+### Step 6: broken v0.1.2 through the feed override (never published)
+- Temporary edits: `package.json` 0.1.2, and in `main.ts` after `app/started`:
+  `if (process.env.GRINDLOG_DATA_DIR === undefined) { log.error("app", "wp7_broken_build"); throw … }`. The log line
+  was added because main.ts has no process-level crash logging and the tracker's stderr isn't captured, so a bare
+  throw would show only `app/started` then exit code 1. `build-release` smoke run passed ("Version 0.1.2 … updates
+  on") as designed; both edits reverted straight after (`git status` shows only docs; package.json 0.1.1).
+- Signed by the user with the real key; `minisign -V` verified "version=0.1.2 file=Grindlog-Setup-0.1.2.exe".
+  `C:\GrindlogFeed`: installer (36,111,619 B), `.minisig` (309 B), hand-written `latest.json`. The app's own
+  `fetchLatest` + `pickCandidate` read it as candidate 0.1.2 against a running 0.1.1.
+- Test-User: `setx` both variables, sign-in → `checks_started` source folder `C:\GrindlogFeed`, `firstDelayMs 60000`
+  (03:20:53). 0.1.2 downloaded 03:21:55 and was offered in 2 min. Install clicked; `updater.log`:
+  stopping (87 ms) → installing (1.7 s) → `installer_exited code 0` (5.7 s) → checking → supervisor 0.1.2 started.
+  Supervisor: `child_exited code 1` after ~68 ms uptime, restarts backing off 5 s, 10 s, 20 s, 40 s … up to 300 s
+  (7 `wp7_broken_build` lines in `tracker.log`). `health 0.1.2 ok:false last:refused` at **601 s** → rolling_back →
+  `rollback-setup.exe` exit 0 (6.4 s, `rollback-0.1.1.log`) → checking_previous → `health 0.1.1 ok:true` at 122 s →
+  `done rolled_back health_check_failed` (739 s in all). **No `restored` line**, as expected (no migration).
+  Toast 03:37:17 "Grindlog's update didn't work / Went back to 0.1.1." `state.json`: `skipped` 0.1.2
+  (health_check_failed), `lastApply rolled_back`. Settings and tray: "Update 0.1.2 didn't start, so Grindlog went
+  back to 0.1.1." Dashboard works, 1-2 match there. **Counts unchanged**: matches 1, players 6, goals 3, events 724.
+- Found: the toast's header reads **"Windows PowerShell"**, not Grindlog (it's sent through PowerShell's app
+  identity). Works, but confusing for a friend → BACKLOG.
+- Cleanup: both variables deleted, sign-in → `checks_started` source http, `firstDelayMs 180000` (03:47:01), check
+  `up_to_date latest 0.1.1`. **Deleted `C:\GrindlogFeed` and `release\Grindlog-Setup-0.1.2.exe*`.** Test-User's
+  `update\download` copy goes with the uninstall-Yes below. **0.1.2 is burned: the next real release is 0.1.3.**
+- Browsers (user, downloading 0.1.1 only): Chrome, Firefox, Brave, Opera and Vivaldi gave no warning; Edge warned
+  every time (3 times). Release notes on v0.1.0 and v0.1.1 now name Edge.
+- Install states (Test-User, `C:\GrindlogProof\check-install.ps1`):
+  - 0.1.1 setup run over a running 0.1.1: no prompts, the dashboard reopened with the 1-2 match. App 0.1.1.0, shortcut,
+    task, data all present. Test-User's downloaded 0.1.2 installer was already gone.
+  - Uninstall, "Also delete your match history?" → No, then "successfully removed": app folder, shortcut, task gone;
+    data folder, `tracker.db`, `raw.db` kept; no processes.
+  - Reinstall 0.1.1: the 1-2 match came back (kept data picked up); everything present again.
+  - Uninstall → Yes: app, shortcut, task, data folder all gone; no processes.
+
+### Step 7: Windows Sandbox
+- `%USERPROFILE%\grindlog-proof\proof.wsb`: the published 0.1.1 installer (downloaded from GitHub, `minisign -V`
+  verified) mapped read-only at `C:\installer`, plus `C:\GrindlogProof` writable for output.
+- Installed with no warnings (the file came through a mapped folder, so it carries no mark of the web). The dashboard
+  opened by itself at `127.0.0.1:49100`, and the tray ran ("Open Rocket League once to finish setup"). Settings ›
+  Updates showed the real section with the auto-apply switch and "0.1.1 hasn't checked for updates yet", which
+  means updates were enabled. No machine-wide dependency was missing.
+- The Sandbox itself crashed before the 3-minute first check and before the logs were copied, so there's no
+  `out\7-sandbox`. Not re-run: the per-user app can't crash the Sandbox VM, and the check was already proven on
+  Test-User.

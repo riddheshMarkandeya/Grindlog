@@ -113,7 +113,18 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   release, once step 4's update path exists. Also: the seed has S23 starting 2026-06-09 and that page says June 10,
   so check which is right, since it decides which season a match on that day counts in.
 
+- [ ] **[ux, Low, Standard]** Toasts show "Windows PowerShell" as their app name, not Grindlog: they're sent
+  through PowerShell's AppUserModelID (seen in WP7 step 6's rollback toast). A friend may not connect it to
+  Grindlog. Fix: send under Grindlog's own AppUserModelID (the Start-menu shortcut needs it set). Record:
+  `docs/plans/2026-11-12-wp7-proof-before-friends.md` Results.
+
 ## Watch list
+- [ ] **[test-coverage, Low, Standard]** Trigger: `apply.test.ts` "a new version that keeps crashing is rolled back"
+  timing out on CI a second time (first: v0.1.1 run `43348180704` attempt 1, 5000 ms against 75 ms locally; the re-run
+  took 718 ms). Lead to check first: `restore.ts` renames through `renameRetry`, whose real `Bun.sleepSync` waits up
+  to 2 s per held file, so a runner holding new SQLite files can push the test past 5 s. Likely fix: let the restore
+  take `renameRetry`'s `sleepSync`/`now` so the test doesn't wait for real. Record:
+  `docs/plans/2026-11-12-wp7-proof-before-friends.md` Results.
 - [ ] **[bug (latent), Low, Standard]** Trigger: a tray `exited` with code 4 outside a sign-out, or a sign-out that
   hangs on Grindlog. At a clean account's sign-out (WP7 step 4) the tray exited with code 4, which isn't one of its
   own codes (0-3), and the supervisor scheduled a 5 s restart that the logoff cut off. Harmless there. If it matters,
