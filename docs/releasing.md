@@ -22,9 +22,10 @@ because the signing key never leaves it.
 ## Each release
 
 1. Bump `version` in `package.json`: `X.Y.Z` for a release, `X.Y.Z-rc.N` for a prerelease (the draft is
-   marked prerelease automatically).
+   marked prerelease automatically). In `CHANGELOG.md`, move the Unreleased entries under a new
+   `## [X.Y.Z] - YYYY-MM-DD` heading and update the compare links at the bottom.
 2. Optional local check: `bun run build-release`. It builds `release/Grindlog-Setup-<version>.exe` and
-   smoke-runs the exe (version, prod channel, dashboard served, `InternalName`).
+   smoke-runs the exe (version, prod channel, dashboard served, `InternalName`, and `LegalCopyright` on both exes).
 3. Commit, then `git tag vX.Y.Z` (it must be `v` + the package.json version, or CI fails) and push the
    commit and the tag.
 4. Wait for the `release` workflow (Actions tab). It runs `check`, `e2e` and `build-release --tag`, then
@@ -32,7 +33,7 @@ because the signing key never leaves it.
 5. `bun run sign-release vX.Y.Z`. It checks that the draft holds the installer and that its version
    matches, signs it (minisign asks for the password), verifies the signature against `minisign.pub`,
    prints the trusted comment and uploads the `.minisig`.
-6. On GitHub, write the release notes and publish the draft.
+6. On GitHub, paste that version's `CHANGELOG.md` section as the release notes and publish the draft.
 
 ## When something fails
 

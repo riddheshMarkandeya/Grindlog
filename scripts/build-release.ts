@@ -11,7 +11,7 @@ import { publicKeyLine } from "../src/server/update/minisign";
 import { appName } from "../src/shared/channel";
 import { installerName, parseReleaseVersion, type ReleaseVersion } from "../src/shared/release";
 import { taskXml } from "./autostart";
-import { compileArgs } from "./build-exe";
+import { compileArgs, COPYRIGHT } from "./build-exe";
 import { freePort } from "../src/server/testing";
 import { buildTray } from "./build-tray";
 import { ensureRcedit, rceditArgs } from "./rcedit";
@@ -64,6 +64,7 @@ export function isccArgs({ version, sourceDir, outDir, iss, id }: { version: Rel
     `/DTaskName=${id.task}`,
     // Inno adds the .lnk itself.
     `/DShortcutName=${id.shortcut.replace(/\.lnk$/, "")}`,
+    `/DAppCopyright=${COPYRIGHT}`,
     `/O${outDir}`,
     iss,
   ];
@@ -240,6 +241,12 @@ async function main(): Promise<void> {
   const name = versionInfo(exe, "InternalName");
   if (name !== internalName) throw new StepFailed(`InternalName is "${name}" after rcedit, expected "${internalName}".`);
   console.log(`InternalName ${name}.`);
+  // Read back, so a Bun or csc change that silently drops the value fails the release here.
+  for (const file of [exe, join(APP, id.trayExe)]) {
+    const copyright = versionInfo(file, "LegalCopyright");
+    if (copyright !== COPYRIGHT) throw new StepFailed(`LegalCopyright of ${file} is "${copyright}", expected "${COPYRIGHT}".`);
+    console.log(`LegalCopyright of ${file}: ${copyright}.`);
+  }
 
   step("Task definition");
   writeFileSync(join(APP, "task.xml"), taskTemplate());

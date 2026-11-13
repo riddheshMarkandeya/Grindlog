@@ -16,7 +16,9 @@ VersionInfoVersion={#AppNumericVersion}.0
 ; What sign-release checks against the tag, so it carries any -rc suffix.
 VersionInfoProductTextVersion={#AppVersion}
 AppPublisher=Grindlog
-AppSupportURL=https://github.com/riddheshMarkandeya/RL-Tracker
+AppSupportURL=https://github.com/riddheshMarkandeya/Grindlog
+; VersionInfoCopyright defaults to it, so the installer's Details tab shows it too.
+AppCopyright={#AppCopyright}
 ; Per-user: {autopf} is %LOCALAPPDATA%\Programs, and no UAC prompt.
 PrivilegesRequired=lowest
 DefaultDirName={autopf}\Grindlog
@@ -47,6 +49,9 @@ Type: filesandordirs; Name: "{app}\web"
 Source: "{#SourceDir}\{#ExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\{#TrayExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\web\*"; DestDir: "{app}\web"; Flags: ignoreversion recursesubdirs
+; From the repo root. Installed as .txt so a double-click opens them in Notepad.
+Source: "{#SourcePath}..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ignoreversion
+Source: "{#SourcePath}..\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; DestName: "THIRD_PARTY_NOTICES.txt"; Flags: ignoreversion
 ; This installer itself, which the updater runs to roll back a bad update.
 Source: "{srcexe}"; DestDir: "{localappdata}\{#DataDirName}\update\previous"; DestName: "Grindlog-Setup.exe"; Flags: external ignoreversion
 ; Filled in and registered by RegisterTask below; never installed.

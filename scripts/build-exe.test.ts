@@ -18,6 +18,8 @@ describe("compileArgs", () => {
     // Task Manager can show either; a dev build must say so in both.
     expect(flag(args, "--windows-title")).toBe("Grindlog Dev");
     expect(flag(args, "--windows-publisher")).toBe("Grindlog");
+    // Without it, Bun puts its own licensing URL in the file's copyright field.
+    expect(flag(args, "--windows-copyright")).toBe("Copyright (c) 2026 Riddhesh Markandeya");
     expect(flag(args, "--windows-icon")).toBe(String.raw`C:\repo\favicon.ico`);
   });
 

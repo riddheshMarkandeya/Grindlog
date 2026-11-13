@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join, win32 } from "node:path";
 import { appName, type Channel } from "../src/shared/channel";
 import { parseReleaseVersion } from "../src/shared/release";
+import { COPYRIGHT } from "./build-exe";
 import { StepFailed } from "./steps";
 
 const REPO = join(import.meta.dirname, "..");
@@ -51,7 +52,7 @@ export function trayCompileArgs({ out, icon, trayIcons, manifest, sources }: { o
 
 const csString = (s: string) => `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 
-/** The generated attributes: Task Manager shows the title. The version is numeric x.y.z.0 (any -rc suffix dropped), as for the main exe. */
+/** The generated attributes: Task Manager shows the title, and the copyright matches the main exe's. The version is numeric x.y.z.0 (any -rc suffix dropped), as for the main exe. */
 export function assemblyInfo({ title, version }: { title: string; version: string }): string {
   const v = csString(`${parseReleaseVersion(version).numeric}.0`);
   return `using System.Reflection;
@@ -59,6 +60,7 @@ export function assemblyInfo({ title, version }: { title: string; version: strin
 [assembly: AssemblyProduct(${csString(title)})]
 [assembly: AssemblyVersion(${v})]
 [assembly: AssemblyFileVersion(${v})]
+[assembly: AssemblyCopyright(${csString(COPYRIGHT)})]
 `;
 }
 

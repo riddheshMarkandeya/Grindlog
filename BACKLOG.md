@@ -118,6 +118,12 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   `docs/plans/2026-11-12-wp7-proof-before-friends.md` Results.
 
 ## Watch list
+- [ ] **[bug (latent), Low, Standard]** Trigger: a friend shares a PC with another Windows user who also runs
+  Grindlog. Only one user per PC works: the port (49100) is machine-wide, and so is the logon task name
+  (`\Grindlog`). Seen on 2026-11-13 installing on Test-User while the main account ran prod: the tracker and tray
+  couldn't start, and the installer said "schtasks /Create exited 1" (the other user owns the task, and Test-User's
+  `/Query` doesn't see it). That dialog's "open it from the Start menu" advice doesn't help then, because the port
+  is taken too. Fix: a per-user task name and port, or a clear "already running for another user" message.
 - [ ] **[test-coverage, Low, Standard]** Trigger: `apply.test.ts` "a new version that keeps crashing is rolled back"
   timing out on CI a second time (first: v0.1.1 run `43348180704` attempt 1, 5000 ms against 75 ms locally; the re-run
   took 718 ms). Lead to check first: `restore.ts` renames through `renameRetry`, whose real `Bun.sleepSync` waits up

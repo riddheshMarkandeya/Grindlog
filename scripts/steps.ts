@@ -32,7 +32,7 @@ export function runInteractive(cmd: string[]): void {
 }
 
 /** One field of an exe's version resource, trimmed: Windows pads the strings. */
-export function versionInfo(file: string, field: "InternalName" | "ProductVersion" | "FileVersion"): string {
+export function versionInfo(file: string, field: "InternalName" | "ProductVersion" | "FileVersion" | "LegalCopyright"): string {
   return run(["powershell", "-NoProfile", "-NonInteractive", "-Command", `(Get-Item -LiteralPath '${file.replace(/'/g, "''")}').VersionInfo.${field}`]).trim();
 }
 

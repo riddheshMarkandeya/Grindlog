@@ -17,7 +17,7 @@ docs and an update path. Polish comes after their feedback, not before.
 | 2 | Name and app icon | Done | `docs/plans/2026-11-05-name-and-icon.md`. |
 | 3 | Task Manager names | Done | Section below. |
 | 4 | Distribution | Done (2026-11-12) | Design in `docs/plans/2026-11-06-distribution-map.md`; seven work packages, the last proved by `docs/plans/2026-11-12-wp7-proof-before-friends.md`. v0.1.1 is published; the next tag is v0.1.3. |
-| 5 | Docs | Open | No plan yet. |
+| 5 | Docs | Done (2026-11-12) | README, LICENSE (MIT), CHANGELOG, CONTRIBUTING and THIRD_PARTY_NOTICES at the repo root; the exes and installer carry the copyright. |
 | → | **Ship to friends** | | |
 | 6 | Post-feedback UI polish | Open | `/prototype`, after feedback. |
 
@@ -27,6 +27,8 @@ docs and an update path. Polish comes after their feedback, not before.
   Task Manager's Processes tab shows `--windows-description`; `--windows-title` is the product name.
 - Bun's values remain in two fields with no effect on Task Manager: `InternalName` is `bun`, and
   `LegalCopyright` is Bun's licensing URL. No flag sets `InternalName`. `OriginalFilename` is empty.
+- Later: rcedit sets `InternalName` (step 4), and `--windows-copyright` sets `LegalCopyright` to
+  `COPYRIGHT` from `scripts/build-exe.ts` (step 5); the release smoke run checks both.
 
 ### 4. Distribution
 - Installer, and a tray app: status, Stats API ini setup, open the dashboard.
@@ -40,9 +42,11 @@ docs and an update path. Polish comes after their feedback, not before.
   to grindlog.
 
 ### 5. Docs
-- README, LICENSE (decide early), CHANGELOG (from v1.0.0), CONTRIBUTING (including AI agents).
-- Once the licence is picked, set `--windows-copyright` in `compileArgs`: the exes still carry Bun's
-  licensing URL in `LegalCopyright`.
+- README, LICENSE (MIT, decided 2026-11-12), CHANGELOG, CONTRIBUTING (including AI agents), and
+  THIRD_PARTY_NOTICES, which the installer puts next to the app with LICENSE.
+- CHANGELOG revisited on 2026-11-12: it was planned "from v1.0.0", but it starts at 0.1.x. Friends get
+  0.1.3, and the release notes (`docs/releasing.md` step 6) need a source before 1.0.0.
+- `--windows-copyright` is set in `compileArgs`, so the exes no longer carry Bun's licensing URL.
 
 ### 6. Post-feedback UI polish
 - Controls drift first, then icons and animations.

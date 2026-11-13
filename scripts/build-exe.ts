@@ -3,6 +3,8 @@
 import { parseReleaseVersion } from "../src/shared/release";
 
 const PUBLISHER = "Grindlog";
+/** The one copyright line every shipped binary and the installer carry; LICENSE repeats it by hand. */
+export const COPYRIGHT = "Copyright (c) 2026 Riddhesh Markandeya";
 
 /**
  * The `bun` arguments that compile an entry. Task Manager's Processes tab shows the description, and
@@ -20,6 +22,8 @@ export function compileArgs({ entry, outfile, description, icon, version, define
     description,
     "--windows-publisher",
     PUBLISHER,
+    "--windows-copyright",
+    COPYRIGHT,
     "--windows-description",
     description,
     // A Windows file version is four numbers, so an -rc suffix stays out of it.

@@ -59,7 +59,8 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   `scripts/` (standalone `capture.ts`; `make-icons.ts` packs `src/web/assets/icon.svg` and
   `icon-small.svg` into `src/web/public/favicon.ico` and the tray set with state dots and a teal dev line into
   `src/tray/icons/` (`bun run icons`, output committed); `build-tray.ts` compiles the tray with `csc.exe`;
-  `build-exe.ts` the shared `bun build --compile` args; `build-release.ts` (`bun run build-release [--tag vX.Y.Z]`:
+  `build-exe.ts` the shared `bun build --compile` args and `COPYRIGHT` (exes, tray, installer; LICENSE repeats it);
+  `build-release.ts` (`bun run build-release [--tag vX.Y.Z]`:
   prod web, exe and tray staged in `release/app`, `rcedit.ts` sets `InternalName`, a smoke run of the exe, then
   `installer/grindlog.iss` through ISCC into `release/`); `sign-release.ts` (`bun run sign-release vX.Y.Z`: minisign
   a CI draft and upload the `.minisig`); `.github/workflows/release.yml` builds a draft on a `v*` tag; how to
@@ -71,6 +72,10 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   (anonymised capture excerpts), `test/e2e/` (Playwright on Node: `fixtures.ts` starts
   `stack.ts` under Bun, which seeds a temp data dir and runs the real tracker against a gated
   replay; `shell.spec.ts`).
+- Root docs: `README.md` (friends first: install, privacy, updates, uninstall, building), `LICENSE` (MIT),
+  `THIRD_PARTY_NOTICES.md` (what ships: Bun and zod in the exe, the dashboard's packages; the installer puts it
+  and LICENSE next to the app as `.txt`), `CHANGELOG.md` (Keep a Changelog; Unreleased moves to the version at
+  release), `CONTRIBUTING.md` (working rules for people and AI agents).
 - `bun run recompute` rebuilds match records in `tracker.db` from `raw.db` (safe with the
   tracker running; never deletes records).
 - Rules: `docs/definitions.md` is generated from `src/server/rules/registry.ts` (`bun run

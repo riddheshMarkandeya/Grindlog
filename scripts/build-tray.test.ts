@@ -52,6 +52,7 @@ describe("assemblyInfo", () => {
     expect(cs).toContain('[assembly: AssemblyProduct("Grindlog Dev")]');
     expect(cs).toContain('[assembly: AssemblyVersion("1.2.3.0")]');
     expect(cs).toContain('[assembly: AssemblyFileVersion("1.2.3.0")]');
+    expect(cs).toContain('[assembly: AssemblyCopyright("Copyright (c) 2026 Riddhesh Markandeya")]');
   });
 
   test("a suffixed version keeps only its numeric part, which is all an assembly version takes", () => {
