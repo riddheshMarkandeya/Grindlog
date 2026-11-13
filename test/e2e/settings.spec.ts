@@ -333,6 +333,43 @@ test("Updates: with auto-apply on, a ready update needs nothing and links to wha
   await expect(link).toHaveAttribute("target", "_blank");
 });
 
+test("Updates: the last-update line links what changed, or the latest release to reinstall from; going back links nothing", async ({ page }) => {
+  const fake = await fakeUpdate(page, UPDATE);
+  const updates = section(page, "Updates");
+  const last = (outcome: string, reason: string | null = null) => ({ outcome, from: "0.1.0", to: "0.2.0", reason, at: "t", page: PAGE });
+  const whatChanged = updates.getByRole("link", { name: "What changed in 0.2.0" });
+  const latest = updates.getByRole("link", { name: "Latest release" });
+
+  fake.view = { ...UPDATE, version: "0.2.0", lastApply: last("updated") };
+  await page.goto("/settings");
+  await expect(whatChanged).toHaveAttribute("href", PAGE);
+  await expect(whatChanged).toHaveAttribute("target", "_blank");
+  await expect(latest).toHaveCount(0);
+
+  fake.view = { ...UPDATE, version: "0.2.0", lastApply: last("unhealthy", "health_check_failed") };
+  await page.goto("/settings");
+  await expect(updates).toContainText("Update 0.2.0 may not have finished; reinstall if something's wrong.");
+  await expect(latest).toHaveAttribute("href", "https://github.com/riddheshMarkandeya/Grindlog/releases/latest");
+  await expect(latest).toHaveAttribute("target", "_blank");
+  await expect(whatChanged).toHaveCount(0);
+
+  for (const outcome of ["rolled_back", "rollback_failed"]) {
+    fake.view = { ...UPDATE, lastApply: last(outcome, "health_check_failed") };
+    await page.goto("/settings");
+    await expect(updates).toContainText("went back to 0.1.0.");
+    await expect(updates.getByRole("link"), outcome).toHaveCount(0);
+  }
+
+  // Updated, with the next one ready and Install shown: each version keeps its own link, and it fits at 320px.
+  fake.view = { ...READY, version: "0.2.0", autoApply: false, available: { version: "0.2.1", page: `${PAGE}x` }, lastApply: last("updated") };
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto("/settings");
+  await expect(whatChanged).toHaveAttribute("href", PAGE);
+  await expect(updates.getByRole("link", { name: "What changed in 0.2.1" })).toHaveAttribute("href", `${PAGE}x`);
+  await expect(updates.getByRole("button", { name: "Install 0.2.1" })).toBeVisible();
+  expect(await page.evaluate("document.documentElement.scrollWidth")).toBeLessThanOrEqual(320);
+});
+
 test("Updates: auto-apply switches off, then Install asks for the version and says when it happens", async ({ page }) => {
   const fake = await fakeUpdate(page, READY);
   await page.goto("/settings");

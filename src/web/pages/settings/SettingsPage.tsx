@@ -11,7 +11,7 @@ import { filterLabel } from "../../logic/filter-options";
 import { SPEED_LABEL } from "../../logic/format";
 import { parseWindow } from "../../logic/settings";
 import type { UpdateResponse } from "../../../shared/schemas/responses";
-import { lastApplyText } from "../../../shared/update-text";
+import { lastApplyLink, lastApplyText } from "../../../shared/update-text";
 import { useAutostart, useInstallUpdate, useSetAutoApply, useSetAutostart, useSettingsQuery, useUpdate } from "../../queries";
 import { ApiError } from "../../api";
 import { SaveStatus, type SaveState } from "../../components/SaveStatus";
@@ -269,12 +269,14 @@ function UpdatesSection() {
     );
   }
   const ready = u.available;
+  const lastLink = u.lastApply && lastApplyLink(u.lastApply);
   const refused = install.isError && install.error instanceof ApiError && install.error.status === 409;
   return (
     <Section anchor="updates" title="Updates" intro={UPDATES_INTRO}>
       <div className={styles.row}>
         <div className={styles.text}>
           <div className={styles.label}>{updateSentence(u)}</div>
+          {lastLink && <a href={lastLink.url} target="_blank" rel="noreferrer" className={styles.small}>{lastLink.text}</a>}
           {ready && u.autoApply && <div className={styles.help}>Installs on its own when Rocket League is closed.</div>}
           {install.isError && <div className={styles.help} role="status">{refused ? "That update isn't available any more." : "Couldn't ask for the install."}</div>}
         </div>
