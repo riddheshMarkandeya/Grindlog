@@ -282,3 +282,36 @@ Committed `7a075d6`. Review: code-review low, security; 1 round, clean.
 - The Sandbox itself crashed before the 3-minute first check and before the logs were copied, so there's no
   `out\7-sandbox`. Not re-run: the per-user app can't crash the Sandbox VM, and the check was already proven on
   Test-User.
+
+### Step 8: prod on the user's PC
+- `bun run stop` (dev, port 49102), then `bun run move-data GrindlogDev Grindlog --copy`: 12 files (549,848,151 bytes,
+  `bin\` left out), "SHA-256: 12 of 12 files match", `quick_check ok` on `tracker.db`, `raw.db` and all 7 backups,
+  "Verified 12 files". Dev restarted with `schtasks /Run /TN GrindlogDev` (its dashboard answers 200).
+- Counts identical in dev and prod: 240 matches, 1,054 players, 1,348 goals, 376,854 raw events.
+- Installed 0.1.1 from GitHub on the user's own account. **SmartScreen did come up here**: "Windows protected your
+  PC … prevented an unrecognized app from starting", with More info showing App: Grindlog-Setup-0.1.1.exe,
+  Publisher: Unknown publisher, then Run anyway. Test-User saw no prompt for the same file, so SmartScreen
+  can't be counted on either way; the release notes keep both warnings. The dashboard opened with the full history,
+  and the prod and dev tray icons both showed.
+- Stats API write: with the game closed, `PacketSendRate=0` set by hand (backup in `C:\GrindlogProof`), then the game
+  opened. Both prod and dev toasted that the Stats API was off (expected with two trackers running). The prod card's
+  button wrote the file (`game/stats_setup_fixed`, `changed: ["packetSendRate"]`, `POST /api/stats-setup/fix 200`, 207 ms). After the game
+  closed, the ini still read `PacketSendRate=30`: **the write held**.
+- Live match on prod (game restarted): `match_closed` `324746FC…`, `stored: 1508, storeFailed: 0`; a completed 1-2
+  match (playlist 2, `cs_p`), `check_flags: []`. Dev recorded the same match with the same values; both now hold 241
+  matches and 378,362 raw events.
+
+### Step 9: VirusTotal
+- The user uploaded the published `Grindlog-Setup-0.1.1.exe`. Its SHA-256 `9c2b008f…6b245` matches the GitHub asset
+  (hashed locally). **0/70**, "No security vendors flagged this file as malicious", tags `peexe`, `overlay`:
+  https://www.virustotal.com/gui/file/9c2b008f1c1731dc3c15b604d60e8d2ffbaf13cebc16e654b693d99cd7f6b245/detection
+
+### Step 10: wrap-up
+- No bug found that blocks friends. Filed along the way: the toast app name "Windows PowerShell" (UX), and Watch items
+  for the tray's code 4 at sign-out and the `apply.test.ts` CI timeout. No product code changed in WP7 (only the
+  test fix `ab5cefd`, `.gitattributes` and the 0.1.1 bump), so no review pass ran for this step.
+- VirusTotal upload automation: considered and dropped (user, 2026-11-12). A manual upload per release takes a
+  minute; releases are rare.
+- Cleanup: `C:\GrindlogFeed` and the 0.1.2 installer deleted in step 6; `C:\GrindlogProof` (step files, copied logs,
+  screenshots, ini backup) and `%USERPROFILE%\grindlog-proof` (the `.wsb` and the installer copy) sent to the
+  Recycle Bin. The Test-User account is left for the user to remove.

@@ -33,8 +33,6 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   - WP3a's manual check still open: Ctrl+C on `bun run start` mid-match should end `tracker.log`
     with `app/stopped` (Git Bash can't send a console SIGINT). The shutdown endpoint path is
     covered by `src/server/main.test.ts`.
-  - WP3b's manual check still open: sign out and back in, and the tracker should autostart
-    (`supervisor/started`, then `app/started`).
 - [ ] **[design, Med, Trivial]** The "no data" toast is suppressed over the full-screen game and
   only waits in the notification panel. (Its body now names the ini problem to fix.) WP5's status
   display is the reliable signal (`statsConfig()` carries the same diagnosis). WP8 has no toast switch, dropped
@@ -68,9 +66,9 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   dismiss it. Trigger: friend feedback asks for it. Context: "Release workflow" in
   `docs/plans/2026-11-06-distribution-map.md`.
 
-- Friends release step 4, distribution: seven build work packages, in order, each planned in its own session. The
-  design is the frozen map `docs/plans/2026-11-06-distribution-map.md` ("Decisions so far"; each package's scope is
-  under "Build work packages").
+- Friends release step 4, distribution: done, all seven work packages. The open items below were deferred from them.
+  The design is the frozen map `docs/plans/2026-11-06-distribution-map.md` ("Decisions so far"; each package's scope
+  is under "Build work packages").
   - [ ] **[refactor, Low, Standard]** 2 (release-aware app) is done; left over: once a deployed exe has `--quit`,
     `stop.ts` and `stopInstalled` end a sleeping supervisor through it instead of `killExe`'s path-filtered kill
     (deferred from package 1's review, `docs/reviews/2026-11-10-wp1-rename-identity.md`).
@@ -95,9 +93,10 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
     (`newer_than_code` in `db/migrate.ts`), so a rollback across a schema change must restore the pre-migration
     backup before starting the old exe (2b's `meta` table is the first such change).
     Plan: `docs/plans/2026-11-12-wp6b-updater-apply.md`.
-  - [ ] **[test-coverage, Med, Standard]** 7. Proof before friends: clean account, one Sandbox run, rollback through the
-    feed override, copy history into prod, one live match on prod, one VirusTotal scan. Closes WP3b's autostart check.
-    In progress. Plan: `docs/plans/2026-11-12-wp7-proof-before-friends.md`.
+  - [x] **[test-coverage, Med, Standard]** 7. Proof before friends: clean account, one Sandbox run, rollback through the
+    feed override, copy history into prod, one live match on prod, one VirusTotal scan (0/70).
+    Plan and results: `docs/plans/2026-11-12-wp7-proof-before-friends.md`. **The next release tag is v0.1.3**: a broken
+    0.1.2 was signed with the real key for the rollback test, so that version is burned.
 
 - [ ] **[feature, Med, Standard]** After the friends release map: set up new seasons automatically, and
   keep them editable. Source the user found: `ggseason.com/blog/rocket-league-all-seasons-dates/`, captured

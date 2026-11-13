@@ -130,6 +130,10 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   Task Scheduler doesn't restart a crashed task.
 
 ## Plans
+- `docs/plans/2026-11-12-wp7-proof-before-friends.md`: step 4 package 7, proof before friends: v0.1.0/v0.1.1 from CI,
+  clean account, healthy update and feed-override rollback, Sandbox, prod data copy, Stats API write, VirusTotal.
+- `docs/plans/2026-11-12-wp6b-updater-apply.md`: step 4 package 6b, updater apply, health check and rollback; review
+  log and the step-8 rehearsal.
 - `docs/plans/2026-11-12-wp6a-updater-check.md`: step 4 package 6a, updater check, download and verify (state
   files, minisign verifier, feed override, `/api/update`, tray lines, Settings Updates); what 6b inherits.
 - `docs/reviews/2026-11-11-wp5-installer-release.md`: step 4 package 5 review summary (2 rounds, 1 disputed); what only
