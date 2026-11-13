@@ -71,6 +71,7 @@ describe("findCsc", () => {
     expect(findCsc(String.raw`C:\Windows`, has([x64, x86]))).toBe(x64);
     expect(findCsc(String.raw`C:\Windows`, has([x86]))).toBe(x86);
     expect(findCsc(String.raw`C:\Windows`, has([]))).toBeNull();
-    expect(findCsc(undefined, has([x64]))).toBeNull();
+    // An empty windir, not undefined: undefined takes the default, the machine's real WINDIR.
+    expect(findCsc("", has([x64]))).toBeNull();
   });
 });

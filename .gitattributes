@@ -1,0 +1,2 @@
+# Signatures, keys and payloads are verified byte for byte, so checkout must not rewrite their line endings.
+src/server/update/fixtures/** -text
