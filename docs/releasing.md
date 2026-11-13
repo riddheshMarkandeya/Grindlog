@@ -33,7 +33,17 @@ because the signing key never leaves it.
 5. `bun run sign-release vX.Y.Z`. It checks that the draft holds the installer and that its version
    matches, signs it (minisign asks for the password), verifies the signature against `minisign.pub`,
    prints the trusted comment and uploads the `.minisig`.
-6. On GitHub, paste that version's `CHANGELOG.md` section as the release notes and publish the draft.
+6. On GitHub, paste that version's `CHANGELOG.md` section as the release notes, add the warning below under it,
+   and publish the draft. The warning stays in every release until the installer is code-signed and installs show
+   neither prompt.
+
+   ```markdown
+   The installer isn't code-signed yet, so you may see a warning or two:
+
+   - Microsoft Edge may say the file "isn't commonly downloaded". Choose "Keep", then "Show more" and "Keep anyway"
+     (it can ask more than once). Other browsers we tried (Chrome, Firefox, Brave, Opera, Vivaldi) didn't warn.
+   - When you run it, Windows may say "Windows protected your PC". Choose "More info", then "Run anyway".
+   ```
 
 ## When something fails
 

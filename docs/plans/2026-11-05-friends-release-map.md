@@ -18,7 +18,7 @@ docs and an update path. Polish comes after their feedback, not before.
 | 3 | Task Manager names | Done | Section below. |
 | 4 | Distribution | Done (2026-11-12) | Design in `docs/plans/2026-11-06-distribution-map.md`; seven work packages, the last proved by `docs/plans/2026-11-12-wp7-proof-before-friends.md`. v0.1.1 is published; the next tag is v0.1.3. |
 | 5 | Docs | Done (2026-11-12) | README, LICENSE (MIT), CHANGELOG, CONTRIBUTING and THIRD_PARTY_NOTICES at the repo root; the exes and installer carry the copyright. |
-| → | **Ship to friends** | | |
+| → | **Ship to friends** | 0.1.3 published (2026-11-13) | `3ca96d7`. Own install updated itself 0.1.1 → 0.1.3, and an open dashboard tab reloaded on its own with no Ctrl+F5. CI's first run timed out 3 tests on a slow runner (same code passed for 0.1.1); a re-run passed. Left: send friends the link. |
 | 6 | Post-feedback UI polish | Open | `/prototype`, after feedback. |
 
 ### 3. Task Manager names
