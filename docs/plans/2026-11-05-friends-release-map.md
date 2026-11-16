@@ -49,7 +49,7 @@ docs and an update path. Polish comes after their feedback, not before.
 - `--windows-copyright` is set in `compileArgs`, so the exes no longer carry Bun's licensing URL.
 
 ### 6. Post-feedback UI polish
-- Icons are done (`docs/plans/2026-11-16-icons.md`), taken before controls drift at the user's choice on
+- Icons are done (`37fdb91`, `docs/plans/2026-11-16-icons.md`), taken before controls drift at the user's choice on
   2026-11-16; controls drift is next. Animations are dropped for now (decided 2026-11-13).
 - Icons: the look was picked by a prototype on 2026-11-13 (branch `prototype/icons`, `c92c5c7`, never merged). The
   build is its own planned package here, not before 0.1.3. Picked:
