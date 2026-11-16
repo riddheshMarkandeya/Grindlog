@@ -26,7 +26,7 @@
 .card.win b i { color: var(--win); }
 .card.loss b i { color: var(--loss); }
 .p { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; letter-spacing: .08em; color: var(--ink2); }
-.mvp { position: absolute; right: 8px; top: 8px; width: 16px; height: 16px; object-fit: contain; }
+.mvp { position: absolute; right: 8px; top: 8px; width: 16px; height: 16px; }
 .flagged::after { content: ""; position: absolute; right: 6px; bottom: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--flag); }
 
 .dense { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 4px; }

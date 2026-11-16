@@ -7,14 +7,9 @@ import { filterValue, type PlaylistFilter } from "../../../shared/playlist-filte
 import { teammateValue, type TeammateFilter } from "../../../shared/teammate-filter";
 import { playlistInfo } from "../../../shared/playlists";
 import type { AggregateWire, MyMatchWire, SessionDetail, SessionSummary } from "../../../shared/schemas/responses";
-import assistIcon from "../../assets/icons/Assist.png";
-import demoIcon from "../../assets/icons/Demolition.png";
-import goalIcon from "../../assets/icons/Goal.png";
-import mvpIcon from "../../assets/icons/MVP.png";
-import saveIcon from "../../assets/icons/Save.png";
-import shotIcon from "../../assets/icons/Shot.png";
 import { cx } from "../../components/cx";
 import { GoalMap } from "../../components/GoalMap";
+import { Icon } from "../../components/Icon";
 import { Section } from "../../components/Section";
 import { Scorebug } from "../../components/Scorebug";
 import { StatCard, StatCards } from "../../components/StatCard";
@@ -37,7 +32,6 @@ import {
   tilesFor,
   vsAvgText,
   winPctVs,
-  type IconName,
 } from "../../logic/recap";
 import { fillRemark } from "../../logic/remarks";
 import { useRemarks, useRerollRemarks, useSettings } from "../../queries";
@@ -129,7 +123,7 @@ function Headline({ detail, filter, teammate }: { detail: SessionDetail; filter:
       {tiles.length > 0 && (
         <Tiles>
           {tiles.map((t) => (
-            <Tile key={t.id} label={t.label} value={t.value} icon={t.id === "mvps" ? mvpIcon : undefined} vs={t.vs && vsAvgText(t.vs.dir, `${String(Math.abs(t.vs.points))} pts`, t.vs.avg)} />
+            <Tile key={t.id} label={t.label} value={t.value} icon={t.icon} vs={t.vs && vsAvgText(t.vs.dir, `${String(Math.abs(t.vs.points))} pts`, t.vs.avg)} />
           ))}
         </Tiles>
       )}
@@ -152,7 +146,7 @@ function MatchCards({ matches, matchPath }: { matches: MyMatchWire[]; matchPath:
                 <span className={styles.t} aria-hidden="true">#{i + 1} · {clock(m.startedAt, hours)}</span>
                 <b className="num display" aria-hidden="true"><i>{letter(m.result)}</i> {score}</b>
                 <span className={styles.p} aria-hidden="true" title={playlist}>{playlist}</span>
-                {mvp && <img className={styles.mvp} src={mvpIcon} alt="" />}
+                {mvp && <Icon k="mvp" className={styles.mvp} />}
               </Link>
             </li>
           );
@@ -162,7 +156,6 @@ function MatchCards({ matches, matchPath }: { matches: MyMatchWire[]; matchPath:
   );
 }
 
-const ICONS: Record<IconName, string> = { Goal: goalIcon, Assist: assistIcon, Save: saveIcon, Shot: shotIcon, Demolition: demoIcon };
 
 /**
  * A stood-out stat's "!": a toggletip. A mouse over the glyph or the note shows it; a click or tap
@@ -210,7 +203,7 @@ function PerGameCards({ cards, detail }: { cards: ReturnType<typeof perGameCards
         const r = rank.get(c.id);
         return (
           <StatCard
-            key={c.id} label={c.label} icon={c.icon && ICONS[c.icon]} value={decimal(c.perGame)} unit=" /game" sub={`${whole(c.total)} total`}
+            key={c.id} label={c.label} icon={c.icon} value={decimal(c.perGame)} unit=" /game" sub={`${whole(c.total)} total`}
             vs={c.vs && c.avg !== null && <VsText vs={vsAvgText(c.vs.dir, `${String(Math.abs(c.vs.pct))}%`, decimal(c.avg))} />}
             mark={r !== undefined && c.vs && <StoodOutMark dir={c.vs.pct < 0 ? "down" : "up"} note={stoodOutNote(r, c.vs)} />}
           />
@@ -269,7 +262,7 @@ export function ExtrasSection({ agg: a, matches, heading }: { agg: AggregateWire
       {cards.length > 0 && (
         <StatCards>
           {cards.map((c) => (
-            <StatCard key={c.id} label={c.label} value={c.value} unit={c.unit && (c.unit === "%" ? "%" : ` ${c.unit}`)} sub={c.sub} />
+            <StatCard key={c.id} label={c.label} icon={c.icon} value={c.value} unit={c.unit && (c.unit === "%" ? "%" : ` ${c.unit}`)} sub={c.sub} />
           ))}
         </StatCards>
       )}

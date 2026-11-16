@@ -14,6 +14,7 @@ import { parseFilter, parseTeammate, recapReset } from "../../logic/filter-optio
 import { recapPath, type RecapView } from "../../logic/recap";
 import { useLatestSession, useSessionDetail, useSettings } from "../../queries";
 import { GuessCard } from "./GuessCard";
+import { IconLabel } from "../../components/Icon";
 import { Matches } from "./Matches";
 import { MatchView } from "./MatchView";
 import { Overview } from "./Overview";
@@ -189,8 +190,8 @@ export function RecapSession({ view }: { view: SessionView }) {
         </div>
       </div>
       <nav className={styles.tabs} aria-label="Recap pages" data-nav="tabs">
-        <Link to={recapPath(session, filter, "overview", teammate)} aria-current={view === "overview" ? "page" : undefined}>Overview</Link>
-        <Link to={recapPath(session, filter, "matches", teammate)} aria-current={view === "matches" ? "page" : view === "match" ? "true" : undefined}>Matches &amp; numbers</Link>
+        <Link to={recapPath(session, filter, "overview", teammate)} aria-current={view === "overview" ? "page" : undefined}><IconLabel k="overview">Overview</IconLabel></Link>
+        <Link to={recapPath(session, filter, "matches", teammate)} aria-current={view === "matches" ? "page" : view === "match" ? "true" : undefined}><IconLabel k="matches">Matches &amp; numbers</IconLabel></Link>
       </nav>
       {!d.summary ? (
         <EmptyState title="No matches under these filters in this session." />

@@ -6,6 +6,10 @@ All notable changes to Grindlog are listed here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+- Icons across the dashboard: the nav, buttons, stat cards and tiles, match rows and markers. They replace the
+  game's statfeed icons, and the share card marks its stood-out line with a trend arrow.
+
 ## [0.1.3] - 2026-11-13
 
 ### Added

@@ -3,7 +3,7 @@
 .loading { min-height: 50vh; }
 .win { color: var(--win); }
 .loss { color: var(--loss); }
-.ico { width: 18px; height: 18px; object-fit: contain; vertical-align: middle; }
+.ico { width: 18px; height: 18px; vertical-align: middle; }
 
 .bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3); }
 .filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); }

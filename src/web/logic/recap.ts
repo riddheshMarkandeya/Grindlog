@@ -7,6 +7,7 @@ import type { AggregateWire, MatchDetail, MyMatchWire, SessionDetail } from "../
 import { filterValue } from "../../shared/playlist-filter";
 import { teammateValue, type TeammateFilter } from "../../shared/teammate-filter";
 import { clock, decimal, plural, SPEED_LABEL, speedIn, type Units, whole } from "./format";
+import type { IconKey } from "./icons";
 
 /** A share as whole percent. */
 export const pct = (share: number) => Math.round(share * 100);
@@ -40,6 +41,7 @@ export interface Tile {
   id: "streak" | "ended" | "shooting" | "mvps";
   label: string;
   value: string;
+  icon?: IconKey;
   /** `points` is signed, the shown session % minus the shown average's. */
   vs?: { avg: string; dir: Dir; points: number };
 }
@@ -49,13 +51,13 @@ export const resultWord = (r: "win" | "loss" | null) => r ?? "no result";
 
 export function tilesFor(a: AggregateWire, base: AggregateWire): Tile[] {
   const tiles: Tile[] = [];
-  if (a.bestWinStreak) tiles.push({ id: "streak", label: "Best win streak", value: String(a.bestWinStreak) });
+  if (a.bestWinStreak) tiles.push({ id: "streak", label: "Best win streak", value: String(a.bestWinStreak), icon: "streak" });
   if (a.endedOn) {
     const { result, length } = a.endedOn;
     tiles.push({ id: "ended", label: "Finished on", value: result === "win" ? plural(length, "win") : plural(length, "loss", "losses") });
   }
   if (a.shootingPct !== null) {
-    const tile: Tile = { id: "shooting", label: "Shooting %", value: `${String(pct(a.shootingPct))}%` };
+    const tile: Tile = { id: "shooting", label: "Shooting %", value: `${String(pct(a.shootingPct))}%`, icon: "shooting" };
     if (base.shootingPct !== null) {
       // Compared as shown, so "40% ▲ vs 30-day avg (40%)" can't happen.
       const points = pct(a.shootingPct) - pct(base.shootingPct);
@@ -63,20 +65,19 @@ export function tilesFor(a: AggregateWire, base: AggregateWire): Tile[] {
     }
     tiles.push(tile);
   }
-  if (a.mvps) tiles.push({ id: "mvps", label: "MVPs", value: `×${String(a.mvps)}` });
+  if (a.mvps) tiles.push({ id: "mvps", label: "MVPs", value: `×${String(a.mvps)}`, icon: "mvp" });
   return tiles;
 }
 
 export type StatId = "score" | "goals" | "assists" | "saves" | "shots" | "demos";
-export type IconName = "Goal" | "Assist" | "Save" | "Shot" | "Demolition";
 
-export const PER_GAME: readonly { id: StatId; label: string; icon: IconName | null }[] = [
-  { id: "score", label: "Score", icon: null },
-  { id: "goals", label: "Goals", icon: "Goal" },
-  { id: "assists", label: "Assists", icon: "Assist" },
-  { id: "saves", label: "Saves", icon: "Save" },
-  { id: "shots", label: "Shots", icon: "Shot" },
-  { id: "demos", label: "Demos", icon: "Demolition" },
+export const PER_GAME: readonly { id: StatId; label: string; icon: IconKey }[] = [
+  { id: "score", label: "Score", icon: "score" },
+  { id: "goals", label: "Goals", icon: "goal" },
+  { id: "assists", label: "Assists", icon: "assist" },
+  { id: "saves", label: "Saves", icon: "save" },
+  { id: "shots", label: "Shots", icon: "shot" },
+  { id: "demos", label: "Demos", icon: "demo" },
 ];
 
 export interface Vs { pct: number; dir: Dir }
@@ -88,7 +89,7 @@ export function vsAverage(value: number, avg: number | null): Vs | null {
   return { pct: p, dir: Math.abs(p) < 3 ? "same" : p > 0 ? "up" : "down" };
 }
 
-export interface PerGameCard { id: StatId; label: string; icon: IconName | null; perGame: number; total: number; avg: number | null; vs: Vs | null }
+export interface PerGameCard { id: StatId; label: string; icon: IconKey; perGame: number; total: number; avg: number | null; vs: Vs | null }
 
 export function perGameCards(a: AggregateWire, base: AggregateWire): PerGameCard[] {
   return PER_GAME.flatMap(({ id, label, icon }) => {
@@ -103,7 +104,7 @@ export function perGameCards(a: AggregateWire, base: AggregateWire): PerGameCard
 /** How far a per-game stat must move from the 30-day average, either way, to stand out. */
 export const STOOD_OUT_MIN_PCT = 10;
 
-export interface StoodOut { id: StatId; label: string; icon: IconName | null; perGame: number; avg: number; vs: Vs }
+export interface StoodOut { id: StatId; label: string; icon: IconKey; perGame: number; avg: number; vs: Vs }
 
 // One per rank; also the cap on how many stats stand out.
 const RANK = ["biggest", "2nd-biggest", "3rd-biggest"] as const;
@@ -146,6 +147,7 @@ export interface ExtraCard {
   value: string;
   unit: (typeof SPEED_LABEL)[Units["speed"]] | "%" | null;
   sub: string | null;
+  icon: IconKey;
 }
 
 /** The extras tiles; [] when no match has its extras computed. */
@@ -161,15 +163,15 @@ export function extrasCards(a: AggregateWire, matches: readonly MyMatchWire[], u
   const speed = (kmh: number) => decimal(speedIn(kmh, units.speed));
   const unit = SPEED_LABEL[units.speed];
   const cards: (ExtraCard | null)[] = [
-    a.hardestShotKmh === null ? null : { id: "hardest", label: "Hardest shot", value: speed(a.hardestShotKmh), unit, sub: matchOf((m) => m.me?.hardestShotKmh === a.hardestShotKmh) },
+    a.hardestShotKmh === null ? null : { id: "hardest", label: "Hardest shot", value: speed(a.hardestShotKmh), unit, sub: matchOf((m) => m.me?.hardestShotKmh === a.hardestShotKmh), icon: "hardest" },
     a.fastestGoalKmh === null
       ? null
-      : { id: "fastest", label: "Fastest goal", value: speed(a.fastestGoalKmh), unit, sub: matchOf((m) => m.goals.some((g) => !g.ownGoal && g.speedKmh === a.fastestGoalKmh)) },
-    a.woodworkHits === null ? null : { id: "woodwork", label: "Crossbar hits", value: whole(a.woodworkHits), unit: null, sub: null },
-    a.boostAvg === null ? null : { id: "boost", label: "Avg boost", value: String(Math.round(a.boostAvg)), unit: null, sub: "your car" },
-    a.supersonicShare === null ? null : { id: "supersonic", label: "Supersonic", value: String(pct(a.supersonicShare)), unit: "%", sub: "of time played" },
-    a.emptyBoostShare === null ? null : { id: "empty", label: "Empty tank", value: String(pct(a.emptyBoostShare)), unit: "%", sub: "time on 0 boost" },
-    a.aerialTouches === null ? null : { id: "aerial", label: "Aerial touches", value: whole(a.aerialTouches), unit: null, sub: "yours, in the air" },
+      : { id: "fastest", label: "Fastest goal", value: speed(a.fastestGoalKmh), unit, sub: matchOf((m) => m.goals.some((g) => !g.ownGoal && g.speedKmh === a.fastestGoalKmh)), icon: "fastest" },
+    a.woodworkHits === null ? null : { id: "woodwork", label: "Crossbar hits", value: whole(a.woodworkHits), unit: null, sub: null, icon: "crossbar" },
+    a.boostAvg === null ? null : { id: "boost", label: "Avg boost", value: String(Math.round(a.boostAvg)), unit: null, sub: "your car", icon: "boost" },
+    a.supersonicShare === null ? null : { id: "supersonic", label: "Supersonic", value: String(pct(a.supersonicShare)), unit: "%", sub: "of time played", icon: "supersonic" },
+    a.emptyBoostShare === null ? null : { id: "empty", label: "Empty tank", value: String(pct(a.emptyBoostShare)), unit: "%", sub: "time on 0 boost", icon: "empty" },
+    a.aerialTouches === null ? null : { id: "aerial", label: "Aerial touches", value: whole(a.aerialTouches), unit: null, sub: "yours, in the air", icon: "aerial" },
   ];
   return cards.filter((c) => c !== null);
 }

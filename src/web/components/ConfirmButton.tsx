@@ -1,11 +1,11 @@
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useReducer, useRef, type ReactNode } from "react";
 import { confirmStep, type ConfirmState } from "../logic/confirm";
 import styles from "./Header.module.css";
 
 const REVERT_MS = 5000;
 
 interface Props {
-  label: string;
+  label: ReactNode;
   question: string;
   failText: string;
   /** Announced (politely) after a successful send. */

@@ -111,10 +111,12 @@ test("the long session's Overview: per game with what stood out marked, by playl
   await expect(perGame.getByRole("listitem").filter({ hasText: "Goals" })).toContainText("1.12 /game");
   await expect(perGame.getByRole("listitem").filter({ hasText: "Goals" })).toContainText("up 12% vs 30-day avg (1)");
   await expect(perGame.getByRole("listitem").filter({ hasText: "Goals" })).toContainText("29 total");
+  // Stat cards carry an icon before the label; the Highlights cards below stay text.
+  await expect(perGame.getByRole("listitem").filter({ hasText: "Goals" }).locator("svg")).toHaveCount(1);
   // The headline tile's ▲/▼ is hidden from screen readers, which read the direction as a word.
   const shooting = page.getByRole("listitem").filter({ has: page.getByText("Shooting %", { exact: true }) });
   await expect(shooting).toContainText(/(up|down) \d+ pts vs 30-day avg \(\d+%\)/);
-  await expect(shooting.locator("[aria-hidden=true]")).toHaveText(/^[▲▼]$/);
+  await expect(shooting.locator("[aria-hidden=true]:not(svg)")).toHaveText(/^[▲▼]$/);
   await expect(perGame.getByRole("listitem").filter({ hasText: "Score" })).toContainText(/about the same as\s*30-day avg/);
   // A zero average has no fair ratio, so saves (none, then and now) show no comparison.
   await expect(perGame.getByRole("listitem").filter({ hasText: "Saves" })).not.toContainText("avg");
@@ -145,6 +147,10 @@ test("the long session's Overview: per game with what stood out marked, by playl
   await expect(extras.getByRole("listitem").filter({ hasText: "Supersonic" })).toContainText("10%");
   await expect(extras.getByRole("heading", { name: "Highlights" })).toBeVisible();
   await expect(extras.getByRole("listitem").filter({ hasText: "Hat tricks" })).toContainText("1");
+  // Highlights stay text: no card in its own section carries an icon.
+  const highlights = extras.getByRole("heading", { name: "Highlights" }).locator("xpath=ancestor::section[1]");
+  await expect(highlights.getByRole("listitem").first()).toBeVisible();
+  await expect(highlights.locator("svg")).toHaveCount(0);
 });
 
 test("the Overview's section headings share one size, each above its panel and never inside it", async ({ page }) => {
@@ -368,7 +374,7 @@ test("flags: the note says why, worded by how the match counted", async ({ page 
   await expect(page.getByRole("note")).toHaveCount(0);
 
   await numbersTab(page).click();
-  await expect(page.getByRole("table").getByText("⚑")).toHaveCount(3);
+  await expect(page.getByRole("table").locator("svg.lucide-flag")).toHaveCount(3);
 });
 
 test("links: a match card and a goal dot open their match", async ({ page }) => {

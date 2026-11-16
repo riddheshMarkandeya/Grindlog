@@ -47,7 +47,8 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   tabs from a SharedWorker (`worker.ts`, in-page fallback in `client.ts`; it reads each status's `version`
   leniently first and posts it on its own), `live.ts` header state, `useLiveEvents.ts` refetch on events and
   one reload when the tracker's version changes (`logic/version-watch.ts`); `logic/` pure header logic; `components/` header and empty
-  state; `styles/tokens.css` themes carbon, slate, oled; `pages/` placeholders until WP6+),
+  state, `Icon.tsx` every dashboard icon by `IconKey` (`logic/icons.ts`; Lucide, Phosphor's ball, two drawn);
+  `styles/tokens.css` themes carbon, slate, oled; `pages/` placeholders until WP6+),
   `src/tray/` (`Tray.cs` the C# 5 tray exe: polls `/api/tray` every 2 s, icon states, menu, balloons; `tray.manifest`
   DPI awareness; `icons/<channel>-<state>.ico` from `bun run icons`; built by `scripts/build-tray.ts`; live
   `tray.test.ts`),
@@ -135,6 +136,9 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   Task Scheduler doesn't restart a crashed task.
 
 ## Plans
+- `docs/plans/2026-11-16-icons.md`: friends release step 6, icons: Lucide icon + text across the dashboard,
+  the statfeed PNGs dropped, explicit icon keys instead of label matching; plan review and review log.
+- `docs/reviews/2026-11-16-icons.md`: step 6 icons review summary (2 rounds, nothing deferred).
 - `docs/plans/2026-11-12-wp7-proof-before-friends.md`: step 4 package 7, proof before friends: v0.1.0/v0.1.1 from CI,
   clean account, healthy update and feed-override rollback, Sandbox, prod data copy, Stats API write, VirusTotal.
 - `docs/plans/2026-11-12-wp6b-updater-apply.md`: step 4 package 6b, updater apply, health check and rollback; review

@@ -49,7 +49,7 @@ export interface ShareCardView {
   results: readonly (Result | null)[];
   mood: string | null;
   tiles: ShareTile[];
-  stood: { label: string; text: string } | null;
+  stood: { label: string; text: string; dir: "up" | "down" | null } | null;
   /** Fixed tiles shown as "–" because their stat was null, which a played session shouldn't give. */
   nullStats: string[];
 }
@@ -75,8 +75,11 @@ function eighthTile(a: AggregateWire): ShareTile | null {
 
 function stoodLine(a: AggregateWire, base: AggregateWire, units: Units): ShareCardView["stood"] {
   const top = stoodOut(a, base)?.[0];
-  if (top) return { label: top.label, text: `${decimal(top.perGame)} per game, ${String(Math.abs(top.vs.pct))}% ${top.vs.pct > 0 ? "above" : "below"} your 30-day average` };
-  if (a.hardestShotKmh !== null) return { label: "Hardest shot", text: `${decimal(speedIn(a.hardestShotKmh, units.speed))} ${SPEED_LABEL[units.speed]}` };
+  if (top) {
+    const up = top.vs.pct > 0;
+    return { label: top.label, text: `${decimal(top.perGame)} per game, ${String(Math.abs(top.vs.pct))}% ${up ? "above" : "below"} 30-day avg`, dir: up ? "up" : "down" };
+  }
+  if (a.hardestShotKmh !== null) return { label: "Hardest shot", text: `${decimal(speedIn(a.hardestShotKmh, units.speed))} ${SPEED_LABEL[units.speed]}`, dir: null };
   return null;
 }
 

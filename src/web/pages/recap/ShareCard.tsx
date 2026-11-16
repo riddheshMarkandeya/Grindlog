@@ -12,6 +12,7 @@ import { plural } from "../../logic/format";
 import { formLine, LINE_MIN, PAD, shareCard, shareFilename, shareTeammate, type ShareCardView } from "../../logic/share-card";
 import { useMatchDetail, useRemarks, useSettings } from "../../queries";
 import styles from "./ShareCard.module.css";
+import { Icon, IconLabel } from "../../components/Icon";
 
 interface Props {
   detail: SessionDetail;
@@ -32,7 +33,7 @@ export function ShareButton(props: Props) {
   };
   return (
     <>
-      <button type="button" className={styles.btn} aria-haspopup="dialog" onClick={show}>Share</button>
+      <button type="button" className={styles.btn} aria-haspopup="dialog" onClick={show}><IconLabel k="share">Share</IconLabel></button>
       {/* closedby="any": the browser's own light dismiss, a click outside or Esc. */}
       <dialog ref={dialog} className={styles.dialog} aria-labelledby={titleId} closedby="any" onClose={() => { setOpen(false); }}>
         {open && <ShareDialog {...props} titleId={titleId} onClose={() => dialog.current?.close()} />}
@@ -135,8 +136,8 @@ function ShareDialog({ detail, summary, filter, teammate, titleId, onClose }: Pr
       </div>
       <div className={styles.actions}>
         {/* aria-disabled, not disabled: a disabled button drops keyboard focus mid-export. */}
-        <button type="button" className={styles.btn} aria-disabled={off} onClick={() => { if (!off) void run("copy"); }}>Copy image</button>
-        <button type="button" className={styles.btn} aria-disabled={off} onClick={() => { if (!off) void run("download"); }}>Download PNG</button>
+        <button type="button" className={styles.btn} aria-disabled={off} onClick={() => { if (!off) void run("copy"); }}><IconLabel k="copy">Copy image</IconLabel></button>
+        <button type="button" className={styles.btn} aria-disabled={off} onClick={() => { if (!off) void run("download"); }}><IconLabel k="download">Download PNG</IconLabel></button>
         <span className={styles.status} aria-live="polite">{status}</span>
       </div>
     </div>
@@ -196,7 +197,7 @@ function Card({ view, cardRef }: { view: ShareCardView; cardRef: RefObject<HTMLD
           </div>
         ))}
       </div>
-      {view.stood && <div className={styles.callout}><b>{view.stood.label}:</b> {view.stood.text}</div>}
+      {view.stood && <div className={styles.callout}>{view.stood.dir && <Icon k={view.stood.dir === "up" ? "trendUp" : "trendDown"} className={styles.cmark} />}<b>{view.stood.label}:</b> {view.stood.text}</div>}
       <div className={styles.bottom}><div className={styles.footer} data-part="footer"><img src={icon} alt="" />Grindlog</div></div>
     </div>
   );

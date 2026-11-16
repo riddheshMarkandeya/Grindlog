@@ -81,10 +81,10 @@ test("a result's letter and word, a dash for no result", () => {
 describe("tilesFor", () => {
   test("streak, finished on, shooting against the average, your MVPs", () => {
     expect(tilesFor(agg({}), agg({ shootingPct: 0.3 }))).toEqual([
-      { id: "streak", label: "Best win streak", value: "3" },
+      { id: "streak", label: "Best win streak", value: "3", icon: "streak" },
       { id: "ended", label: "Finished on", value: "2 wins" },
-      { id: "shooting", label: "Shooting %", value: "40%", vs: { avg: "30%", dir: "up", points: 10 } },
-      { id: "mvps", label: "MVPs", value: "×2" },
+      { id: "shooting", label: "Shooting %", value: "40%", icon: "shooting", vs: { avg: "30%", dir: "up", points: 10 } },
+      { id: "mvps", label: "MVPs", value: "×2", icon: "mvp" },
     ]);
   });
 
@@ -96,7 +96,7 @@ describe("tilesFor", () => {
   });
 
   test("shooting without a baseline has no comparison; level with it is 'same'", () => {
-    expect(tilesFor(agg({}), none).find((t) => t.id === "shooting")).toEqual({ id: "shooting", label: "Shooting %", value: "40%" });
+    expect(tilesFor(agg({}), none).find((t) => t.id === "shooting")).toEqual({ id: "shooting", label: "Shooting %", value: "40%", icon: "shooting" });
     expect(tilesFor(agg({}), agg({ shootingPct: 0.401 })).find((t) => t.id === "shooting")?.vs).toEqual({ avg: "40%", dir: "same", points: 0 });
     expect(tilesFor(agg({}), agg({ shootingPct: 0.45 })).find((t) => t.id === "shooting")?.vs).toEqual({ avg: "45%", dir: "down", points: -5 });
   });
@@ -232,12 +232,12 @@ describe("perGameCards", () => {
   const base = agg({ perGame: { goals: 0.8, assists: 0.25, saves: 1.5, shots: 2.5, demos: 0, score: 400 } });
   test("the six stats in order, per game and total, against the average", () => {
     expect(perGameCards(agg({}), base)).toEqual([
-      { id: "score", label: "Score", icon: null, perGame: 400, total: 1600, avg: 400, vs: { pct: 0, dir: "same" } },
-      { id: "goals", label: "Goals", icon: "Goal", perGame: 1, total: 4, avg: 0.8, vs: { pct: 25, dir: "up" } },
-      { id: "assists", label: "Assists", icon: "Assist", perGame: 0.25, total: 1, avg: 0.25, vs: { pct: 0, dir: "same" } },
-      { id: "saves", label: "Saves", icon: "Save", perGame: 0.75, total: 3, avg: 1.5, vs: { pct: -50, dir: "down" } },
-      { id: "shots", label: "Shots", icon: "Shot", perGame: 2.5, total: 10, avg: 2.5, vs: { pct: 0, dir: "same" } },
-      { id: "demos", label: "Demos", icon: "Demolition", perGame: 0, total: 0, avg: 0, vs: null },
+      { id: "score", label: "Score", icon: "score", perGame: 400, total: 1600, avg: 400, vs: { pct: 0, dir: "same" } },
+      { id: "goals", label: "Goals", icon: "goal", perGame: 1, total: 4, avg: 0.8, vs: { pct: 25, dir: "up" } },
+      { id: "assists", label: "Assists", icon: "assist", perGame: 0.25, total: 1, avg: 0.25, vs: { pct: 0, dir: "same" } },
+      { id: "saves", label: "Saves", icon: "save", perGame: 0.75, total: 3, avg: 1.5, vs: { pct: -50, dir: "down" } },
+      { id: "shots", label: "Shots", icon: "shot", perGame: 2.5, total: 10, avg: 2.5, vs: { pct: 0, dir: "same" } },
+      { id: "demos", label: "Demos", icon: "demo", perGame: 0, total: 0, avg: 0, vs: null },
     ]);
   });
   test("no baseline: no comparison; a stat with no value is left out", () => {
@@ -260,7 +260,7 @@ describe("stoodOut", () => {
   test("biggest first, at most three; a zero average is skipped", () => {
     const out = stoodOut(at({ goals: 1.2, assists: 0.5, saves: 1.3, shots: 1.15, score: 500 }), base);
     expect(out?.map((s) => s.id)).toEqual(["assists", "saves", "score"]);
-    expect(out?.[0]).toEqual({ id: "assists", label: "Assists", icon: "Assist", perGame: 0.5, avg: 1, vs: { pct: -50, dir: "down" } });
+    expect(out?.[0]).toEqual({ id: "assists", label: "Assists", icon: "assist", perGame: 0.5, avg: 1, vs: { pct: -50, dir: "down" } });
   });
 });
 
@@ -300,13 +300,13 @@ describe("extrasCards", () => {
 
   test("in the map's order; a measured zero is kept; 'match N' with more than one match", () => {
     expect(extrasCards(agg(extras), three, KMH)).toEqual([
-      { id: "hardest", label: "Hardest shot", value: "131", unit: "km/h", sub: "match 2" },
-      { id: "fastest", label: "Fastest goal", value: "98.7", unit: "km/h", sub: "match 2" },
-      { id: "woodwork", label: "Crossbar hits", value: "0", unit: null, sub: null },
-      { id: "boost", label: "Avg boost", value: "42", unit: null, sub: "your car" },
-      { id: "supersonic", label: "Supersonic", value: "12", unit: "%", sub: "of time played" },
-      { id: "empty", label: "Empty tank", value: "9", unit: "%", sub: "time on 0 boost" },
-      { id: "aerial", label: "Aerial touches", value: "12", unit: null, sub: "yours, in the air" },
+      { id: "hardest", label: "Hardest shot", value: "131", unit: "km/h", sub: "match 2", icon: "hardest" },
+      { id: "fastest", label: "Fastest goal", value: "98.7", unit: "km/h", sub: "match 2", icon: "fastest" },
+      { id: "woodwork", label: "Crossbar hits", value: "0", unit: null, sub: null, icon: "crossbar" },
+      { id: "boost", label: "Avg boost", value: "42", unit: null, sub: "your car", icon: "boost" },
+      { id: "supersonic", label: "Supersonic", value: "12", unit: "%", sub: "of time played", icon: "supersonic" },
+      { id: "empty", label: "Empty tank", value: "9", unit: "%", sub: "time on 0 boost", icon: "empty" },
+      { id: "aerial", label: "Aerial touches", value: "12", unit: null, sub: "yours, in the air", icon: "aerial" },
     ]);
   });
 

@@ -65,16 +65,22 @@ zod is also in the dashboard files below.
 - Licence: MIT
 - Copyright (c) 2019-present, VoidZero Inc. and Vite contributors
 
-### Rocket League statfeed icons
+### Phosphor Icons 2.1.10 (the goal icon)
 
-- The Assist, Demolition, Goal, MVP, Save, Shot and Win icons in the dashboard are Rocket League's own, the property
-  of Psyonix and Epic Games. They are not covered by Grindlog's MIT licence, and their use here doesn't imply any
-  endorsement.
+- Licence: MIT
+- Copyright (c) 2020 Phosphor Icons
+
+### Lucide 1.72.0 (every other dashboard icon, bar two drawn for Grindlog)
+
+- Licence: ISC, text at the end of this file
+- Copyright (c) 2026 Lucide Icons and Contributors
+- Some Lucide icons are derived from Feather, under MIT: Copyright (c) 2013-present Cole Bemis. Of those used
+  here: arrow-left, clock, crosshair, download, hash, percent, plus-circle, power and target.
 
 ## MIT License
 
-The text below applies to every entry above except the Rocket League icons, each under its own copyright
-lines. For Bun, it covers Bun's own code
+The text below applies to every entry above except Lucide itself, which is ISC (below); Lucide's Feather-derived
+icons are MIT and covered here. Each entry keeps its own copyright lines. For Bun, it covers Bun's own code
 only; the libraries Bun links keep the licences listed on Bun's licensing page.
 
 ```
@@ -95,4 +101,22 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
+
+## ISC License
+
+The text below applies to Lucide.
+
+```
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ```

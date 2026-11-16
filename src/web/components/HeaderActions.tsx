@@ -3,6 +3,7 @@ import { REQUEST_HEADER, SHUTDOWN_HEADER } from "../../shared/constants";
 import { post } from "../api";
 import { live } from "../events/live";
 import { ConfirmButton } from "./ConfirmButton";
+import { IconLabel } from "./Icon";
 import { useCurrentSession } from "../queries";
 
 /** Why neither action can reach the tracker now, if so. A string snapshot, so a status event alone doesn't re-render. */
@@ -20,7 +21,7 @@ export function StartSessionButton() {
   const offline = useOffline();
   return (
     <ConfirmButton
-      label="Start new session"
+      label={<IconLabel k="newSession">Start new session</IconLabel>}
       question="Start new session?"
       failText="Couldn't start a new session"
       doneText="New session started"
@@ -35,7 +36,7 @@ export function QuitButton() {
   const offline = useOffline();
   return (
     <ConfirmButton
-      label="Quit"
+      label={<IconLabel k="quit">Quit</IconLabel>}
       question="Quit the tracker? Recording stops."
       failText="Couldn't quit the tracker"
       disabledReason={offline}

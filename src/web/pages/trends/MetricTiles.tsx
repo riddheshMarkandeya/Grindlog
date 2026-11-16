@@ -2,16 +2,10 @@
 // the buckets. A tile picks the metric the big chart plots.
 import type { PeriodView } from "../../../shared/schemas/responses";
 import { trendStats } from "../../../shared/trends";
-import assistIcon from "../../assets/icons/Assist.png";
-import goalIcon from "../../assets/icons/Goal.png";
-import saveIcon from "../../assets/icons/Save.png";
-import shotIcon from "../../assets/icons/Shot.png";
-import { METRICS, metricDelta, metricValue, sparkPath, type Delta, type MetricId, type TrendIcon } from "../../logic/trends";
+import { METRICS, metricDelta, metricValue, sparkPath, type Delta, type MetricId } from "../../logic/trends";
 import { DirArrow } from "../../components/DirArrow";
 import { StatCard, StatCards } from "../../components/StatCard";
 import styles from "./Trends.module.css";
-
-const ICONS: Record<TrendIcon, string> = { Goal: goalIcon, Shot: shotIcon, Assist: assistIcon, Save: saveIcon };
 
 /** "▲ 5 pts" with the direction in words for screen readers, or a muted "≈". */
 function DeltaText({ delta }: { delta: Delta }) {
@@ -43,7 +37,7 @@ export function MetricTiles({ view, metric, onMetric }: { view: PeriodView; metr
           const delta = metricDelta(m.id, cur, prev);
           return (
             <StatCard
-              key={m.id} label={m.label} icon={m.icon && ICONS[m.icon]} value={metricValue(m.id, cur)}
+              key={m.id} label={m.label} icon={m.icon} value={metricValue(m.id, cur)}
               vs={delta ? <DeltaText delta={delta} /> : ""} pressed={m.id === metric} onClick={() => { onMetric(m.id); }}
             >
               <Sparkline path={sparkPath(m.id, buckets)} />

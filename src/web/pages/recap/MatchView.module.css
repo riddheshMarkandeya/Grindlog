@@ -4,7 +4,7 @@
 .goals { margin-top: var(--s2); }
 .h3 { margin: 0 0 var(--s2); font-size: 15px; }
 .meta { display: block; font-size: 12px; font-weight: 400; color: var(--ink2); }
-.ico { width: 14px; height: 14px; margin-left: 4px; vertical-align: -2px; object-fit: contain; }
+.ico { width: 14px; height: 14px; margin-left: 4px; vertical-align: -2px; }
 
 .rail {
   position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow: hidden auto;
@@ -21,6 +21,7 @@
 .row.win i { color: var(--win); }
 .row.loss i { color: var(--loss); }
 .flag { color: var(--flag); }
+.flagIco { width: 14px; height: 14px; vertical-align: -2px; }
 
 .kpis { display: flex; flex-wrap: wrap; gap: var(--s3) var(--s5); align-items: center; }
 .title { display: flex; align-items: baseline; gap: var(--s2); margin: 0; font-size: 30px; line-height: 1.1; }

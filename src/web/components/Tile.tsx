@@ -3,8 +3,10 @@
 // centred; the caller writes the comparison's and the note's text. The recap's headline tiles and
 // the Friends page's.
 import type { ReactNode } from "react";
+import type { IconKey } from "../logic/icons";
 import { cx } from "./cx";
 import { DirArrow } from "./DirArrow";
+import { Icon } from "./Icon";
 import styles from "./Tile.module.css";
 
 /** "▲ 5 pts" in the direction's colour, then `rest` muted; "same" draws "≈" (read as "about the same as") before `rest`. */
@@ -27,11 +29,11 @@ export function Tiles({ className, children }: { className?: string; children: R
   return <ul className={cx(styles.tiles, className)}>{children}</ul>;
 }
 
-export function Tile({ label, value, icon, vs, note, noteLines = 1 }: { label: string; value: string; icon?: string; vs?: TileVs; note?: string; noteLines?: 1 | 2 }) {
+export function Tile({ label, value, icon, vs, note, noteLines = 1 }: { label: string; value: string; icon?: IconKey | undefined; vs?: TileVs; note?: string; noteLines?: 1 | 2 }) {
   return (
     <li>
       <b className="num display">
-        {icon && <img className={styles.ico} src={icon} alt="" />}
+        {icon && <Icon k={icon} className={styles.ico} />}
         {value}
       </b>
       <span className={styles.label}>{label}</span>

@@ -27,8 +27,10 @@
     "check": "bun run typecheck && bun run lint && bun run test"
   },
   "dependencies": {
+    "@phosphor-icons/react": "2.1.10",
     "@tanstack/react-query": "5.104.1",
     "html-to-image": "1.11.11",
+    "lucide-react": "1.72.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-router": "8.4.0",

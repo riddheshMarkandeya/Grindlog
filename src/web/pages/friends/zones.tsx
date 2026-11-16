@@ -9,6 +9,7 @@ import { dayOf } from "../../../shared/periods";
 import type { FriendDetail } from "../../../shared/schemas/responses";
 import { teammateValue } from "../../../shared/teammate-filter";
 import { cx } from "../../components/cx";
+import { IconLabel } from "../../components/Icon";
 import { Scorebug } from "../../components/Scorebug";
 import { Section } from "../../components/Section";
 import { Tile, Tiles } from "../../components/Tile";
@@ -30,7 +31,7 @@ const SHADES = [styles.friendA, styles.friendB];
 const day = (ms: number) => dateLabel(dayOf(ms));
 const streakText = (s: WithSide["streak"]) => (s === null ? "–" : `${String(s.length)} ${letter(s.result)}`);
 
-export const BackLink = () => <Link to="/friends" className={styles.back}>← Friends</Link>;
+export const BackLink = () => <Link to="/friends" className={styles.back}><IconLabel k="back">Friends</IconLabel></Link>;
 
 export function Bug({ friends, view }: { friends: readonly Who[]; view: View }) {
   const copy = sideCopy(friends.map((f) => f.name));
@@ -108,18 +109,20 @@ function Playlists({ rows }: { rows: readonly Row[] }) {
 // Each zone always shows its six tiles, so the two rows keep their shape; a missing value is "–".
 // Best and worst need two playlists with enough decided matches, so many matches can still have none.
 const playlistTile = (label: string, r: Row | null) => <Tile label={label} value={r ? winPctText(r) : "–"} note={r ? `${r.label} · ${recordText(r)}` : "not enough yet"} />;
-const overtimeTile = (ot: WithSide["overtime"]) =>
-  decided(ot) > 0 ? <Tile label="Overtime" value={recordText(ot)} note={overtimeNote(ot)} /> : <Tile label="Overtime" value="–" note="none yet" />;
+const overtimeTile = (ot: WithSide["overtime"]) => {
+  const any = decided(ot) > 0;
+  return <Tile label="Overtime" icon="overtime" value={any ? recordText(ot) : "–"} note={any ? overtimeNote(ot) : "none yet"} />;
+};
 
 function WithZone({ side, friends, copy }: { side: WithSide; friends: readonly Who[]; copy: SideCopy }) {
   return (
     <>
       <Tiles className={styles.zoneTiles}>
-        <Tile label="Current streak" value={streakText(side.streak)} note={copy.withNote} />
-        <Tile label="Best win streak" value={String(side.bestWinStreak)} note={copy.withNote} />
+        <Tile label="Current streak" icon="streak" value={streakText(side.streak)} note={copy.withNote} />
+        <Tile label="Best win streak" icon="streak" value={String(side.bestWinStreak)} note={copy.withNote} />
         {playlistTile("Best playlist", side.best)}
         {playlistTile("Worst playlist", side.worst)}
-        <Tile label="Time together" value={durationText(side.timeMs)} note={`over ${plural(decided(side.record), "match", "matches")}`} />
+        <Tile label="Time together" icon="time" value={durationText(side.timeMs)} note={`over ${plural(decided(side.record), "match", "matches")}`} />
         {overtimeTile(side.overtime)}
       </Tiles>
       <Section level={3} region={false} title="By playlist"><Playlists rows={side.playlists} /></Section>
@@ -282,12 +285,12 @@ function AgainstZone({ side, friends, copy }: { side: AgainstSide; friends: read
   return (
     <>
       <Tiles className={styles.zoneTiles}>
-        <Tile label="Current streak" value={streakText(side.streak)} note={copy.againstNote} />
-        <Tile label="MVPs" value={side.mvps.join("–")} note={copy.versus} noteLines={2} />
-        <Tile label="Goals" value={side.goals.join("–")} note={copy.versus} noteLines={2} />
+        <Tile label="Current streak" icon="streak" value={streakText(side.streak)} note={copy.againstNote} />
+        <Tile label="MVPs" icon="mvp" value={side.mvps.join("–")} note={copy.versus} noteLines={2} />
+        <Tile label="Goals" icon="goal" value={side.goals.join("–")} note={copy.versus} noteLines={2} />
         <Tile label="Biggest win" value={side.biggestWin ? `+${String(side.biggestWin.goalDiff)}` : "–"} note={side.biggestWin ? `${day(side.biggestWin.startedAt)} · ${side.biggestWin.label}` : side.record.w > 0 ? "no score kept" : "no wins yet"} />
         {overtimeTile(side.overtime)}
-        <Tile label="Matches" value={whole(decided(side.record))} note={copy.againstNote} />
+        <Tile label="Matches" icon="matches" value={whole(decided(side.record))} note={copy.againstNote} />
       </Tiles>
       <Section level={3} region={false} title="By playlist"><Playlists rows={side.playlists} /></Section>
       <Section level={3} region={false} title="Match by match"><Matches matches={side.matches} friends={friends} /></Section>

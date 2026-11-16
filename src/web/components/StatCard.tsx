@@ -4,7 +4,9 @@
 // `vs` is a node so each page keeps its own direction words for screen readers. `mark` is drawn on
 // the card itself, positioned by the caller (the recap's stood-out "!").
 import type { ReactNode } from "react";
+import type { IconKey } from "../logic/icons";
 import { cx } from "./cx";
+import { Icon } from "./Icon";
 import styles from "./StatCard.module.css";
 
 /** `stretch` widens a fixed set of cards to fill the row, instead of leaving the row's end empty. */
@@ -17,12 +19,12 @@ export function StatCards({ stretch = false, children }: { stretch?: boolean; ch
  * the line. `mark` is for cards without `onClick` only: it may hold a control, and a button can't.
  */
 export function StatCard({ label, icon, value, unit, sub, vs, mark, pressed, onClick, children }: {
-  label: string; icon?: string | null; value: string; unit?: string | null; sub?: string | null; vs?: ReactNode;
+  label: string; icon?: IconKey | undefined; value: string; unit?: string | null; sub?: string | null; vs?: ReactNode;
   mark?: ReactNode; pressed?: boolean; onClick?: () => void; children?: ReactNode;
 }) {
   const body = (
     <>
-      <span className={styles.label}>{icon && <img className={styles.ico} src={icon} alt="" />}{label}</span>
+      <span className={styles.label}>{icon && <Icon k={icon} className={styles.ico} />}{label}</span>
       <b className="num display">{value}{unit && <small>{unit}</small>}</b>
       {vs !== undefined && vs !== null && <span className={styles.vs}>{vs}</span>}
       {sub && <span className={cx(styles.sub, "num")}>{sub}</span>}

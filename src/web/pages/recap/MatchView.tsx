@@ -8,9 +8,9 @@ import type { TeammateFilter } from "../../../shared/teammate-filter";
 import { playlistInfo } from "../../../shared/playlists";
 import type { MatchDetail, MyMatchWire, SessionDetail } from "../../../shared/schemas/responses";
 import { ApiError } from "../../api";
-import mvpIcon from "../../assets/icons/MVP.png";
 import { cx } from "../../components/cx";
 import { GoalMap } from "../../components/GoalMap";
+import { Icon, IconLabel } from "../../components/Icon";
 import { Section } from "../../components/Section";
 import { filterValue } from "../../../shared/playlist-filter";
 import { clock, whole } from "../../logic/format";
@@ -48,7 +48,7 @@ function Rail({ detail, filter, teammate, guid }: Filters) {
   return (
     <nav ref={box} className={styles.rail} aria-label="Matches" data-nav="rail">
       <Link className={styles.all} to={recapPath(detail.key, filter, "matches", teammate)}>
-        ← All matches<span className={styles.meta}>full numbers table</span>
+        <IconLabel k="back">All matches</IconLabel><span className={styles.meta}>full numbers table</span>
       </Link>
       <ol>
         {detail.matches.map((m, i) => {
@@ -67,10 +67,10 @@ function Rail({ detail, filter, teammate, guid }: Filters) {
                 <i aria-hidden="true">{letter(m.result)}</i>
                 <span aria-hidden="true">
                   {playlist} <span className="num">{score}</span>
-                  {mvp && <img className={styles.ico} src={mvpIcon} alt="" />}
+                  {mvp && <Icon k="mvp" className={styles.ico} />}
                   <span className={styles.meta}>#{i + 1} · {clock(m.startedAt, hours)}</span>
                 </span>
-                <span className={styles.flag} title={flag ?? undefined} aria-hidden="true">{flag && "⚑"}</span>
+                <span className={styles.flag} title={flag ?? undefined} aria-hidden="true">{flag && <Icon k="flag" className={styles.flagIco} />}</span>
               </Link>
             </li>
           );
@@ -101,7 +101,7 @@ function Match({ detail, m, n }: { detail: SessionDetail; m: MyMatchWire; n: num
           </div>
           {mvp && (
             <span className={styles.chip}>
-              <img className={styles.ico} src={mvpIcon} alt="" />MVP{m.flags.includes("mvp_inferred") && " (inferred)"}
+              <Icon k="mvp" className={styles.ico} />MVP{m.flags.includes("mvp_inferred") && " (inferred)"}
             </span>
           )}
         </div>

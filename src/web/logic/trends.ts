@@ -9,20 +9,19 @@ import { nextSpec, previousSpec, type TrendStats } from "../../shared/trends";
 import { dayLabel, decimal, monthLabel } from "./format";
 import { parseFilter, parseTeammate } from "./filter-options";
 import { pct, vsAverage } from "./recap";
+import type { IconKey } from "./icons";
 
 /** Below this many played matches in total, the page shows the "not enough data yet" note. */
 export const ENOUGH_MATCHES = 20;
 
 export type MetricId = "win" | "goals" | "shots" | "shooting" | "assists" | "saves";
-export type TrendIcon = "Goal" | "Shot" | "Assist" | "Save";
-
-export const METRICS: readonly { id: MetricId; label: string; icon: TrendIcon | null; rate: boolean }[] = [
-  { id: "win", label: "Win %", icon: null, rate: true },
-  { id: "goals", label: "Goals / game", icon: "Goal", rate: false },
-  { id: "shots", label: "Shots / game", icon: "Shot", rate: false },
-  { id: "shooting", label: "Shooting %", icon: null, rate: true },
-  { id: "assists", label: "Assists / game", icon: "Assist", rate: false },
-  { id: "saves", label: "Saves / game", icon: "Save", rate: false },
+export const METRICS: readonly { id: MetricId; label: string; icon: IconKey; rate: boolean }[] = [
+  { id: "win", label: "Win %", icon: "winRate", rate: true },
+  { id: "goals", label: "Goals / game", icon: "goal", rate: false },
+  { id: "shots", label: "Shots / game", icon: "shot", rate: false },
+  { id: "shooting", label: "Shooting %", icon: "shooting", rate: true },
+  { id: "assists", label: "Assists / game", icon: "assist", rate: false },
+  { id: "saves", label: "Saves / game", icon: "save", rate: false },
 ];
 
 export interface TrendsState {

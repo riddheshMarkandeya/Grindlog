@@ -73,6 +73,5 @@ bun run dev        # a second tracker with its own data: .dev-data/, port 49101
 
 ## Licence
 
-MIT, see [`LICENSE`](LICENSE). The licence doesn't cover the Rocket League statfeed icons the dashboard uses, which
-belong to Psyonix and Epic Games. Grindlog ships third-party software under its own licences, listed in
+MIT, see [`LICENSE`](LICENSE). Grindlog ships third-party software under its own licences, listed in
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md); the installer puts both files next to the app.

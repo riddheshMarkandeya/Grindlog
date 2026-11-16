@@ -5,8 +5,8 @@ import type { PlaylistFilter } from "../../../shared/playlist-filter";
 import type { TeammateFilter } from "../../../shared/teammate-filter";
 import { playlistInfo } from "../../../shared/playlists";
 import type { SessionDetail } from "../../../shared/schemas/responses";
-import mvpIcon from "../../assets/icons/MVP.png";
 import { cx } from "../../components/cx";
+import { Icon } from "../../components/Icon";
 import { Section } from "../../components/Section";
 import { clock, plural, whole } from "../../logic/format";
 import { flagShort, isMyMvp, letter, matchLabel, recapPath, scoreFor } from "../../logic/recap";
@@ -56,8 +56,8 @@ export function Matches({ detail, filter, teammate }: { detail: SessionDetail; f
                     <td>{playlistInfo(m.playlistId).name}</td>
                     <td className={styles.result}>
                       <i>{letter(m.result)}</i> {score}
-                      {mvp && <img className={styles.mvp} src={mvpIcon} alt="" />}
-                      {flag && <span className={styles.flag} title={flag} aria-hidden="true">⚑</span>}
+                      {mvp && <Icon k="mvp" className={styles.mvp} />}
+                      {flag && <span className={styles.flag} title={flag} aria-hidden="true"><Icon k="flag" className={styles.flagIco} /></span>}
                     </td>
                     {COLS.map(([k]) => <td key={k}>{shown(m.me?.[k])}</td>)}
                   </tr>

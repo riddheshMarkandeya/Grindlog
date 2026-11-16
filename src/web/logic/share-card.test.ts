@@ -93,16 +93,16 @@ describe("shareCard stood out", () => {
 
   test("the stat furthest from the 30-day average, in words", () => {
     // saves 0.75 against 0.5 is +50%.
-    expect(shareCard(input({ baseline: base })).stood).toEqual({ label: "Saves", text: "0.75 per game, 50% above your 30-day average" });
+    expect(shareCard(input({ baseline: base })).stood).toEqual({ label: "Saves", text: "0.75 per game, 50% above 30-day avg", dir: "up" });
     const low = agg({ perGame: { goals: 1, assists: 0.25, saves: 1.5, shots: 2.5, demos: 0.5, score: 400 } });
-    expect(shareCard(input({ baseline: low })).stood).toEqual({ label: "Saves", text: "0.75 per game, 50% below your 30-day average" });
+    expect(shareCard(input({ baseline: low })).stood).toEqual({ label: "Saves", text: "0.75 per game, 50% below 30-day avg", dir: "down" });
   });
 
   test("with nothing that stood out, or no baseline, the hardest shot; with neither, none", () => {
-    expect(shareCard(input({ aggregate: { hardestShotKmh: 134.24 } })).stood).toEqual({ label: "Hardest shot", text: "134 km/h" });
-    expect(shareCard(input({ baseline: agg({}), aggregate: { hardestShotKmh: 98.46 } })).stood).toEqual({ label: "Hardest shot", text: "98.46 km/h" });
+    expect(shareCard(input({ aggregate: { hardestShotKmh: 134.24 } })).stood).toEqual({ label: "Hardest shot", text: "134 km/h", dir: null });
+    expect(shareCard(input({ baseline: agg({}), aggregate: { hardestShotKmh: 98.46 } })).stood).toEqual({ label: "Hardest shot", text: "98.46 km/h", dir: null });
     expect(shareCard(input()).stood).toBeNull();
-    expect(shareCard(input({ baseline: agg({}), aggregate: { hardestShotKmh: 100 }, units: { clock: "24h", speed: "mph" } })).stood).toEqual({ label: "Hardest shot", text: "62.14 mph" });
+    expect(shareCard(input({ baseline: agg({}), aggregate: { hardestShotKmh: 100 }, units: { clock: "24h", speed: "mph" } })).stood).toEqual({ label: "Hardest shot", text: "62.14 mph", dir: null });
   });
 });
 

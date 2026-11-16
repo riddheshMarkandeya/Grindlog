@@ -51,7 +51,7 @@ test("every quick pick shows its title line, pressed, then its stats or the empt
 
 test("the current month's strip cell, then ‹, reaches last month with its stats and the ⚑ note", async ({ page }) => {
   await lastMonth(page);
-  await expect(page.getByText("⚑ 1 left early, counted as a loss", { exact: true })).toBeVisible();
+  await expect(page.getByText("1 left early, counted as a loss", { exact: true })).toBeVisible();
   await expect(page.getByText(/\d+ matches · \d+ sessions/)).toBeVisible();
   await expect(tiles(page)).toBeVisible();
   // The month pressed on the strip follows the period.
@@ -94,7 +94,7 @@ test("By date a day's point sits over its W/L bar, and the W/L chart doesn't mov
   const byMatch = await column.boundingBox();
   await page.getByRole("group", { name: "X axis" }).getByRole("button", { name: "By date" }).click();
   await expect(page).toHaveURL(/x=date/);
-  const [bar, dot] = [await column.boundingBox(), await page.locator("svg[role=img] circle").first().boundingBox()];
+  const [bar, dot] = [await column.boundingBox(), await page.locator("svg[role=img]:not(.lucide) circle").first().boundingBox()];
   // Sideways only: By match's auto note above the charts goes, so they move up.
   expect([bar?.x, bar?.width]).toEqual([byMatch?.x, byMatch?.width]);
   expect((dot?.x ?? NaN) + (dot?.width ?? NaN) / 2).toBeCloseTo((bar?.x ?? NaN) + (bar?.width ?? NaN) / 2, 0);
