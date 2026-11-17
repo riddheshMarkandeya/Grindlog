@@ -1,5 +1,6 @@
-// Where the goals came from: an SVG pitch with a mark per placed goal (its <title> holds the
-// details; a click can open its match) and, beside it, the same counts as text.
+// Where the goals came from: an SVG pitch with a mark per placed goal (its <title> names the scorer
+// and assister, with the details; a click can open its match), its legend, then Scored and Conceded
+// side by side as text and one note. One layout on the recap and the match page.
 import { useEffect } from "react";
 import { useLinkClickHandler } from "react-router";
 import { GOAL_LINE_Y, SIDE_WALL_X } from "../../shared/constants";
@@ -55,10 +56,12 @@ export function GoalMap({ matches, goals, viewKey, hrefFor }: { matches: MyMatch
       </div>
       <div className={styles.summary}>
         <SideCounts label="Scored" side={summary.scored} tone="blue" />
-        {summary.scored.total > 0 && <p className={styles.note}>You scored {whole(summary.yours)} of the team's {whole(summary.scored.total)}.</p>}
         <SideCounts label="Conceded" side={summary.conceded} tone="orange" />
-        <p className={styles.note}>Close: within a quarter of the pitch from goal. Long: from halfway or further.</p>
       </div>
+      <p className={styles.note}>
+        {summary.scored.total > 0 && `You scored ${whole(summary.yours)} of the team's ${whole(summary.scored.total)}. `}
+        Close: within a quarter of the pitch from goal. Long: from halfway or further.
+      </p>
     </div>
   );
 }

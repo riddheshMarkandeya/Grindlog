@@ -165,9 +165,22 @@ describe("tracker schema", () => {
     const logger = memoryLogger();
     const d = db();
     migrate(d, "tracker", trackerMigrations.slice(0, 6), { logger });
-    migrate(d, "tracker", trackerMigrations, { logger });
+    migrate(d, "tracker", trackerMigrations.slice(0, 7), { logger });
     expect(d.pragma("user_version")).toBe(7);
     d.run("INSERT INTO meta (key, value) VALUES ('recomputed_version', '0.1.0')");
     expect(d.all("SELECT key, value FROM meta")).toEqual([{ key: "recomputed_version", value: "0.1.0" }]);
+  });
+
+  test("a DB at version 7 gains the touch thirds, null on the rows it had until recompute", () => {
+    const logger = memoryLogger();
+    const d = db();
+    migrate(d, "tracker", trackerMigrations.slice(0, 7), { logger });
+    d.run(
+      `INSERT INTO match_players (match_guid, player_key, primary_id, name, is_bot, team_num, teams_seen, present_at_end,
+        score, goals, shots, assists, saves, touches, demos) VALUES ('G', 'k', 'k', 'n', 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0)`,
+    );
+    migrate(d, "tracker", trackerMigrations, { logger });
+    expect(d.pragma("user_version")).toBe(8);
+    expect(d.get("SELECT touches_defence, touches_midfield, touches_attack FROM match_players")).toEqual({ touches_defence: null, touches_midfield: null, touches_attack: null });
   });
 });

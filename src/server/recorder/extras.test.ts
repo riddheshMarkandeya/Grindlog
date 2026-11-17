@@ -1,10 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { computeExtras, PLAYER_EXTRAS, playerExtras } from "./extras";
-import { emptyPlay, type Play, type Pos } from "./play";
+import { computeExtras, PLAYER_EXTRAS, playerExtras, THIRD_Y } from "./extras";
+import { emptyPlay, type Play, type Touch } from "./play";
 import type { RosterEntry } from "./summary";
 
 const playOf = (over: Partial<Play> = {}): Play => ({ ...emptyPlay(), ...over });
-const at = (x: number, y: number, z: number): Pos => ({ x, y, z });
+const at = (x: number, y: number, z: number): Touch => ({ x, y, z, team: 0 });
 
 describe("player extras", () => {
   test("an opponent without car state or shots has nulls for those, zeros for counts", () => {
@@ -16,7 +16,22 @@ describe("player extras", () => {
       boost_avg: null,
       supersonic_ms: null,
       empty_boost_ms: null,
+      touches_defence: 0,
+      touches_midfield: 0,
+      touches_attack: 0,
     });
+  });
+
+  test("touches by third, from the hitter's own goal at that touch: team 0 attacks +Y, team 1 −Y", () => {
+    const t = (y: number, team: Touch["team"]): Touch => ({ x: 0, y, z: 93, team });
+    const touches = [
+      t(-4000, 0), t(-THIRD_Y - 1, 0), // defence
+      t(-THIRD_Y, 0), t(0, 0), t(THIRD_Y, 0), // midfield: the cuts belong to it
+      t(THIRD_Y + 1, 0), // attack
+      t(4000, 1), t(-4000, 1), t(-4500, 1), // a switch: team 1's defence, then attack
+      t(0, null), // no team anywhere: in no third
+    ];
+    expect(playerExtras(playOf({ touches: { A: touches } }), "A")).toMatchObject({ touches_defence: 3, touches_midfield: 3, touches_attack: 3 });
   });
 
   test("hardest shot, woodwork and the car stats", () => {

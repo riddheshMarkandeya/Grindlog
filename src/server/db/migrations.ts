@@ -153,6 +153,12 @@ export const trackerMigrations: readonly string[] = [
     value TEXT NOT NULL
   );
   `,
+  // Counted touches by third from each player's own goal; null until recompute, as for the extras.
+  `
+  ALTER TABLE match_players ADD COLUMN touches_defence INTEGER;
+  ALTER TABLE match_players ADD COLUMN touches_midfield INTEGER;
+  ALTER TABLE match_players ADD COLUMN touches_attack INTEGER;
+  `,
 ];
 
 export const rawMigrations: readonly string[] = [

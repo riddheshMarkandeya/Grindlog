@@ -13,6 +13,14 @@ export interface Pos {
   z: number;
 }
 
+/**
+ * A counted touch: where the ball was, and the toucher's team at that hit, so a mid-match switch
+ * frames each touch right. A hitter resolves only with a matching team, so it is set in practice.
+ */
+export interface Touch extends Pos {
+  team: TeamNum | null;
+}
+
 /** One BallHit in play. A 50/50 lists both players, and each is a hitter. */
 export interface Hit {
   ts: number;
@@ -54,7 +62,7 @@ export interface GoalPoint {
 export interface Play {
   goals: GoalPoint[];
   /** Counted touches by key, where the ball was: a player's hits merge as `TOUCH_MERGE_MS` says. */
-  touches: Record<string, Pos[]>;
+  touches: Record<string, Touch[]>;
   /** The fastest shot by key, over each Shot statfeed's last touch and each goal's origin hit. */
   hardestShot: Record<string, number>;
   /** Woodwork hits by key (CrossbarHit fires for the posts too). */
@@ -184,7 +192,7 @@ function countTouches(acc: Acc, h: Hit): void {
     const last = acc.lastTouch.get(k);
     if (last && !last.otherSince && h.ts - last.ts < TOUCH_MERGE_MS) continue;
     acc.lastTouch.set(k, { ts: h.ts, otherSince: false });
-    if (h.pos) (acc.play.touches[k] ??= []).push(h.pos);
+    if (h.pos) (acc.play.touches[k] ??= []).push({ ...h.pos, team: h.hitters.find((p) => p.key === k)?.team ?? null });
   }
   for (const [k, last] of acc.lastTouch) if (!keys.has(k)) last.otherSince = true;
 }

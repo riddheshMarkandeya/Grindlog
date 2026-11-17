@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { carryRest, carryShares, decided, diffText, modeSwitch, namedPairs, overtimeNote, pageOf, pickKind, pickMode, pickSize, recordText, sideCopy, winPctText } from "./friends";
+import { carryRest, decided, evenShare, diffText, modeSwitch, namedPairs, overtimeNote, pageOf, pickKind, pickMode, pickSize, recordText, shareTitle, sideCopy, winPctText } from "./friends";
 
 describe("pager", () => {
   test("ten a page, clamped to the pages there are", () => {
@@ -38,21 +38,27 @@ describe("mode switch", () => {
 });
 
 describe("carry", () => {
-  test("each share of the team's total, and the even share for the team size", () => {
-    expect(carryShares([300, 200, 500], "3")).toEqual({ pcts: [30, 20, 50], even: 100 / 3 });
-    expect(carryShares([1, 1, 0], "p2")).toEqual({ pcts: [50, 50, 0], even: 50 });
-    expect(carryShares([0, 0, 0], "2")).toBeNull();
-    expect(carryShares([400, 300, 200, 100], "4")).toEqual({ pcts: [40, 30, 20, 10], even: 25 });
+  test("the even share for the team size", () => {
+    expect([evenShare("3"), evenShare("p2"), evenShare("4")]).toEqual([100 / 3, 50, 25]);
   });
 
   test("the rest is named only when a teammate besides you and the friends can be in it", () => {
-    expect(carryRest("2", 1)).toBeNull();
-    expect(carryRest("3", 1)).toBe("3rd teammate");
-    expect(carryRest("p3", 1)).toBe("3rd teammate");
-    expect(carryRest("4", 1)).toBe("Others");
-    expect(carryRest("3", 2)).toBeNull();
-    expect(carryRest("4", 2)).toBe("4th teammate");
-    expect(carryRest("2", 0)).toBe("2nd teammate");
+    expect(carryRest("2", 1, false)).toBeNull();
+    expect(carryRest("3", 1, false)).toBe("Teammate");
+    expect(carryRest("p3", 1, false)).toBe("Teammate");
+    expect(carryRest("4", 1, false)).toBe("Teammates");
+    expect(carryRest("3", 2, false)).toBeNull();
+    expect(carryRest("4", 2, false)).toBe("Teammate");
+    expect(carryRest("2", 0, false)).toBe("Teammate");
+    expect(carryRest("3", 0, false)).toBe("Teammates");
+    // A bar that draws a rest the mode can't hold still names it.
+    expect(carryRest("2", 1, true)).toBe("Teammates");
+    expect(carryRest("3", 1, true)).toBe("Teammate");
+  });
+
+  test("a segment's hover: who, its count of the team's total, and its share", () => {
+    expect(shareTitle("You", 12, 31, 39)).toBe("You · 12 of 31 · 39%");
+    expect(shareTitle("Teammates", 2400, 3000, 80)).toBe("Teammates · 2,400 of 3,000 · 80%");
   });
 });
 
@@ -72,7 +78,6 @@ describe("copy", () => {
       againstEmpty: "You haven't played against Sammy yet.",
       withColumn: "With Sammy",
       together: "together",
-      anyOfYou: "either",
       theirColumns: "Their column is their scoreboard only.",
     });
   });
@@ -92,7 +97,6 @@ describe("copy", () => {
       againstEmpty: "You haven't played against Kim and Lee on the same team yet.",
       withColumn: "With both",
       together: "with both",
-      anyOfYou: "any",
       theirColumns: "Their columns are their scoreboard only.",
     });
   });

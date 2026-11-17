@@ -1,7 +1,8 @@
 /* The match page: the session's match list on the side, then the match. */
 .split { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: var(--s4); margin-top: var(--s4); align-items: start; }
 .detail { display: grid; gap: var(--s4); min-width: 0; }
-.goals { margin-top: var(--s2); }
+/* The sections under the scoreboard: the grid's gap already spaces them. */
+.tight { margin-top: var(--s2); }
 .h3 { margin: 0 0 var(--s2); font-size: 15px; }
 .meta { display: block; font-size: 12px; font-weight: 400; color: var(--ink2); }
 .ico { width: 14px; height: 14px; margin-left: 4px; vertical-align: -2px; }

@@ -141,7 +141,7 @@ A CrossbarHit whose data equals the previous CrossbarHit's is dropped on read.
 
 A BallHit whose data equals the previous BallHit's is dropped on read.
 
-- **Writes**: `match_players.hardest_shot_kmh`, `match_players.woodwork_hits`, `match_players.aerial_touches`, `match_goals.toucher_key`, `match_goals.x`, `match_goals.y`, `match_goals.z`, `match_goals.distance`, `match_goals.deflected`, `match_goals.own_goal`
+- **Writes**: `match_players.hardest_shot_kmh`, `match_players.woodwork_hits`, `match_players.aerial_touches`, `match_players.touches_defence`, `match_players.touches_midfield`, `match_players.touches_attack`, `match_goals.toucher_key`, `match_goals.x`, `match_goals.y`, `match_goals.z`, `match_goals.distance`, `match_goals.deflected`, `match_goals.own_goal`
 - **Evidence**: The game repeats BallHit with identical data.
 - **Decided in**: `docs/decisions/2026-10-19-recorder-websocket-raw-store.md`, `docs/plans/2026-10-19-wp3a-recorder.md`
 ## Match
@@ -319,7 +319,7 @@ You, in a match, are the player whose PrimaryId is in my_ids and not rejected (a
 Only live play counts for the extras: from RoundStarted to the live GoalScored or MatchEnded, less pauses; a match joined in progress starts in play.
 
 - **Checks**: `extras_computed`
-- **Writes**: `match_players.hardest_shot_kmh`, `match_players.woodwork_hits`, `match_players.aerial_touches`, `match_players.car_ms`, `match_players.boost_avg`, `match_players.supersonic_ms`, `match_players.empty_boost_ms`, `match_goals.toucher_key`, `match_goals.x`, `match_goals.y`, `match_goals.z`, `match_goals.distance`, `match_goals.deflected`, `match_goals.own_goal`, `match_goals.aerial`
+- **Writes**: `match_players.hardest_shot_kmh`, `match_players.woodwork_hits`, `match_players.aerial_touches`, `match_players.touches_defence`, `match_players.touches_midfield`, `match_players.touches_attack`, `match_players.car_ms`, `match_players.boost_avg`, `match_players.supersonic_ms`, `match_players.empty_boost_ms`, `match_goals.toucher_key`, `match_goals.x`, `match_goals.y`, `match_goals.z`, `match_goals.distance`, `match_goals.deflected`, `match_goals.own_goal`, `match_goals.aerial`
 - **Evidence**: 212 of 212 BallHits in the completed fixture fell in live play; CrossbarHit fires in replays and on the podium too.
 - **Decided in**: `docs/decisions/2026-10-20-match-extras-play-view.md`, `docs/plans/2026-10-20-wp4b-match-extras.md`
 
@@ -327,7 +327,7 @@ Only live play counts for the extras: from RoundStarted to the live GoalScored o
 
 Every entry of BallHit.Players is a hitter, so a 50/50 credits both players.
 
-- **Writes**: `match_players.hardest_shot_kmh`, `match_players.aerial_touches`, `match_goals.toucher_key`, `match_goals.x`, `match_goals.y`, `match_goals.z`, `match_goals.distance`, `match_goals.deflected`, `match_goals.own_goal`
+- **Writes**: `match_players.hardest_shot_kmh`, `match_players.aerial_touches`, `match_players.touches_defence`, `match_players.touches_midfield`, `match_players.touches_attack`, `match_goals.toucher_key`, `match_goals.x`, `match_goals.y`, `match_goals.z`, `match_goals.distance`, `match_goals.deflected`, `match_goals.own_goal`
 - **Evidence**: 100 of 1,164 fixture hits list two players; crediting only the first made a kickoff 50/50 look like an own goal.
 - **Decided in**: `docs/decisions/2026-10-20-match-extras-play-view.md`, `docs/plans/2026-10-20-wp4b-match-extras.md`
 
@@ -336,7 +336,7 @@ Every entry of BallHit.Players is a hitter, so a 50/50 credits both players.
 A hit, shot, woodwork or goal-last-touch reference that isn't an object is missing and not counted; a player object off the roster counts as unresolved under its kind; a hit's non-object Players entry counts as an unidentified hitter.
 
 - **Checks**: `touches_resolved`
-- **Writes**: `match_players.hardest_shot_kmh`, `match_players.woodwork_hits`, `match_players.aerial_touches`, `match_goals.toucher_key`, `match_goals.x`, `match_goals.y`, `match_goals.z`, `match_goals.distance`, `match_goals.deflected`, `match_goals.own_goal`
+- **Writes**: `match_players.hardest_shot_kmh`, `match_players.woodwork_hits`, `match_players.aerial_touches`, `match_players.touches_defence`, `match_players.touches_midfield`, `match_players.touches_attack`, `match_goals.toucher_key`, `match_goals.x`, `match_goals.y`, `match_goals.z`, `match_goals.distance`, `match_goals.deflected`, `match_goals.own_goal`
 - **Evidence**: A stat credited to a guessed player would be wrong without a trace, so an unknown reference counts toward touches_resolved instead. No unresolved reference on the 46 captured matches.
 - **Decided in**: `docs/plans/2026-10-20-wp4b-match-extras.md`
 
@@ -354,7 +354,7 @@ A player's hit counts as a new touch only when someone else hit since their last
 
 - **Constants**: `TOUCH_MERGE_MS` = 1000
 - **Checks**: `extras_in_range`
-- **Writes**: `match_players.aerial_touches`
+- **Writes**: `match_players.aerial_touches`, `match_players.touches_defence`, `match_players.touches_midfield`, `match_players.touches_attack`
 - **Evidence**: The game sends a BallHit per contact, 1.2–1.8× its own touch count.
 - **Decided in**: `docs/decisions/2026-10-20-match-extras-play-view.md`, `docs/plans/2026-10-20-wp4b-match-extras.md`
 ## Extras
@@ -378,6 +378,16 @@ A counted touch is aerial when the ball is at least AERIAL_MIN_Z high and at lea
 - **Writes**: `match_players.aerial_touches`
 - **Evidence**: Every AerialGoal's scoring touch was at Z 558–1066 and all but 5 other goals at ≤ 430; 334 of 768 touches at Z ≥ 550 were within 300 of a wall. Some real aerials off the backboard are missed.
 - **Decided in**: `docs/decisions/2026-10-20-match-extras-play-view.md`, `docs/plans/2026-10-20-wp4b-match-extras.md`
+
+### `touch_thirds` · v1 · recorded
+
+Each counted touch with a ball position falls in a third of the pitch from the toucher's own goal, by the toucher's team at that hit (a hitter resolves only with a matching team; one that doesn't counts under touches_resolved): defence below −THIRD_Y, attack above THIRD_Y, midfield between (the cuts included). The thirds assume the standard pitch; on Hoops and Dropshot they are only approximate.
+
+- **Constants**: `THIRD_Y` = 1706.6666666666667, `GOAL_LINE_Y` = 5120
+- **Checks**: `touches_resolved`
+- **Writes**: `match_players.touches_defence`, `match_players.touches_midfield`, `match_players.touches_attack`
+- **Evidence**: Over 27 real sessions your touches leaned defensive (36–51% vs teammates' ~35%), and your team vs the opponents moved by a few points, tracking bad sessions. Counted touches are 0.97× the game's (median of 1,294 player-matches). Every one of 57,800 BallHit hitters on 284 matches had a team.
+- **Decided in**: `docs/decisions/2026-10-20-match-extras-play-view.md`, `docs/plans/2026-11-16-contribution-stats.md`
 
 ### `woodwork` · v1 · recorded
 

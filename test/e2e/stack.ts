@@ -62,9 +62,11 @@ const match = (guid: string, day: string, start: number, won: boolean, over: Mat
 /**
  * Your 4 goals and a hat trick: 3 more than the usual 1, so goals per game are 12% over the
  * baseline's and stand out. The goal you concede is aerial and deflected (your team touched it last).
+ * Your touches lean defensive (6/2/1 by third against everyone's usual 2/2/1), so the touch rows'
+ * percentages and order are checkable.
  */
 const HAT_TRICK: Parameters<typeof record>[2] = {
-  players: [player(ME, 0, { goals: 4 }), player(THEM, 1)],
+  players: [player(ME, 0, { goals: 4, extras: { ...player(ME, 0).extras, touches_defence: 6, touches_midfield: 2, touches_attack: 1 } }), player(THEM, 1)],
   statfeed: [
     { playerKey: ME, eventName: "Goal", count: 4 },
     { playerKey: ME, eventName: "HatTrick", count: 1 },

@@ -47,14 +47,19 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   tabs from a SharedWorker (`worker.ts`, in-page fallback in `client.ts`; it reads each status's `version`
   leniently first and posts it on its own), `live.ts` header state, `useLiveEvents.ts` refetch on events and
   one reload when the tracker's version changes (`logic/version-watch.ts`); `logic/` pure header logic; `components/` header and empty
-  state, `Icon.tsx` every dashboard icon by `IconKey` (`logic/icons.ts`; Lucide, Phosphor's ball, two drawn);
+  state, `Icon.tsx` every dashboard icon by `IconKey` (`logic/icons.ts`; Lucide, Phosphor's ball, two drawn),
+  `Contribution.tsx` the share bars (Friends and the recap), `TouchThirds.tsx` touches by third (`logic/thirds.ts`),
+  `Bars.module.css` their shared styles and `BarPct.tsx` a segment's % label that hides where it can't fit,
+  `ModeSwitch.tsx` the team size and Online/Private picker, `WlBar.tsx` a thin win/loss bar,
+  `PlaylistRecords.tsx` By playlist rows;
   `styles/tokens.css` themes carbon, slate, oled; `pages/` placeholders until WP6+),
   `src/tray/` (`Tray.cs` the C# 5 tray exe: polls `/api/tray` every 2 s, icon states, menu, balloons; `tray.manifest`
   DPI awareness; `icons/<channel>-<state>.ico` from `bun run icons`; built by `scripts/build-tray.ts`; live
   `tray.test.ts`),
   `src/shared/` (`channel.ts` the baked dev/prod channel and `APP_NAME`, `version.ts` the baked
   `GRINDLOG_VERSION` (null in dev and source runs), `release.ts` release version parsing and compare, installer name, the
-  minisign trusted comment and its parser, the update repo URLs, `update-key.ts` the baked `GRINDLOG_UPDATE_KEY`, `constants.ts`, `result.ts` your W/L, `playlists.ts` ID map, `goal-range.ts`
+  minisign trusted comment and its parser, the update repo URLs, `update-key.ts` the baked `GRINDLOG_UPDATE_KEY`, `constants.ts`, `result.ts` your W/L, `lobby.ts` a match's lines and `Thirds`, `contribution.ts`
+  the carry and per-session contribution (shares and touch thirds per mode), `playlists.ts` ID map, `goal-range.ts`
   close/mid/long, `periods.ts` local days and periods, `playlist-filter.ts` filter groups, `schemas/` API params
   and response shapes),
   `scripts/` (standalone `capture.ts`; `make-icons.ts` packs `src/web/assets/icon.svg` and
@@ -136,6 +141,11 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   Task Scheduler doesn't restart a crashed task.
 
 ## Plans
+- `docs/plans/2026-11-16-contribution-stats.md`: friends release step 6.1, contribution stats: the `touch_thirds`
+  rule and migration, `shared/contribution.ts`, the recap's Contribution and touches panels, the match page's
+  touch rows, named goal hovers; implementation notes per package and review log.
+- `docs/reviews/2026-11-16-contribution-stats.md`: step 6.1 review summary (two packages, 2 rounds each,
+  nothing deferred).
 - `docs/plans/2026-11-16-icons.md`: friends release step 6, icons: Lucide icon + text across the dashboard,
   the statfeed PNGs dropped, explicit icon keys instead of label matching; plan review and review log.
 - `docs/reviews/2026-11-16-icons.md`: step 6 icons review summary (2 rounds, nothing deferred).

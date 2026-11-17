@@ -1,7 +1,7 @@
 // The per-player extra stats as a registry: each entry is one match_players column and how it is
 // computed from the play view. The writer builds its column list from here, and a migration test
 // fails for an entry whose column doesn't exist.
-import { buildPlay, CAR_SAMPLE_CAP_MS, type CarSample, type GoalPoint, type Play, type Pos } from "./play";
+import { buildPlay, CAR_SAMPLE_CAP_MS, type CarSample, type GoalPoint, type Play, type Pos, type Touch } from "./play";
 import { GOAL_LINE_Y, SIDE_WALL_X } from "../../shared/constants";
 import type { StoredEvent } from "./store";
 import type { MatchSummary, RosterEntry } from "./summary";
@@ -21,6 +21,18 @@ export const AERIAL_MIN_Z = 550;
 export const WALL_MARGIN = 300;
 /** The corners are cut at 45°, so they bound |x| + |y|; this limit keeps the same margin off them. */
 export const CORNER_MAX_XY_SUM = 7640;
+
+/** The pitch in thirds along its length; the cuts at ±THIRD_Y belong to midfield. Standard pitch only. */
+export const THIRD_Y = GOAL_LINE_Y / 3;
+type Third = "defence" | "midfield" | "attack";
+
+/** A touch's third from the toucher's own goal (team 0 defends −Y); null without a team. */
+function thirdOf({ y, team }: Touch): Third | null {
+  if (team === null) return null;
+  const forward = team === 0 ? y : -y;
+  return forward < -THIRD_Y ? "defence" : forward > THIRD_Y ? "attack" : "midfield";
+}
+const touchesIn = (third: Third) => (play: Play, key: string) => (play.touches[key] ?? []).filter((t) => thirdOf(t) === third).length;
 
 const isAerial = ({ x, y, z }: Pos) =>
   z >= AERIAL_MIN_Z && Math.abs(x) <= SIDE_WALL_X - WALL_MARGIN && Math.abs(y) <= GOAL_LINE_Y - WALL_MARGIN && Math.abs(x) + Math.abs(y) <= CORNER_MAX_XY_SUM;
@@ -47,6 +59,10 @@ export const PLAYER_EXTRAS: readonly PlayerExtra[] = [
     // Counted from BallHits, while the touches come from the game's scoreboard.
     inRange: (n, r) => n <= r.stats.touches,
   },
+  // Counted touches by third. Their sum can fall short of the counted touches only for a touch with no team.
+  { column: "touches_defence", compute: touchesIn("defence"), inRange: null },
+  { column: "touches_midfield", compute: touchesIn("midfield"), inRange: null },
+  { column: "touches_attack", compute: touchesIn("attack"), inRange: null },
   {
     column: "car_ms",
     compute: (play, key) => carStat(play, key, (_, ms) => ms),

@@ -196,7 +196,12 @@ describe("readResults", () => {
 describe("readGoals", () => {
   test("every goal of the matches asked for, in order, with its position", () => {
     const { writer, reader } = setup();
-    writer.save(record("G", 1000, { goals: [goal(0, ME, { assisterKey: THEM, deflected: true }), goal(1, THEM, { ownGoal: true, toucherKey: null, pos: null, distance: null, aerial: true })] }));
+    writer.save(
+      record("G", 1000, {
+        players: [player(ME, 0, { name: "Me" }), player(THEM, 1, { name: "Them" })],
+        goals: [goal(0, ME, { assisterKey: THEM, deflected: true }), goal(1, THEM, { ownGoal: true, toucherKey: null, pos: null, distance: null, aerial: true })],
+      }),
+    );
     writer.save(record("H", 2000));
     writer.save(record("I", 3000));
     const goals = reader.readGoals(["G", "I"]);
@@ -211,7 +216,9 @@ describe("readGoals", () => {
       idx: 0,
       teamNum: 0,
       scorerKey: ME,
+      scorerName: "Me",
       assisterKey: THEM,
+      assisterName: "Them",
       toucherKey: ME,
       pos: { x: 10, y: -20, z: 93 },
       distance: 5000,
@@ -220,7 +227,7 @@ describe("readGoals", () => {
       aerial: false,
       ownGoal: false,
     });
-    expect(goals[1]).toMatchObject({ toucherKey: null, pos: null, distance: null, aerial: true, ownGoal: true });
+    expect(goals[1]).toMatchObject({ scorerName: "Them", assisterName: null, toucherKey: null, pos: null, distance: null, aerial: true, ownGoal: true });
     expect(reader.readGoals([])).toEqual([]);
   });
 });
@@ -247,9 +254,10 @@ describe("readMatch", () => {
       mvpKey: ME,
       checkFlags: ["x"],
     });
-    expect(m?.players.map((p) => [p.playerKey, p.isMe, p.isBot, p.presentAtEnd, p.hardestShotKmh])).toEqual([
-      [ME, true, false, true, 101.5],
-      [THEM, false, true, false, null],
+    expect(m?.players.map((p) => [p.playerKey, p.isMe, p.isBot, p.presentAtEnd, p.hardestShotKmh, p.thirds])).toEqual([
+      [ME, true, false, true, 101.5, [2, 2, 1]],
+      // Extras not computed: no thirds, rather than zeros.
+      [THEM, false, true, false, null, null],
     ]);
     expect(m?.result).toBe("win");
     expect(reader.readMatch("nope")).toBeNull();
@@ -372,20 +380,34 @@ describe("friends on your team", () => {
       result: "win",
       goalDiff: 2,
       sizes: { mine: 3, other: 2 },
-      me: { playerKey: ME, score: 300, goals: 2, assists: 1, saves: 2, shots: 2 },
-      myTeamTotals: { score: 550, goals: 3, assists: 7, saves: 6 },
+      me: { playerKey: ME, score: 300, goals: 2, assists: 1, saves: 2, shots: 2, thirds: [2, 2, 1] },
+      myTeamTotals: { score: 550, goals: 3, assists: 7, saves: 6, shots: 6 },
+      touches: { team: [6, 6, 3], opponents: [4, 4, 2] },
       mvpKey: SAM,
       mvpOnMyTeam: true,
       youSwitched: false,
     });
     expect(g1?.friends).toEqual([
-      { id: ALEX, playerKey: ALEX, side: "against", switched: false, score: 100, goals: 1, assists: 0, saves: 0, shots: 2 },
-      { id: SAM, playerKey: SAM, side: "with", switched: false, score: 200, goals: 1, assists: 2, saves: 3, shots: 2 },
+      { id: ALEX, playerKey: ALEX, side: "against", switched: false, score: 100, goals: 1, assists: 0, saves: 0, shots: 2, thirds: [2, 2, 1] },
+      { id: SAM, playerKey: SAM, side: "with", switched: false, score: 200, goals: 1, assists: 2, saves: 3, shots: 2, thirds: [2, 2, 1] },
     ]);
     // You switched and ended on team 1: Sam, seen on both, is with you; Alex, only on team 0, is against.
     expect(g2).toMatchObject({ result: "win", goalDiff: 2, youSwitched: true, mvpOnMyTeam: false, sizes: { mine: 1, other: 2 } });
     expect(g2?.friends.map((f) => [f.id, f.side, f.switched])).toEqual([[ALEX, "against", false], [SAM, "with", true]]);
     expect(g4).toMatchObject({ goalDiff: null, mvpKey: null, mvpOnMyTeam: null, friends: [] });
+  });
+
+  test("readLobbies: a guid range reads only those matches; a match with any player's thirds missing has no touch totals", () => {
+    const { writer, reader, addId } = setup();
+    addId(ME, "confirmed");
+    const uncomputed = { ...player(THEM, 1).extras, touches_defence: null, touches_midfield: null, touches_attack: null };
+    writer.save(record("G1", 1000, { players: [player(ME, 0), player(THEM, 1)] }));
+    writer.save(record("G2", 2000, { players: [player(ME, 0), player(THEM, 1, { extras: uncomputed })] }));
+    writer.save(record("G3", 3000, { players: [player(ME, 0), player(THEM, 1)] }));
+    const lobbies = reader.readLobbies([], { guids: ["G2", "G3"] });
+    expect(lobbies.map((m) => m.guid)).toEqual(["G2", "G3"]);
+    expect(lobbies[0]?.touches).toBeNull();
+    expect(lobbies[1]?.touches).toEqual({ team: [2, 2, 1], opponents: [2, 2, 1] });
   });
 
   test("readFriends: named by the nickname, else the name from their latest match, else the id; listed by name", () => {

@@ -1,11 +1,34 @@
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
-import { clock, dateLabel, dayLabel, decimal, durationText, monthLabel, ordinal, plural, SPEED_LABEL, speedIn, timeRange, whole } from "./format";
+import { clock, dateLabel, dayLabel, decimal, durationText, monthLabel, ordinal, pctText, plural, SPEED_LABEL, speedIn, timeRange, whole, wholeShares } from "./format";
 
 beforeAll(() => {
   vi.stubEnv("TZ", "UTC");
 });
 afterAll(() => {
   vi.unstubAllEnvs();
+});
+
+describe("wholeShares", () => {
+  test("whole percents that add up to 100: the leftover points go to the largest remainders, ties to the earlier", () => {
+    expect(wholeShares([1, 1, 1])).toEqual([34, 33, 33]);
+    expect(wholeShares([1, 6, 1])).toEqual([13, 75, 12]);
+    expect(wholeShares([1, 3, 4])).toEqual([13, 37, 50]);
+    expect(wholeShares([2, 1, 1])).toEqual([50, 25, 25]);
+    expect(wholeShares([5, 0, 0])).toEqual([100, 0, 0]);
+    expect(wholeShares([400, 300, 200, 100])).toEqual([40, 30, 20, 10]);
+  });
+
+  test("null with nothing to share", () => {
+    expect(wholeShares([0, 0])).toBeNull();
+    expect(wholeShares([])).toBeNull();
+  });
+});
+
+describe("pctText", () => {
+  test("a whole percent, or a dash for none", () => {
+    expect(pctText(40)).toBe("40%");
+    expect(pctText(null)).toBe("–");
+  });
 });
 
 describe("text", () => {

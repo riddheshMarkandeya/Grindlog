@@ -13,7 +13,7 @@ import {
   WEEK_START_DAY,
 } from "../../shared/constants";
 import { CLOSE_UNDER, LONG_FROM } from "../../shared/goal-range";
-import { AERIAL_MIN_Z, CORNER_MAX_XY_SUM, HARDEST_SHOT_MAX_KMH, WALL_MARGIN } from "../recorder/extras";
+import { AERIAL_MIN_Z, CORNER_MAX_XY_SUM, HARDEST_SHOT_MAX_KMH, THIRD_Y, WALL_MARGIN } from "../recorder/extras";
 import { CAR_SAMPLE_CAP_MS, TOUCH_MERGE_MS, WOODWORK_WINDOW_MS } from "../recorder/play";
 import { ORPHAN_TIMEOUT_MS } from "../recorder/lifecycle";
 import { UPDATE_STATE_INTERVAL_MS } from "../recorder/sampler";
@@ -76,13 +76,15 @@ const MAP = "docs/plans/2026-10-15-rl-tracker-features-map.md";
 const PLAN_WP5AA = "docs/plans/2026-10-21-wp5a-a-query-logic.md";
 const PLAN_WP6AA = "docs/plans/2026-10-26-wp6a-a-recap-navigation.md";
 const PLAN_WP6AC = "docs/plans/2026-10-27-wp6a-c-matches-and-match-page.md";
+const PLAN_CONTRIBUTION = "docs/plans/2026-11-16-contribution-stats.md";
 
 const p = (column: string) => `match_players.${column}`;
 const m = (column: string) => `matches.${column}`;
 const g = (column: string) => `match_goals.${column}`;
 
 const CAR_STATS = [p("car_ms"), p("boost_avg"), p("supersonic_ms"), p("empty_boost_ms")];
-const HIT_STATS = [p("hardest_shot_kmh"), p("woodwork_hits"), p("aerial_touches")];
+const TOUCH_THIRDS = [p("touches_defence"), p("touches_midfield"), p("touches_attack")];
+const HIT_STATS = [p("hardest_shot_kmh"), p("woodwork_hits"), p("aerial_touches"), ...TOUCH_THIRDS];
 const GOAL_POINT = [g("toucher_key"), g("x"), g("y"), g("z"), g("distance"), g("deflected"), g("own_goal")];
 const SCOREBOARD_STATS = ["score", "goals", "shots", "assists", "saves", "touches", "demos"].map(p);
 
@@ -485,7 +487,7 @@ export const RULES: readonly Rule[] = [
     evidence: "100 of 1,164 fixture hits list two players; crediting only the first made a kickoff 50/50 look like an own goal.",
     version: 1,
     applied: "recorded",
-    outputs: [p("hardest_shot_kmh"), p("aerial_touches"), ...GOAL_POINT],
+    outputs: [p("hardest_shot_kmh"), p("aerial_touches"), ...TOUCH_THIRDS, ...GOAL_POINT],
     refs: [ADR_EXTRAS, PLAN_WP4B],
   },
   {
@@ -518,7 +520,7 @@ export const RULES: readonly Rule[] = [
     evidence: "The game sends a BallHit per contact, 1.2–1.8× its own touch count.",
     version: 1,
     applied: "recorded",
-    outputs: [p("aerial_touches")],
+    outputs: [p("aerial_touches"), ...TOUCH_THIRDS],
     refs: [ADR_EXTRAS, PLAN_WP4B],
   },
   // extras
@@ -545,6 +547,18 @@ export const RULES: readonly Rule[] = [
     applied: "recorded",
     outputs: [p("aerial_touches")],
     refs: [ADR_EXTRAS, PLAN_WP4B],
+  },
+  {
+    id: "touch_thirds",
+    area: "extras",
+    rule: "Each counted touch with a ball position falls in a third of the pitch from the toucher's own goal, by the toucher's team at that hit (a hitter resolves only with a matching team; one that doesn't counts under touches_resolved): defence below −THIRD_Y, attack above THIRD_Y, midfield between (the cuts included). The thirds assume the standard pitch; on Hoops and Dropshot they are only approximate.",
+    constants: { THIRD_Y, GOAL_LINE_Y },
+    checks: ["touches_resolved"],
+    evidence: "Over 27 real sessions your touches leaned defensive (36–51% vs teammates' ~35%), and your team vs the opponents moved by a few points, tracking bad sessions. Counted touches are 0.97× the game's (median of 1,294 player-matches). Every one of 57,800 BallHit hitters on 284 matches had a team.",
+    version: 1,
+    applied: "recorded",
+    outputs: TOUCH_THIRDS,
+    refs: [ADR_EXTRAS, PLAN_CONTRIBUTION],
   },
   {
     id: "woodwork",

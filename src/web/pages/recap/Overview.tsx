@@ -1,6 +1,6 @@
 // The recap's Overview: scorebug, the remarks and the change against the 30-day average, the
-// tiles, the match cards, then per-game stats (the stats that stood out marked "!") beside by
-// playlist, the goal map, extras and highlights.
+// tiles, the match cards, per-game stats (the stats that stood out marked "!"), then the goal map
+// beside by playlist, Contribution and the touches, then extras and highlights.
 import { useEffect, useId, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Link } from "react-router";
 import { filterValue, type PlaylistFilter } from "../../../shared/playlist-filter";
@@ -36,6 +36,7 @@ import {
 import { fillRemark } from "../../logic/remarks";
 import { useRemarks, useRerollRemarks, useSettings } from "../../queries";
 import styles from "./Overview.module.css";
+import { ContributionSections, PlaylistBars } from "./SessionShares";
 
 export function Overview({ detail, summary, filter, teammate }: { detail: SessionDetail; summary: SessionSummary; filter: PlaylistFilter; teammate: TeammateFilter }) {
   const matchPath = (guid: string) => recapPath(detail.key, filter, { match: guid }, teammate);
@@ -44,14 +45,8 @@ export function Overview({ detail, summary, filter, teammate }: { detail: Sessio
       <RecapScorebug detail={detail} summary={summary} />
       <Headline detail={detail} filter={filter} teammate={teammate} />
       <MatchCards matches={detail.matches} matchPath={matchPath} />
-      <PerGameAndPlaylists detail={detail} />
-      {detail.goals.length > 0 && (
-        <Section title="Where the goals came from">
-          <div className="panel">
-            <GoalMap matches={detail.matches} goals={detail.goals} viewKey={detail.key} hrefFor={matchPath} />
-          </div>
-        </Section>
-      )}
+      <PerGame detail={detail} />
+      <GoalsAndShares detail={detail} teammate={teammate} matchPath={matchPath} />
       <ExtrasSection agg={detail.aggregate} matches={detail.matches} heading="Extras" />
     </>
   );
@@ -213,37 +208,44 @@ function PerGameCards({ cards, detail }: { cards: ReturnType<typeof perGameCards
   );
 }
 
-/** Per game and by playlist share a row on a wide screen, each alone or stacked otherwise. */
-function PerGameAndPlaylists({ detail }: { detail: SessionDetail }) {
+function PerGame({ detail }: { detail: SessionDetail }) {
   const cards = perGameCards(detail.aggregate, detail.baseline);
-  const hasCards = cards.length > 0;
-  const rows = playlistRows(detail.byPlaylist);
-  if (!hasCards && rows === null) return null;
+  if (!cards.length) return null;
   return (
-    <div className={cx(styles.side, hasCards && rows !== null && styles.both)}>
-      {hasCards && (
-        <Section title={detail.baseline.matches > 0 ? "Per game vs your 30-day average" : "Per game"} className={styles.cell}>
-          <PerGameCards cards={cards} detail={detail} />
-        </Section>
-      )}
-      {rows !== null && (
-        <Section title="By playlist" className={styles.cell}>
-          <div className={cx("panel", styles.playlists)}>
-            <table className="table num">
-              <thead><tr><th scope="col">Playlist</th><th scope="col">W–L</th><th scope="col">Win %</th><th scope="col">Goals/g</th></tr></thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={String(r.playlistId)}>
-                    <th scope="row">{r.name}</th>
-                    <td>{r.wins === null || r.losses === null ? "–" : `${String(r.wins)}–${String(r.losses)}`}</td>
-                    <td>{r.winPct === null ? "–" : `${String(r.winPct)}%`}</td>
-                    <td>{r.goalsPerGame === null ? "–" : decimal(r.goalsPerGame)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+    <Section title={detail.baseline.matches > 0 ? "Per game vs your 30-day average" : "Per game"}>
+      <PerGameCards cards={cards} detail={detail} />
+    </Section>
+  );
+}
+
+/**
+ * The goal map at about 3/5 width and, beside it, By playlist (two playlists or more) then
+ * Contribution and the touches (a session with a mode). Either side alone takes the full width.
+ */
+function GoalsAndShares({ detail, teammate, matchPath }: { detail: SessionDetail; teammate: TeammateFilter; matchPath: (guid: string) => string }) {
+  const rows = playlistRows(detail.byPlaylist);
+  const c = detail.contribution;
+  const goals = detail.goals.length > 0;
+  const right = rows !== null || c !== null;
+  if (!goals && !right) return null;
+  // The teammate filter's friends in its order, which is the order of the per-person shares.
+  const names = new Map(detail.friendsPresent.map((f) => [f.id, f.name]));
+  const friends = typeof teammate === "object" ? teammate.friends.map((id) => ({ id, name: names.get(id) ?? "Friend" })) : [];
+  return (
+    <div className={cx(styles.middle, goals && right && styles.both)}>
+      {goals && (
+        <Section title="Where the goals came from" className={styles.cell}>
+          <div className="panel">
+            <GoalMap matches={detail.matches} goals={detail.goals} viewKey={detail.key} hrefFor={matchPath} />
           </div>
         </Section>
+      )}
+      {right && (
+        <div className={styles.col}>
+          {rows !== null && <PlaylistBars rows={rows} />}
+          {/* Keyed by session: the mode pick survives a filter change, not a move to another session. */}
+          {c !== null && <ContributionSections key={detail.key} contribution={c} friends={friends} />}
+        </div>
       )}
     </div>
   );

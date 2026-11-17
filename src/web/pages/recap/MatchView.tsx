@@ -1,5 +1,6 @@
 // One match of the session: the session's match list on the side, then the match's header, its flag
-// note, the scoreboard (every player, from the match's own query), its goal map and your extras.
+// note, the scoreboard (every player, from the match's own query), where everyone's touches were, its
+// goal map and your extras.
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { Link } from "react-router";
 import { aggregate } from "../../../shared/aggregate";
@@ -12,9 +13,11 @@ import { cx } from "../../components/cx";
 import { GoalMap } from "../../components/GoalMap";
 import { Icon, IconLabel } from "../../components/Icon";
 import { Section } from "../../components/Section";
+import { TouchThirds } from "../../components/TouchThirds";
 import { filterValue } from "../../../shared/playlist-filter";
 import { clock, whole } from "../../logic/format";
 import { flagLines, flagShort, isMyMvp, letter, matchLabel, recapPath, resultWord, scoreboardTeams, scoreFor, type ScoreTeam } from "../../logic/recap";
+import { matchThirdRows, standardPitch } from "../../logic/thirds";
 import { useMatchDetail, useSettings } from "../../queries";
 import { ExtrasSection } from "./Overview";
 import styles from "./MatchView.module.css";
@@ -112,8 +115,9 @@ function Match({ detail, m, n }: { detail: SessionDetail; m: MyMatchWire; n: num
         </div>
       )}
       <Scoreboard guid={m.guid} />
+      {standardPitch(m.playlistId) && <MatchTouches guid={m.guid} />}
       {goals.length > 0 && (
-        <Section title="Where the goals came from" className={styles.goals}>
+        <Section title="Where the goals came from" className={styles.tight}>
           <div className="panel">
             {/* The session's matches, so each mark's title numbers its match as the cards do. */}
             <GoalMap matches={detail.matches} goals={goals} viewKey={m.guid} />
@@ -181,6 +185,24 @@ function PlayerRow({ p }: { p: MatchDetail["players"][number] }) {
       <th scope="row">{p.name}{p.isMe && " (you)"}{p.isBot && <span className={styles.meta}> bot</span>}</th>
       <td>{whole(p.score)}</td><td>{p.goals}</td><td>{p.assists}</td><td>{p.saves}</td><td>{p.shots}</td>
     </tr>
+  );
+}
+
+/** Each player's touches by third, from the scoreboard's query; nothing until it has loaded (the scoreboard shows the wait). */
+function MatchTouches({ guid }: { guid: string }) {
+  const { data } = useMatchDetail(guid);
+  if (!data) return null;
+  const rows = matchThirdRows(data.players);
+  return (
+    <Section title="Where the touches were" className={styles.tight}>
+      <div className="panel">
+        {rows === null ? <p className="muted">No touch data for this match.</p> : (
+          <TouchThirds rows={rows} counts>
+            Each player's counted touches, split into thirds from their own goal, with their total at the end. Hover a bar for each third.
+          </TouchThirds>
+        )}
+      </div>
+    </Section>
   );
 }
 

@@ -126,7 +126,7 @@ export function stoodOutNote(rank: number, vs: Vs): string {
   return `Your ${RANK[rank] ?? RANK[2]} change from your 30-day average this session: ${vs.pct < 0 ? "down" : "up"} ${String(Math.abs(vs.pct))}%. Up to ${String(RANK.length)} stats ${String(STOOD_OUT_MIN_PCT)}% or more off average are marked.`;
 }
 
-export interface PlaylistRow { playlistId: number | null; name: string; wins: number | null; losses: number | null; winPct: number | null; goalsPerGame: number | null }
+export interface PlaylistRow { playlistId: number | null; name: string; wins: number | null; losses: number | null; winPct: number | null }
 
 /** A row per playlist; null with fewer than two, where it would repeat the session. */
 export function playlistRows(byPlaylist: SessionDetail["byPlaylist"]): PlaylistRow[] | null {
@@ -137,7 +137,6 @@ export function playlistRows(byPlaylist: SessionDetail["byPlaylist"]): PlaylistR
     wins: a.wins,
     losses: a.losses,
     winPct: a.winPct === null ? null : pct(a.winPct),
-    goalsPerGame: a.perGame.goals,
   }));
 }
 

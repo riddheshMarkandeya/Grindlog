@@ -1,4 +1,5 @@
-.wrap { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--s5); align-items: start; }
+/* Capped so a full-width match page draws the pitch no bigger than the recap's column does. */
+.wrap { display: flex; flex-direction: column; gap: var(--s4); max-width: 760px; }
 .pitch { display: block; width: 100%; height: auto; }
 
 .field { fill: var(--surf2); stroke: var(--line); }
@@ -19,7 +20,7 @@
 .key { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); margin: var(--s2) 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--ink2); }
 .key li { display: flex; align-items: center; gap: 6px; }
 
-.summary { display: flex; flex-direction: column; gap: var(--s3); }
+.summary { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s5); }
 .h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 var(--s1); font-size: 15px; }
 .note { margin: 0; font-size: 12px; font-weight: 400; color: var(--ink2); }
 .bar { display: flex; gap: 2px; height: 12px; margin-bottom: var(--s1); }
@@ -30,6 +31,6 @@
 .mid { opacity: .65; }
 .long { opacity: .35; }
 
-@media (max-width: 720px) {
-  .wrap { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 360px) {
+  .summary { grid-template-columns: minmax(0, 1fr); gap: var(--s3); }
 }

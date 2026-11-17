@@ -1,8 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { friendCard, friendView, modeOf, playlistLabel, type LobbyFriend, type LobbyMatch } from "./friend-stats";
+import { modeOf } from "./lobby";
+import { friendCard, friendView, playlistLabel } from "./friend-stats";
+import type { LobbyFriend, LobbyMatch } from "./lobby";
 
 const SAM = "Epic|sam|0";
-const line = (score: number, goals = 0, playerKey = "Epic|me|0") => ({ playerKey, score, goals, assists: 0, saves: 0, shots: goals });
+const line = (score: number, goals = 0, playerKey = "Epic|me|0") => ({ playerKey, score, goals, assists: 0, saves: 0, shots: goals, thirds: null });
 const sam = (side: LobbyFriend["side"], score = 200, goals = 0, over: Partial<LobbyFriend> = {}): LobbyFriend => ({ ...line(score, goals, SAM), id: SAM, side, switched: false, ...over });
 
 let clock = 1_000_000;
@@ -19,7 +21,8 @@ const match = (over: Partial<LobbyMatch> = {}): LobbyMatch => {
     goalDiff: 2,
     sizes: { mine: 2, other: 2 },
     me: line(300, 1),
-    myTeamTotals: { score: 500, goals: 1, assists: 0, saves: 0 },
+    myTeamTotals: { score: 500, goals: 1, assists: 0, saves: 0, shots: 1 },
+    touches: null,
     mvpKey: null,
     mvpOnMyTeam: null,
     youSwitched: false,
@@ -128,14 +131,14 @@ describe("with: modes", () => {
 
   test("carry: you, them and the rest of the team; switched matches are left out", () => {
     const ms = [
-      won({ playlistId: 13, sizes: { mine: 3, other: 3 }, me: { ...line(300, 2), assists: 1, saves: 3 }, myTeamTotals: { score: 900, goals: 3, assists: 5, saves: 6 }, friends: [sam("with", 400, 1, { assists: 2, saves: 1 })], mvpKey: SAM, mvpOnMyTeam: true }),
-      won({ playlistId: 13, sizes: { mine: 3, other: 3 }, me: { ...line(500, 1), saves: 2 }, myTeamTotals: { score: 1000, goals: 2, assists: 2, saves: 4 }, friends: [sam("with", 100, 0, { assists: 1 })], mvpKey: "Epic|me|0", mvpOnMyTeam: true }),
-      won({ playlistId: 13, sizes: { mine: 3, other: 3 }, myTeamTotals: { score: 900, goals: 3, assists: 1, saves: 1 }, mvpKey: "Epic|x|0", mvpOnMyTeam: true }),
-      won({ playlistId: 13, sizes: { mine: 3, other: 3 }, myTeamTotals: { score: 100, goals: 0, assists: 9, saves: 9 }, friends: [sam("with", 999, 9, { switched: true })] }),
-      won({ playlistId: 13, sizes: { mine: 3, other: 3 }, myTeamTotals: { score: 100, goals: 0, assists: 9, saves: 9 }, youSwitched: true }),
+      won({ playlistId: 13, sizes: { mine: 3, other: 3 }, me: { ...line(300, 2), assists: 1, saves: 3, thirds: [2, 1, 1] }, myTeamTotals: { score: 900, goals: 3, assists: 5, saves: 6, shots: 3 }, touches: { team: [5, 3, 2], opponents: [4, 4, 4] }, friends: [sam("with", 400, 1, { assists: 2, saves: 1, thirds: [1, 1, 1] })], mvpKey: SAM, mvpOnMyTeam: true }),
+      won({ playlistId: 13, sizes: { mine: 3, other: 3 }, me: { ...line(500, 1), saves: 2 }, myTeamTotals: { score: 1000, goals: 2, assists: 2, saves: 4, shots: 2 }, friends: [sam("with", 100, 0, { assists: 1 })], mvpKey: "Epic|me|0", mvpOnMyTeam: true }),
+      won({ playlistId: 13, sizes: { mine: 3, other: 3 }, myTeamTotals: { score: 900, goals: 3, assists: 1, saves: 1, shots: 3 }, mvpKey: "Epic|x|0", mvpOnMyTeam: true }),
+      won({ playlistId: 13, sizes: { mine: 3, other: 3 }, myTeamTotals: { score: 100, goals: 0, assists: 9, saves: 9, shots: 0 }, friends: [sam("with", 999, 9, { switched: true })] }),
+      won({ playlistId: 13, sizes: { mine: 3, other: 3 }, myTeamTotals: { score: 100, goals: 0, assists: 9, saves: 9, shots: 0 }, youSwitched: true }),
     ];
     const carry = friendView(ms, [SAM], () => null).with.modes[0]?.carry;
-    expect(carry).toEqual({ matches: 3, score: [1100, 700, 1000], goals: [4, 1, 3], assists: [1, 3, 4], saves: [5, 1, 5], mvps: [1, 1, 1] });
+    expect(carry).toEqual({ matches: 3, touchMatches: 1, score: [1100, 700, 1000], goals: [4, 1, 3], assists: [1, 3, 4], saves: [5, 1, 5], shots: [4, 1, 3], touches: [4, 3, 3], mvps: [1, 1, 1] });
   });
 
   test("compare: per match with them, without them at the same mode (as an opponent too), and theirs", () => {
@@ -207,12 +210,12 @@ describe("a pair", () => {
 
   test("carry: you, each friend in order, then a non-zero rest; a match where either switched is left out", () => {
     const ms = [
-      quads({ me: line(300, 2), myTeamTotals: { score: 1000, goals: 4, assists: 0, saves: 0 }, friends: [sam("with", 200, 1), alex("with", 100, 0)], mvpKey: ALEX, mvpOnMyTeam: true }),
-      quads({ me: line(100, 0), myTeamTotals: { score: 600, goals: 1, assists: 0, saves: 0 }, friends: [alex("with", 50, 0), sam("with", 50, 0)], mvpKey: "Epic|x|0", mvpOnMyTeam: true }),
-      quads({ myTeamTotals: { score: 9999, goals: 9, assists: 0, saves: 0 }, friends: [sam("with"), alex("with", 999, 9, { switched: true })] }),
+      quads({ me: line(300, 2), myTeamTotals: { score: 1000, goals: 4, assists: 0, saves: 0, shots: 4 }, friends: [sam("with", 200, 1), alex("with", 100, 0)], mvpKey: ALEX, mvpOnMyTeam: true }),
+      quads({ me: line(100, 0), myTeamTotals: { score: 600, goals: 1, assists: 0, saves: 0, shots: 1 }, friends: [alex("with", 50, 0), sam("with", 50, 0)], mvpKey: "Epic|x|0", mvpOnMyTeam: true }),
+      quads({ myTeamTotals: { score: 9999, goals: 9, assists: 0, saves: 0, shots: 9 }, friends: [sam("with"), alex("with", 999, 9, { switched: true })] }),
     ];
     const carry = friendView(ms, [SAM, ALEX], () => null).with.modes[0]?.carry;
-    expect(carry).toMatchObject({ matches: 2, score: [400, 250, 150, 800], goals: [2, 1, 0, 2], mvps: [0, 0, 1, 1] });
+    expect(carry).toEqual({ matches: 2, touchMatches: 0, score: [400, 250, 150, 800], goals: [2, 1, 0, 2], assists: [0, 0, 0, 0], saves: [0, 0, 0, 0], shots: [2, 1, 0, 2], touches: [0, 0, 0, 0], mvps: [0, 0, 1, 1] });
   });
 
   test("compare: one line per friend, and without leaves out a match where only one of them was on your team", () => {

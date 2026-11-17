@@ -6,7 +6,17 @@ All notable changes to Grindlog are listed here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- Contribution on the recap: your share of your team's score, goals, assists, saves, shots, touches and MVPs this
+  session, per team size, with filtered friends broken out. Beside it, "Where the touches were": you, friends,
+  teammates and opponents split into defence, midfield and attack thirds.
+- The match page shows each player's touches by third under the scoreboard (not on Hoops, Dropshot or Knockout).
+- Goal map hovers name the scorer and the assister.
+
 ### Changed
+- Friends' Contribution panel (renamed from "Who carries") gains Shots and Touches rows and a hover with each
+  share's numbers; "Teammate"/"Teammates" replace "Others" and "3rd teammate".
+- The goal map has one layout on both pages: the pitch, then Scored and Conceded side by side.
 - Icons across the dashboard: the nav, buttons, stat cards and tiles, match rows and markers. They replace the
   game's statfeed icons, and the share card marks its stood-out line with a trend arrow.
 

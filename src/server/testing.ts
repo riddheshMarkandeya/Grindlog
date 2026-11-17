@@ -56,7 +56,7 @@ export const player = (key: string, teamNum: TeamNum, over: Partial<PlayerRow> =
   saves: 0,
   touches: 5,
   demos: 0,
-  extras: { hardest_shot_kmh: 101.5, woodwork_hits: 1, aerial_touches: 2, car_ms: 1000, boost_avg: 33, supersonic_ms: 100, empty_boost_ms: 50 },
+  extras: { hardest_shot_kmh: 101.5, woodwork_hits: 1, aerial_touches: 2, car_ms: 1000, boost_avg: 33, supersonic_ms: 100, empty_boost_ms: 50, touches_defence: 2, touches_midfield: 2, touches_attack: 1 },
   ...over,
 });
 

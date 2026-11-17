@@ -278,8 +278,8 @@ describe("playlistRows", () => {
       { playlistId: 11, aggregate: agg({ wins: 3, losses: 1, winPct: 0.75, perGame: { ...agg({}).perGame, goals: 1.25 } }) },
       { playlistId: null, aggregate: agg({ wins: 0, losses: 0, winPct: null }) },
     ])).toEqual([
-      { playlistId: 11, name: "Ranked Doubles", wins: 3, losses: 1, winPct: 75, goalsPerGame: 1.25 },
-      { playlistId: null, name: "Unknown playlist", wins: 0, losses: 0, winPct: null, goalsPerGame: 1 },
+      { playlistId: 11, name: "Ranked Doubles", wins: 3, losses: 1, winPct: 75 },
+      { playlistId: null, name: "Unknown playlist", wins: 0, losses: 0, winPct: null },
     ]);
   });
   test("an empty aggregate's null record stays null, not a made-up 0–0", () => {

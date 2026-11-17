@@ -67,3 +67,21 @@ export const plural = (n: number, one: string, many = `${one}s`): string => `${w
 export const WHOLE_FROM = 100;
 /** Whole from 100, else up to 2 decimals with trailing zeros dropped: "12,345", "413", "1.04", "1.5". */
 export const decimal = (v: number): string => (v >= WHOLE_FROM ? whole(v) : String(Math.round(v * 100) / 100));
+
+/**
+ * Whole percents of the total that add up to exactly 100 (largest remainder; ties to the earlier
+ * share), so stacked segments fill their bar and each label matches its drawn width. Null for none.
+ */
+export function wholeShares(counts: readonly number[]): number[] | null {
+  const total = counts.reduce((a, b) => a + b, 0);
+  if (total === 0) return null;
+  const exact = counts.map((c) => (100 * c) / total);
+  const out = exact.map(Math.floor);
+  const left = 100 - out.reduce((a, b) => a + b, 0);
+  // Fewer leftover points than shares, so each of the `left` largest remainders gets one.
+  const bumped = new Set(exact.map((e, i) => ({ i, r: e - Math.floor(e) })).sort((a, b) => b.r - a.r || a.i - b.i).slice(0, left).map((x) => x.i));
+  return out.map((v, i) => (bumped.has(i) ? v + 1 : v));
+}
+
+/** A whole percent as text; a dash for none. */
+export const pctText = (p: number | null): string => (p === null ? "–" : `${String(p)}%`);

@@ -11,7 +11,9 @@ const goal = (matchGuid: string, over: Partial<Goal>): Goal => ({
   idx: idx++,
   teamNum: 0,
   scorerKey: "me",
+  scorerName: "Me",
   assisterKey: null,
+  assisterName: null,
   toucherKey: "me",
   pos: { x: 0, y: 4000, z: 93 },
   distance: 1200,
@@ -47,8 +49,8 @@ describe("goalMarks", () => {
     const ms = [match("a", 0), match("b", 1)];
     const { marks, skipped } = goalMarks(ms, [
       goal("a", {}),
-      goal("a", { scorerKey: "mate", deflected: true, speedKmh: null }),
-      goal("b", { teamNum: 0, scorerKey: "opp", pos: { x: 0, y: -2000, z: 700 }, distance: 7120, aerial: true, deflected: true }),
+      goal("a", { scorerKey: "mate", scorerName: "Sam", assisterKey: "me", assisterName: "Me", deflected: true, speedKmh: null }),
+      goal("b", { teamNum: 0, scorerKey: "opp", scorerName: "Rival", assisterKey: "opp2", assisterName: "Other", pos: { x: 0, y: -2000, z: 700 }, distance: 7120, aerial: true, deflected: true }),
     ], KMH);
     expect(skipped).toEqual([]);
     expect(marks.map((m) => [m.matchGuid, m.side, m.yours, m.aerial, m.deflected])).toEqual([
@@ -57,15 +59,25 @@ describe("goalMarks", () => {
       ["b", "conceded", false, true, true],
     ]);
     expect(marks.map((m) => m.title)).toEqual([
-      "Match 1 · your goal · 112 km/h · 12 m out",
-      "Match 1 · a teammate's goal · 12 m out · an opponent touched it last",
-      "Match 2 · conceded · 112 km/h · 71 m out · aerial, 7 m up · your team touched it last",
+      "Match 1 · you scored · 112 km/h · 12 m out",
+      "Match 1 · Sam scored, assisted by you · 12 m out · an opponent touched it last",
+      "Match 2 · conceded: Rival scored, assisted by Other · 112 km/h · 71 m out · aerial, 7 m up · your team touched it last",
     ]);
+  });
+
+  test("a scorer with no name (no player row for the key) keeps the plain wording; you are always named", () => {
+    const { marks } = goalMarks([match("a", 0)], [
+      goal("a", { scorerName: null }),
+      goal("a", { scorerKey: "mate", scorerName: null, assisterKey: "me", assisterName: "Me" }),
+      goal("a", { teamNum: 1, scorerKey: "opp", scorerName: null }),
+      goal("a", { scorerKey: "mate", scorerName: "Sam", assisterKey: "ghost", assisterName: null }),
+    ], KMH);
+    expect(marks.map((m) => m.title.split(" · ")[1])).toEqual(["you scored", "a teammate's goal", "conceded", "Sam scored"]);
   });
 
   test("a goal's speed in the speed setting's unit", () => {
     const { marks } = goalMarks([match("a", 0)], [goal("a", {})], { ...KMH, speed: "mph" });
-    expect(marks[0]?.title).toBe("Match 1 · your goal · 70 mph · 12 m out");
+    expect(marks[0]?.title).toBe("Match 1 · you scored · 70 mph · 12 m out");
   });
 
   test("own goals and unplaced goals get no mark", () => {

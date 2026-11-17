@@ -13,12 +13,13 @@ import { cx } from "../../components/cx";
 import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { Section } from "../../components/Section";
+import { WlBar } from "../../components/WlBar";
 import { dateLabel, plural } from "../../logic/format";
-import { recordText } from "../../logic/friends";
+import { recordLabel, recordText } from "../../logic/friends";
 import { useAddFriend, useFriendPairs, useFriends, useNeverSuggest, useNeverSuggested, useSuggestAgain, useSuggestions } from "../../queries";
 import styles from "./Friends.module.css";
 import { pairPath } from "./PairPage";
-import { focusTo, recordLabel, warnFailed, WlBar } from "./parts";
+import { focusTo, warnFailed } from "./parts";
 
 export const friendPath = (id: string) => `/friends/${encodeURIComponent(id)}`;
 

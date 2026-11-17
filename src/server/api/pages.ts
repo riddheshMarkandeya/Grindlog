@@ -8,6 +8,7 @@ import { inFilter, playlistsPresent, type PlaylistFilter } from "../../shared/pl
 import { pairKey, withTeammate, type TeammateFilter } from "../../shared/teammate-filter";
 import type { FriendCard, FriendDetail, FriendPair, FriendSuggestions, LatestSession, NeverSuggested, MatchDetail, MonthFolds, PairDetail, PeriodView, PlayedDays, SessionDetail, SessionList, SessionSummary } from "../../shared/schemas/responses";
 import { aggregate, baseline, byPlaylist, type MyMatch } from "../../shared/aggregate";
+import { sessionContribution } from "../../shared/contribution";
 import { friendCard, friendView, together } from "../../shared/friend-stats";
 import type { Logger } from "../log";
 import { bucketKind, buckets, previousRange, rollingWindows, trendStats } from "../../shared/trends";
@@ -117,6 +118,8 @@ export function createPages({ reader, logger, now }: { reader: QueryReader; logg
     const before = reader.readMyMatches({ from: daysBefore(session.startedAt, BASELINE_DAYS), to: session.startedAt }).filter(yours(filter, teammate));
     // Under the playlist filter only, so a friend offered in the dropdown never filters to nothing.
     const present = new Set(rows.filter(yours(filter)).flatMap((m) => m.friends));
+    // The teammate filter's friends are broken out in Contribution; anyone and solo break out nobody.
+    const ids = typeof teammate === "object" ? teammate.friends : [];
     const friendsPresent = reader
       .readFriends()
       .filter((f) => present.has(f.id))
@@ -135,6 +138,7 @@ export function createPages({ reader, logger, now }: { reader: QueryReader; logg
       friendsPresent,
       baseline: baseline(before, session.startedAt),
       goals: reader.readGoals(matches.map((m) => m.guid)),
+      contribution: sessionContribution(reader.readLobbies(ids, { guids: matches.map((m) => m.guid) }), ids),
       // By time, so a session with nothing under the filter still has neighbours.
       prev: listed.findLast((s) => s.startedAt < session.startedAt)?.key ?? null,
       next: listed.find((s) => s.startedAt > session.startedAt)?.key ?? null,

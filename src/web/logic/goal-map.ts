@@ -38,6 +38,7 @@ interface Sided {
   /** 1-based position in the session, as on the match cards. */
   match: number;
   myTeam: number;
+  meKey: string;
   side: Side;
   yours: boolean;
 }
@@ -56,18 +57,28 @@ function sided(matches: readonly MyMatchWire[], goals: readonly Goal[]): { goals
       continue;
     }
     const side = goal.teamNum === me.teamNum ? "scored" : "conceded";
-    out.push({ goal, match: found.n, myTeam: me.teamNum, side, yours: side === "scored" && goal.scorerKey === me.playerKey });
+    out.push({ goal, match: found.n, myTeam: me.teamNum, meKey: me.playerKey, side, yours: side === "scored" && goal.scorerKey === me.playerKey });
   }
   return { goals: out, skipped: [...skipped].map(([guid, n]) => ({ guid, goals: n })) };
 }
 
 const metres = (uu: number) => `${String(Math.round(uu / 100))} m`;
 
-function titleOf({ goal, match, side, yours }: Sided, distance: number, z: number, units: Units): string {
-  const who = side === "conceded" ? "conceded" : yours ? "your goal" : "a teammate's goal";
+/** Who scored and assisted, "you" for you; with no name for the scorer, just whose goal it was. */
+function whoOf({ goal, meKey, side }: Sided): string {
+  const name = (key: string | null, n: string | null) => (key === meKey ? "you" : n);
+  const scorer = name(goal.scorerKey, goal.scorerName);
+  if (scorer === null) return side === "conceded" ? "conceded" : "a teammate's goal";
+  const assister = name(goal.assisterKey, goal.assisterName);
+  const scored = `${scorer} scored${assister === null ? "" : `, assisted by ${assister}`}`;
+  return side === "conceded" ? `conceded: ${scored}` : scored;
+}
+
+function titleOf(s: Sided, distance: number, z: number, units: Units): string {
+  const { goal, match, side } = s;
   return [
     `Match ${String(match)}`,
-    who,
+    whoOf(s),
     goal.speedKmh !== null && `${String(Math.round(speedIn(goal.speedKmh, units.speed)))} ${SPEED_LABEL[units.speed]}`,
     `${metres(distance)} out`,
     // Height only for aerials: z is the ball's centre, so a ground ball would read "1 m up".

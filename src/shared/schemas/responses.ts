@@ -2,7 +2,9 @@
 // web parses with them, so a shape change is a type error on both sides.
 import { z } from "zod";
 import { FLAG_REASONS } from "../flags";
-import { MODE_ORDER, type FriendView } from "../friend-stats";
+import type { SessionContribution } from "../contribution";
+import { MODE_ORDER } from "../lobby";
+import type { FriendView } from "../friend-stats";
 import type { Season } from "../periods";
 import type { TrendStats } from "../trends";
 
@@ -81,12 +83,36 @@ export const myMatchSchema = z.object({
   friends: z.array(z.string()),
 });
 
+/** Counted touches by third from the player's own goal: defence, midfield, attack. */
+export const thirds = z.tuple([z.number(), z.number(), z.number()]);
+
+/** Per-person arrays: [you, ...friends, the rest of your team]. */
+const shares = z.array(z.number());
+const carrySchema = z.object({ matches: z.number(), touchMatches: z.number(), score: shares, goals: shares, assists: shares, saves: shares, shots: shares, touches: shares, mvps: shares });
+
+/** A session split by mode (`sessionContribution` in shared/contribution); null with no mode at all. */
+const contributionSchema = z.object({
+  modes: z.array(
+    z.object({
+      mode: z.enum(MODE_ORDER),
+      matches: z.number(),
+      carry: carrySchema,
+      /** Over `carry.touchMatches`: [you, ...friends, the rest of your team, the opponents]. */
+      thirds: z.array(thirds),
+    }),
+  ),
+  defaultMode: z.enum(MODE_ORDER),
+}) satisfies z.ZodType<SessionContribution>;
+
 export const goalSchema = z.object({
   matchGuid: z.string(),
   idx: z.number(),
   teamNum: z.number(),
   scorerKey: z.string(),
+  /** The scorer's and assister's names in that match; null when no player row has the key. */
+  scorerName: z.string().nullable(),
   assisterKey: z.string().nullable(),
+  assisterName: z.string().nullable(),
   toucherKey: z.string().nullable(),
   /** The ball at the touch, raw field coordinates; null for an own goal. */
   pos: z.object({ x: z.number(), y: z.number(), z: z.number() }).nullable(),
@@ -145,6 +171,7 @@ export const sessionDetailResponse = z.object({
   friendsPresent: z.array(z.object({ id: z.string(), name: z.string() })),
   baseline: aggregateSchema,
   goals: z.array(goalSchema),
+  contribution: contributionSchema.nullable(),
   /** The neighbouring sessions listed under both filters. */
   prev: z.string().nullable(),
   next: z.string().nullable(),
@@ -160,6 +187,8 @@ export const matchPlayerSchema = counted.extend({
   presentAtEnd: z.boolean(),
   touches: z.number(),
   ...extras,
+  /** Counted touches by third from their own goal (defence, midfield, attack); null until recomputed. */
+  thirds: thirds.nullable(),
   isMe: z.boolean(),
 });
 
@@ -239,8 +268,6 @@ const wl = z.object({ w: z.number(), l: z.number(), n: z.number() });
 const streak = z.object({ result, length: z.number() }).nullable();
 const playlistRow = wl.extend({ label: z.string() });
 const perMatch = z.object({ matches: z.number(), winPct: z.number().nullable(), score: z.number(), goals: z.number(), assists: z.number(), saves: z.number(), shots: z.number() });
-/** [you, ...each friend, the rest of your team]. */
-const shares = z.array(z.number());
 const statLine = z.object({ score: z.number(), goals: z.number(), assists: z.number(), saves: z.number(), shots: z.number() });
 
 /** A friend on the Friends page: both records, when you last played them, and the name they last used (null if never seen). */
@@ -271,7 +298,7 @@ const friendViewSchema = z.object({
       z.object({
         mode: z.enum(MODE_ORDER),
         matches: z.number(),
-        carry: z.object({ matches: z.number(), score: shares, goals: shares, assists: shares, saves: shares, mvps: shares }),
+        carry: carrySchema,
         compare: z.object({ with: perMatch, without: perMatch.nullable(), friends: z.array(perMatch) }),
       }),
     ),

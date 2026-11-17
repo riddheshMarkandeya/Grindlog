@@ -1,5 +1,5 @@
 // What one friend's page and a pair's page share: the back link, the scorebug with both records,
-// then two zones: your team (tiles, by playlist, who carries and your stats with them per mode) and
+// then two zones: your team (tiles, by playlist, Contribution and your stats with them per mode) and
 // the other team (tiles, by playlist, match by match). The friends come as a list and every
 // per-person array is you first, then them in that order; one friend is the one-item case. The
 // mode and the page of matches are each part's own state.
@@ -8,26 +8,24 @@ import { Link } from "react-router";
 import { dayOf } from "../../../shared/periods";
 import type { FriendDetail } from "../../../shared/schemas/responses";
 import { teammateValue } from "../../../shared/teammate-filter";
+import { Contribution, type Who } from "../../components/Contribution";
 import { cx } from "../../components/cx";
 import { IconLabel } from "../../components/Icon";
+import { ModeSwitch } from "../../components/ModeSwitch";
+import { PlaylistRecords } from "../../components/PlaylistRecords";
 import { Scorebug } from "../../components/Scorebug";
 import { Section } from "../../components/Section";
 import { Tile, Tiles } from "../../components/Tile";
 import { dateLabel, decimal, durationText, plural, whole } from "../../logic/format";
-import { carryRest, carryShares, decided, diffText, modeSwitch, OTHERS, overtimeNote, PAGE_SIZE, pageOf, pickKind, pickMode, pickSize, recordText, sideCopy, sizeOf, winPctText, type Mode, type SideCopy } from "../../logic/friends";
+import { decided, diffText, MODE_LABEL, overtimeNote, PAGE_SIZE, pageOf, pickMode, recordLabel, recordText, sideCopy, winPctText, type Mode, type SideCopy } from "../../logic/friends";
 import { letter, pct, recapPath } from "../../logic/recap";
 import styles from "./Friends.module.css";
-import { recordLabel, WlBar } from "./parts";
 
-export interface Who { id: string; name: string }
 type View = FriendDetail["view"];
 type WithSide = View["with"];
 type AgainstSide = View["against"];
 type Row = WithSide["playlists"][number];
 
-const MODE_LABEL: Record<Mode, string> = { "2": "2v2", "3": "3v3", "4": "4v4", p2: "Private 2v2", p3: "Private 3v3" };
-// Friend i's colour in the carry bars and its legend; the pages build pairs at most.
-const SHADES = [styles.friendA, styles.friendB];
 const day = (ms: number) => dateLabel(dayOf(ms));
 const streakText = (s: WithSide["streak"]) => (s === null ? "–" : `${String(s.length)} ${letter(s.result)}`);
 
@@ -91,20 +89,7 @@ export function Zones({ friends, view }: { friends: readonly Who[]; view: View }
   );
 }
 
-function Playlists({ rows }: { rows: readonly Row[] }) {
-  return (
-    <div className="panel">
-      {rows.map((r) => (
-        <div key={r.label} className={styles.pl}>
-          <span className={styles.trunc} title={r.label}>{r.label}</span>
-          <span className={cx(styles.r, "num")}><span aria-hidden="true">{recordText(r)}</span><span className="visually-hidden">{recordLabel(r)}</span></span>
-          <WlBar w={r.w} l={r.l} />
-          <span className={cx(styles.r, "muted", "num")}>{winPctText(r)}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
+const Playlists = ({ rows }: { rows: readonly Row[] }) => <PlaylistRecords rows={rows.map((r) => ({ key: r.label, name: r.label, record: r, pct: winPctText(r) }))} />;
 
 // Each zone always shows its six tiles, so the two rows keep their shape; a missing value is "–".
 // Best and worst need two playlists with enough decided matches, so many matches can still have none.
@@ -139,82 +124,12 @@ function Modes({ side, defaultMode, friends, copy }: { side: WithSide; defaultMo
   if (!view) return null;
   return (
     <Section
-      level={3} title="Who carries · stats with them"
+      level={3} title="Contribution · stats with them"
       aside={modes.length === 1 ? <span className="muted">{MODE_LABEL[mode]}</span> : <ModeSwitch modes={modes} mode={mode} pick={setPicked} />}
     >
-      <Carry carry={view.carry} mode={mode} friends={friends} copy={copy} />
+      <Contribution carry={view.carry} mode={mode} friends={friends} scope={copy.together} />
       <Compare compare={view.compare} mode={mode} friends={friends} copy={copy} />
     </Section>
-  );
-}
-
-function ModeSwitch({ modes, mode, pick }: { modes: readonly Mode[]; mode: Mode; pick: (m: Mode) => void }) {
-  const sw = modeSwitch(modes, mode);
-  return (
-    <span className={styles.switches}>
-      {sw.sizes.length > 1 && (
-        <span className={styles.seg} role="group" aria-label="Team size">
-          {sw.sizes.map((s) => (
-            <button key={s.size} type="button" aria-pressed={s.pressed} onClick={() => { pick(pickSize(modes, mode, s.size)); }}>{s.size}v{s.size}</button>
-          ))}
-        </span>
-      )}
-      <span className={styles.seg} role="group" aria-label="Online or private">
-        {sw.kinds.map((k) => (
-          <button key={k.kind} type="button" aria-pressed={k.pressed} aria-disabled={!k.enabled} onClick={() => { if (k.enabled) pick(pickKind(modes, mode, k.kind)); }}>
-            {k.kind === "online" ? "Online" : "Private"}
-          </button>
-        ))}
-      </span>
-    </span>
-  );
-}
-
-function Carry({ carry, mode, friends, copy }: { carry: WithSide["modes"][number]["carry"]; mode: Mode; friends: readonly Who[]; copy: SideCopy }) {
-  const rows = ([["Score", carry.score], ["Goals", carry.goals], ["Assists", carry.assists], ["Saves", carry.saves], ["MVPs", carry.mvps]] as const).map(([label, s]) => [label, carryShares(s, mode)] as const);
-  const rest = carryRest(mode, friends.length);
-  // The grey end is named (key and bar labels) whenever a bar draws it, even one the mode says can't happen.
-  const restKey = rest ?? (rows.some(([, s]) => (s?.pcts[friends.length + 1] ?? 0) > 0) ? OTHERS : null);
-  if (carry.matches === 0) return <div className="panel"><p className="muted">Every {MODE_LABEL[mode]} match {copy.together} had a team switch, so there's no share to show.</p></div>;
-  return (
-    <div className="panel">
-      <ul className={styles.legend} aria-label="Bar colours">
-        <li><i className={cx(styles.key, styles.me)} />You</li>
-        {friends.map((f, i) => <li key={f.id}><i className={cx(styles.key, SHADES[i])} /><Cap name={f.name} /></li>)}
-        {restKey !== null && <li><i className={cx(styles.key, styles.rest)} />{restKey}</li>}
-      </ul>
-      <div className={styles.carry}>
-        {rows.map(([label, shares]) => <Bar key={label} label={label} shares={shares} friends={friends} rest={restKey} />)}
-      </div>
-      <p className={styles.note}>
-        Your share of the team's total over {plural(carry.matches, `${MODE_LABEL[mode]} match`, `${MODE_LABEL[mode]} matches`)} {copy.together}. The tick is an even share ({String(Math.round(100 / Number(sizeOf(mode))))}%). Matches where {copy.anyOfYou} of you switched teams are left out.
-      </p>
-    </div>
-  );
-}
-
-function Bar({ label, shares, friends, rest }: { label: string; shares: ReturnType<typeof carryShares>; friends: readonly Who[]; rest: string | null }) {
-  if (shares === null) return <><span className="muted">{label}</span><span className="muted">none yet</span></>;
-  // [you, ...friends, rest]
-  const [me = 0, ...after] = shares.pcts;
-  const restPct = after[friends.length] ?? 0;
-  const parts = friends.map((f, i) => `${f.name} ${String(after[i] ?? 0)}%`);
-  if (rest !== null) parts.push(`${rest} ${String(restPct)}%`);
-  return (
-    <>
-      <span className="muted">{label}</span>
-      <div className={styles.bar} role="img" aria-label={`${label}: you ${String(me)}%, ${parts.join(", ")}`}>
-        <div className={styles.split}>
-          <span className={styles.me} style={{ width: `${String(me)}%` }}>{me >= 12 && `You ${String(me)}%`}</span>
-          {friends.map((f, i) => {
-            const p = after[i] ?? 0;
-            return <span key={f.id} className={SHADES[i]} style={{ width: `${String(p)}%` }}>{p >= 8 && `${String(p)}%`}</span>;
-          })}
-          <span className={styles.rest}>{restPct >= 12 && `${String(restPct)}%`}</span>
-        </div>
-        <i className={styles.tick} style={{ left: `calc(${String(shares.even)}% - 1px)` }} />
-      </div>
-    </>
   );
 }
 
@@ -238,7 +153,7 @@ function Compare({ compare, mode, friends, copy }: { compare: CompareView; mode:
   return (
     <div className="panel">
       {/* Focusable, so a keyboard can scroll the table sideways on a narrow screen. */}
-      <div className={styles.tw} role="region" aria-label="Who carries, per match" tabIndex={0}>
+      <div className={styles.tw} role="region" aria-label="Contribution, per match" tabIndex={0}>
         <table className="table num">
           <thead>
             <tr>

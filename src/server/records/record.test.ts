@@ -161,6 +161,9 @@ describe("toRecord: extras and goals on the fixtures", () => {
       boost_avg: expect.closeTo(62.08, 2) as number,
       supersonic_ms: 10_357,
       empty_boost_ms: 9881,
+      touches_defence: 15,
+      touches_midfield: 13,
+      touches_attack: 4,
     });
     expect(extras("Epic|anon4|0")).toMatchObject({ woodwork_hits: 1, car_ms: null, boost_avg: null, supersonic_ms: null, empty_boost_ms: null });
   });

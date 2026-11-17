@@ -408,6 +408,22 @@ describe("the teammate filter", () => {
     expect(pages().sessionDetail("N", "everything")?.friendsPresent).toEqual([]);
   });
 
+  test("detail: contribution covers the session's filtered matches, breaking out the filter's friends", () => {
+    const { play, pages } = seedWith();
+    addFriend(SAM);
+    play("P", t(10, 1, 10), [[SAM, 0]]); // another session
+    play("A", t(10, 10, 10), [[SAM, 0]]);
+    play("B", t(10, 10, 10, 10), [], { playlistId: CASUAL });
+    const anyone = pages().sessionDetail("A", "everything")?.contribution;
+    expect(anyone?.modes.map((m) => [m.mode, m.matches])).toEqual([["2", 1], ["3", 1]]);
+    // Sam is in the rest when nobody is filtered for.
+    expect(anyone?.modes[1]?.carry.score).toEqual([100, 100]);
+    const withSam = pages().sessionDetail("A", "everything", sam)?.contribution;
+    expect(withSam?.modes).toMatchObject([{ mode: "3", matches: 1, carry: { touchMatches: 1, score: [100, 100, 0], touches: [5, 5, 0] }, thirds: [[2, 2, 1], [2, 2, 1], [0, 0, 0], [2, 2, 1]] }]);
+    expect(withSam?.defaultMode).toBe("3");
+    expect(pages().sessionDetail("A", "private")?.contribution).toBeNull();
+  });
+
   test("period and rolling follow it; played days' first day and total don't", () => {
     const { play, pages } = seedWith();
     addFriend(SAM);

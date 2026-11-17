@@ -6,8 +6,8 @@ import { flagReasons, type FlagInput } from "../../shared/flags";
 import type { Season } from "../../shared/periods";
 import { resultFor, type Result } from "../../shared/result";
 import type { Friend, Goal, MatchDetail } from "../../shared/schemas/responses";
-import type { MyMatch, MyRow } from "../../shared/aggregate";
-import type { LobbyFriend, LobbyMatch } from "../../shared/friend-stats";
+import { sum, type MyMatch, type MyRow } from "../../shared/aggregate";
+import { sumThirds, type LobbyFriend, type LobbyMatch, type Stats, type Thirds } from "../../shared/lobby";
 
 const C = "query";
 
@@ -90,11 +90,21 @@ interface OtherRow {
   teams_seen: number;
 }
 
+/** Counted touches by third; null on a row recorded before the touch_thirds rule, until recompute. */
+interface ThirdsCols {
+  touches_defence: number | null;
+  touches_midfield: number | null;
+  touches_attack: number | null;
+}
+const THIRDS_COLS = "p.touches_defence, p.touches_midfield, p.touches_attack";
+const thirdsOf = (r: ThirdsCols): Thirds | null =>
+  r.touches_defence === null || r.touches_midfield === null || r.touches_attack === null ? null : [r.touches_defence, r.touches_midfield, r.touches_attack];
+
 /** A match row for readLobbies, with your row's columns (null when spectated). */
-type LobbyRow = Pick<MatchRow, "guid" | "started_at" | "ended_at" | "playlist_id" | "overtime" | "score_team0" | "score_team1" | "winner_team_num" | "end_kind" | "closed_via" | "mvp_key" | "camera_primary_id" | "player_key" | "primary_id" | "team_num" | "teams_seen" | "score" | "goals" | "assists" | "saves" | "shots">;
+type LobbyRow = Pick<MatchRow, "guid" | "started_at" | "ended_at" | "playlist_id" | "overtime" | "score_team0" | "score_team1" | "winner_team_num" | "end_kind" | "closed_via" | "mvp_key" | "camera_primary_id" | "player_key" | "primary_id" | "team_num" | "teams_seen" | "score" | "goals" | "assists" | "saves" | "shots"> & ThirdsCols;
 
 /** Any player in a match, for team sizes, team totals and the listed friends. */
-interface LobbyPlayerRow {
+interface LobbyPlayerRow extends ThirdsCols {
   match_guid: string;
   player_key: string;
   primary_id: string;
@@ -109,13 +119,14 @@ interface LobbyPlayerRow {
   shots: number;
 }
 
-const lineOf = (r: { player_key: string; score: number; goals: number; assists: number; saves: number; shots: number }) => ({
+const lineOf = (r: { player_key: string; score: number; goals: number; assists: number; saves: number; shots: number } & ThirdsCols) => ({
   playerKey: r.player_key,
   score: r.score,
   goals: r.goals,
   assists: r.assists,
   saves: r.saves,
   shots: r.shots,
+  thirds: thirdsOf(r),
 });
 
 /** On a team at any point in the match; nobody is on a null team. */
@@ -136,6 +147,8 @@ interface GoalRow {
   deflected: number;
   aerial: number;
   own_goal: number;
+  scorer_name: string | null;
+  assister_name: string | null;
 }
 
 type FullMatchRow = Omit<MatchRow, "winner_source" | "mvp_source" | "check_failed" | "player_key" | "primary_id" | "team_num" | "teams_seen" | keyof PlayerStats> & {
@@ -144,7 +157,7 @@ type FullMatchRow = Omit<MatchRow, "winner_source" | "mvp_source" | "check_faile
 
 type PlayerStats = Pick<MatchRow, "score" | "goals" | "shots" | "assists" | "saves" | "demos" | "touches" | "hardest_shot_kmh" | "woodwork_hits" | "aerial_touches" | "car_ms" | "boost_avg" | "supersonic_ms" | "empty_boost_ms">;
 
-type PlayerDbRow = PlayerStats & {
+type PlayerDbRow = PlayerStats & ThirdsCols & {
   player_key: string;
   primary_id: string;
   name: string;
@@ -393,24 +406,30 @@ export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Lo
   /**
    * Every match you played, with team sizes, your final team's totals and the listed friends (humans,
    * not yours) by side: with you if on your team at any point, against if only ever on the other.
-   * With no team of yours, nobody is listed. Every player row is read once: a personal history is
-   * small, and `timed` shows the cost if it grows.
+   * With no team of yours, nobody is listed. `guids` narrows both reads to those matches; without it
+   * every player row is read once: a personal history is small, and `timed` shows the cost if it grows.
    */
-  function readLobbies(friendIds: readonly string[]): LobbyMatch[] {
+  function readLobbies(friendIds: readonly string[], range: Pick<ReadRange, "guids"> = {}): LobbyMatch[] {
     return timed("readLobbies", () => {
+      const w = where(range);
       const rows = tracker.all<LobbyRow>(
         `SELECT m.guid, m.started_at, m.ended_at, m.playlist_id, m.overtime, m.score_team0, m.score_team1, m.winner_team_num, m.end_kind,
            m.closed_via, m.mvp_key, m.camera_primary_id, p.player_key, p.primary_id, p.team_num, p.teams_seen, p.score, p.goals,
-           p.assists, p.saves, p.shots
+           p.assists, p.saves, p.shots, ${THIRDS_COLS}
          FROM matches m
          LEFT JOIN match_players p ON p.match_guid = m.guid AND p.primary_id IN (${MINE})
+         ${w.sql}
          ORDER BY m.started_at, m.guid, p.player_key`,
+        ...w.params,
       );
       const playersOf = Map.groupBy(
         tracker.all<LobbyPlayerRow>(
-          `SELECT match_guid, player_key, primary_id, team_num, teams_seen, is_bot, primary_id IN (${MINE}) AS mine,
-             score, goals, assists, saves, shots
-           FROM match_players ORDER BY match_guid, primary_id`,
+          `SELECT p.match_guid, p.player_key, p.primary_id, p.team_num, p.teams_seen, p.is_bot, p.primary_id IN (${MINE}) AS mine,
+             p.score, p.goals, p.assists, p.saves, p.shots, ${THIRDS_COLS}
+           FROM match_players p JOIN matches m ON m.guid = p.match_guid
+           ${w.sql}
+           ORDER BY p.match_guid, p.primary_id`,
+          ...w.params,
         ),
         (p) => p.match_guid,
       );
@@ -422,7 +441,11 @@ export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Lo
         const team = me.team_num;
         const players = playersOf.get(m.guid) ?? [];
         const onMine = players.filter((p) => team !== null && p.team_num === team);
-        const total = (k: keyof LobbyMatch["myTeamTotals"]) => onMine.reduce((n, p) => n + p[k], 0);
+        const onOther = players.filter((p) => team !== null && p.team_num === 1 - team);
+        const total = (k: keyof Stats) => sum(onMine.map((p) => p[k]));
+        // A match not yet recomputed can't give touch shares: its touches count only once every row has them.
+        const computed = players.every((p) => thirdsOf(p) !== null);
+        const thirdsSum = (ps: readonly LobbyPlayerRow[]): Thirds => sumThirds(ps.map(thirdsOf).filter((t) => t !== null));
         const scores = team === null || m.score_team0 === null || m.score_team1 === null ? null : [m.score_team0, m.score_team1];
         const mvp = m.mvp_key === null ? undefined : players.find((p) => p.player_key === m.mvp_key);
         const friends = players.flatMap((p): LobbyFriend[] => {
@@ -438,9 +461,16 @@ export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Lo
           overtime: m.overtime === 1,
           result: myResult(m, team),
           goalDiff: scores === null || team === null ? null : (scores[team] ?? 0) - (scores[1 - team] ?? 0),
-          sizes: { mine: onMine.length, other: players.filter((p) => team !== null && p.team_num === 1 - team).length },
+          sizes: { mine: onMine.length, other: onOther.length },
           me: lineOf(me),
-          myTeamTotals: { score: total("score"), goals: total("goals"), assists: total("assists"), saves: total("saves") },
+          myTeamTotals: {
+            score: total("score"),
+            goals: total("goals"),
+            assists: total("assists"),
+            saves: total("saves"),
+            shots: total("shots"),
+          },
+          touches: computed ? { team: thirdsSum(onMine), opponents: thirdsSum(onOther) } : null,
           mvpKey: m.mvp_key,
           mvpOnMyTeam: mvp === undefined ? null : mvp.team_num === team,
           youSwitched: me.teams_seen === 3,
@@ -482,9 +512,13 @@ export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Lo
     return timed("readGoals", () =>
       tracker
         .all<GoalRow>(
-          `SELECT match_guid, idx, team_num, scorer_key, assister_key, toucher_key, x, y, z, distance, speed_kmh, deflected, aerial, own_goal
-           FROM match_goals WHERE match_guid IN (SELECT value FROM json_each(?))
-           ORDER BY match_guid, idx`,
+          `SELECT g.match_guid, g.idx, g.team_num, g.scorer_key, g.assister_key, g.toucher_key, g.x, g.y, g.z, g.distance, g.speed_kmh,
+             g.deflected, g.aerial, g.own_goal, s.name AS scorer_name, a.name AS assister_name
+           FROM match_goals g
+           LEFT JOIN match_players s ON s.match_guid = g.match_guid AND s.player_key = g.scorer_key
+           LEFT JOIN match_players a ON a.match_guid = g.match_guid AND a.player_key = g.assister_key
+           WHERE g.match_guid IN (SELECT value FROM json_each(?))
+           ORDER BY g.match_guid, g.idx`,
           JSON.stringify(guids),
         )
         .map((g) => ({
@@ -492,7 +526,9 @@ export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Lo
           idx: g.idx,
           teamNum: g.team_num,
           scorerKey: g.scorer_key,
+          scorerName: g.scorer_name,
           assisterKey: g.assister_key,
+          assisterName: g.assister_name,
           toucherKey: g.toucher_key,
           pos: g.x === null || g.y === null || g.z === null ? null : { x: g.x, y: g.y, z: g.z },
           distance: g.distance,
@@ -519,7 +555,7 @@ export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Lo
       tracker.all<PlayerDbRow>(
         `SELECT player_key, primary_id, name, is_bot, team_num, present_at_end, score, goals, shots, assists, saves, touches, demos,
            hardest_shot_kmh, woodwork_hits, aerial_touches, car_ms, boost_avg, supersonic_ms, empty_boost_ms,
-           primary_id IN (${MINE}) AS mine
+           touches_defence, touches_midfield, touches_attack, primary_id IN (${MINE}) AS mine
          FROM match_players WHERE match_guid = ? ORDER BY player_key`,
         guid,
       ),
@@ -562,6 +598,7 @@ export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Lo
         boostAvg: p.boost_avg,
         supersonicMs: p.supersonic_ms,
         emptyBoostMs: p.empty_boost_ms,
+        thirds: thirdsOf(p),
         isMe: p.player_key === me?.player_key,
       })),
       result: myResult(m, me?.team_num ?? null),

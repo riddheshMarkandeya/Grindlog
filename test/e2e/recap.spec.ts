@@ -129,8 +129,8 @@ test("the long session's Overview: per game with what stood out marked, by playl
   await expect(page.getByRole("heading", { name: "What stood out" })).toHaveCount(0);
 
   const byPlaylist = section("By playlist");
-  await expect(byPlaylist.getByRole("row")).toHaveCount(3);
-  await expect(byPlaylist.getByRole("row", { name: /Ranked Doubles/ })).toContainText("1–0");
+  await expect(byPlaylist.getByRole("listitem")).toHaveCount(2);
+  await expect(byPlaylist.getByRole("listitem").filter({ hasText: "Ranked Doubles" })).toContainText("1 won, 0 lost");
 
   const goals = section("Where the goals came from");
   await expect(goals.getByRole("group", { name: "Where 29 goals for and 26 against came from" })).toBeVisible();
@@ -213,25 +213,55 @@ test("on a touchscreen a tap on the ! opens its note and a tap elsewhere closes 
   await context.close();
 });
 
-test("By playlist sits beside Per game at 1024px, its six cards 3 to a row; under it at 320px", async ({ page }) => {
+test("the goal map sits beside By playlist, Contribution and the touches at 1024px; above them at 320px", async ({ page }) => {
   const box = async (name: string) => (await page.getByRole("heading", { level: 2, name, exact: true }).boundingBox()) ?? { x: NaN, y: NaN };
-  const cards = page.locator("section").filter({ has: page.getByRole("heading", { name: "Per game vs your 30-day average" }) }).getByRole("listitem");
   await page.setViewportSize({ width: 1024, height: 900 });
   await page.goto("/recap/e2e-long-00");
-  await expect(cards).toHaveCount(6);
-  const [per, list] = [await box("Per game vs your 30-day average"), await box("By playlist")];
-  expect(list.y).toBeCloseTo(per.y, 0);
-  expect(list.x).toBeGreaterThan(per.x);
-  const tops = await Promise.all((await cards.all()).map(async (c) => Math.round((await c.boundingBox())?.y ?? NaN)));
-  expect(new Set(tops).size).toBe(2);
+  const [goals, list, share, touches] = [await box("Where the goals came from"), await box("By playlist"), await box("Contribution"), await box("Where the touches were")];
+  expect(list.y).toBeCloseTo(goals.y, 0);
+  expect(list.x).toBeGreaterThan(goals.x);
+  expect([share.x, touches.x]).toEqual([list.x, list.x]);
+  expect(share.y).toBeGreaterThan(list.y);
+  expect(touches.y).toBeGreaterThan(share.y);
 
   await page.setViewportSize({ width: 320, height: 700 });
-  const [per2, list2] = [await box("Per game vs your 30-day average"), await box("By playlist")];
-  expect(list2.y).toBeGreaterThan(per2.y);
-  expect(list2.x).toBeCloseTo(per2.x, 0);
-  // A W–L value stays on one line in the narrow column.
-  const byPlaylist = page.locator("section").filter({ has: page.getByRole("heading", { name: "By playlist", exact: true }) });
-  await expect(byPlaylist.getByRole("row", { name: /Ranked Doubles/ }).getByRole("cell").first()).toHaveCSS("white-space", "nowrap");
+  const [goals2, list2] = [await box("Where the goals came from"), await box("By playlist")];
+  expect(list2.y).toBeGreaterThan(goals2.y);
+  expect(list2.x).toBeCloseTo(goals2.x, 0);
+});
+
+test("Contribution and the touches: one mode picker drives both; a 1-match mode warns", async ({ page }) => {
+  await page.goto("/recap/e2e-long-00");
+  const section = (name: string) => page.locator("section").filter({ has: page.getByRole("heading", { name, exact: true }) });
+  const share = section("Contribution");
+  const touches = section("Where the touches were");
+  const size = (n: string) => share.getByRole("button", { name: n, exact: true });
+
+  // 25 of the 26 matches are 3v3, so it opens there; you were alone on your team.
+  await expect(size("3v3")).toHaveAttribute("aria-pressed", "true");
+  await expect(share).toContainText("Your share of the team's total over 25 3v3 matches this session.");
+  await expect(share.getByRole("img", { name: /^Score: / })).toHaveAttribute("aria-label", "Score: you 100%, Teammates 0%");
+  // Your 24 x 2/2/1 and the hat trick's 6/2/1 (54/50/25), against the opponents' 25 x 2/2/1.
+  const you = touches.getByRole("img", { name: /^You: / });
+  await expect(you).toHaveAttribute("aria-label", "You: defence 42%, midfield 39%, attack 19%");
+  await expect(touches.getByRole("img", { name: /^Opponents: / })).toHaveAttribute("aria-label", "Opponents: defence 40%, midfield 40%, attack 20%");
+  await expect(you.locator("span[title]").first()).toHaveAttribute("title", "You · Defence · 54 touches · 42%");
+  await expect(touches).toContainText("Counted touches over 25 3v3 matches");
+  await expect(touches).not.toContainText("A few matches");
+
+  await size("2v2").click();
+  await expect(size("2v2")).toBeFocused();
+  await expect(size("2v2")).toHaveAttribute("aria-pressed", "true");
+  await expect(share).toContainText("over 1 2v2 match this session.");
+  await expect(you).toHaveAttribute("aria-label", "You: defence 40%, midfield 40%, attack 20%");
+  await expect(touches).toContainText("A few matches swing these a lot.");
+});
+
+test("a session with no team mode (a private 1v1) has no Contribution or touches", async ({ page }) => {
+  await page.goto("/recap/e2e-private?filter=private");
+  await expect(page.getByRole("heading", { name: "Matches", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Contribution" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Where the touches were" })).toHaveCount(0);
 });
 
 test("at 320px a two-digit scorebug and the full Overview fit without a sideways scroll", async ({ page }) => {
@@ -241,6 +271,14 @@ test("at 320px a two-digit scorebug and the full Overview fit without a sideways
   await expect(page.getByRole("heading", { name: "Highlights" })).toBeVisible();
   // A string expression: the root tsconfig has no DOM lib for a page-side function.
   expect(await page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")).toBe(0);
+  // By playlist's record stays on one line.
+  const byPlaylist = page.locator("section").filter({ has: page.getByRole("heading", { name: "By playlist", exact: true }) });
+  await expect(byPlaylist.getByRole("listitem").first().locator("span.num").first()).toHaveCSS("white-space", "nowrap");
+  // No share bar label shows cut: each visible one fits its segment (narrow ones hide instead).
+  await expect(page.getByRole("heading", { name: "Where the touches were" })).toBeVisible();
+  const clipped = `[...document.querySelectorAll("[role=img] > div > span > span")]
+    .filter((l) => getComputedStyle(l).visibility === "visible" && l.getBoundingClientRect().width > l.parentElement.getBoundingClientRect().width + 0.5).length`;
+  expect(await page.evaluate(clipped)).toBe(0);
 });
 
 test("the picker lists the open session's month, focused on its row; Escape, a step, Back close it", async ({ page }) => {
@@ -342,7 +380,7 @@ test("Matches & numbers: every match in a capped box; a row opens its match", as
   await expect(page).toHaveURL(/\/recap\/e2e-old\/matches(\?filter=everything)?$/);
 });
 
-test("the match page: header, scoreboard, the match's goal map and extras", async ({ page }) => {
+test("the match page: header, scoreboard, the touches, the match's goal map and extras", async ({ page }) => {
   await page.goto("/recap/e2e-long-00/match/e2e-long-01");
   await expect(page.getByRole("heading", { name: /^Match 2: win 4–1$/ })).toBeVisible();
   await expect(page.getByText("MVP", { exact: true })).toBeVisible();
@@ -352,7 +390,17 @@ test("the match page: header, scoreboard, the match's goal map and extras", asyn
   // Only the winner's heading says so.
   await expect(page.getByRole("heading", { name: "Opponents", exact: true })).toBeVisible();
   await expect(page.getByRole("rowheader", { name: /\(you\)/ })).toHaveText("Epic|me|0 (you)");
+  // Touches: your team first, you on top, the count at the end.
+  const touches = page.locator("section").filter({ has: page.getByRole("heading", { name: "Where the touches were", exact: true }) });
+  const bars = touches.getByRole("img");
+  await expect(bars).toHaveCount(2);
+  await expect(bars.nth(0)).toHaveAttribute("aria-label", "You: defence 67%, midfield 22%, attack 11%, 9 touches");
+  await expect(bars.nth(1)).toHaveAttribute("aria-label", /^.+: defence 40%, midfield 40%, attack 20%, 5 touches$/);
   await expect(page.getByRole("group", { name: "Where 4 goals for and 1 against came from" })).toBeVisible();
+  // Each goal's hover names the scorer, "you" for you.
+  const titles = page.getByRole("group", { name: /^Where 4 goals/ }).locator("title");
+  await expect(titles.filter({ hasText: /^Match 2 · you scored · / })).toHaveCount(4);
+  await expect(titles.filter({ hasText: /^Match 2 · conceded: .+ scored · / })).toHaveCount(1);
   const mine = page.locator("section").filter({ has: page.getByRole("heading", { name: "Your match", exact: true }) });
   await expect(mine.getByRole("listitem").filter({ hasText: "Hat tricks" })).toContainText("1");
   await expect(mine.getByRole("listitem").filter({ hasText: "Fastest goal" })).toContainText("120 km/h");

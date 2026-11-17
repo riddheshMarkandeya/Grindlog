@@ -1,0 +1,50 @@
+/* Share bars, as in Contribution and "Where the touches were": a legend, then a grid of a name and a
+   stacked bar per line (and an optional count), then a note. Class names stay clear of "row", "label"
+   and "panel", which e2e selectors match by substring. */
+/* The name column fits its longest name ("Opponents", a player's) up to 9em or 35% of the width,
+   whichever is less, then cuts with an ellipsis (the full name in its title). */
+.grid { display: grid; grid-template-columns: fit-content(min(9em, 35%)) minmax(0, 1fr); gap: 6px var(--s3); align-items: center; font-size: 13px; }
+.grid.counts { grid-template-columns: fit-content(min(9em, 35%)) minmax(0, 1fr) 3ch; }
+.who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.count { text-align: right; color: var(--muted); font-size: 12px; }
+.bar { position: relative; }
+.split { display: flex; height: 18px; border-radius: 4px; overflow: hidden; font-size: 11px; font-weight: 700; background: var(--surf2); }
+.split > span { display: flex; align-items: center; overflow: hidden; container-type: inline-size; }
+/* The padding sits on the label, not the segment, so a sliver keeps its true width. */
+.pct { padding: 0 6px; white-space: nowrap; }
+/* Each segment hides what it can't fit at 11px bold: "You " under 64px, the whole "100%" under 40px. */
+@container (max-width: 64px) { .you { display: none; } }
+@container (max-width: 40px) { .pct { visibility: hidden; } }
+.tick { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); opacity: .8; border-radius: 1px; }
+
+/* Contribution: you, each friend, the rest. Dark text: light text on the team blue misses AA at this size. */
+.me { background: var(--blue); color: var(--page); }
+.friendA { background: var(--friend-a); color: var(--page); }
+.friendB { background: var(--friend-b); color: var(--page); }
+/* ink2, not muted: muted misses AA on surf2 at this size. */
+.split .rest { color: var(--ink2); }
+
+/* Thirds: each side's three shades, deep (defence) to light (attack). */
+.blue1 { background: var(--third-blue-1); color: var(--ink); }
+.blue2 { background: var(--third-blue-2); color: var(--page); }
+.blue3 { background: var(--third-blue-3); color: var(--page); }
+.orange1 { background: var(--third-orange-1); color: var(--ink); }
+.orange2 { background: var(--third-orange-2); color: var(--page); }
+.orange3 { background: var(--third-orange-3); color: var(--page); }
+.neutral1 { background: var(--third-neutral-1); color: var(--ink); }
+.neutral2 { background: var(--third-neutral-2); color: var(--page); }
+.neutral3 { background: var(--third-neutral-3); color: var(--page); }
+
+/* The legend over the bars: a swatch and a name per colour. */
+.legend { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); margin: 0 0 var(--s3); padding: 0; list-style: none; font-size: 12px; color: var(--muted); }
+.legend li { display: flex; align-items: center; min-width: 0; }
+.legend li > span { max-width: 10em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* border-box: the grey key's edge stays inside the 10px. */
+.key { flex: none; box-sizing: border-box; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; }
+/* The bar's grey is surf2, near-invisible on the panel's surf without an edge. */
+.key.rest { background: var(--surf2); border: 1px solid var(--ink2); }
+/* A third's key: your side's shade and the other side's, split on the diagonal. */
+.key.z1 { background: linear-gradient(135deg, var(--third-blue-1) 50%, var(--third-orange-1) 50%); }
+.key.z2 { background: linear-gradient(135deg, var(--third-blue-2) 50%, var(--third-orange-2) 50%); }
+.key.z3 { background: linear-gradient(135deg, var(--third-blue-3) 50%, var(--third-orange-3) 50%); }
+.note { margin: var(--s3) 0 0; font-size: 12px; color: var(--muted); }

@@ -52,6 +52,13 @@
       "CORNER_MAX_XY_SUM": 7640
     }
   },
+  "touch_thirds": {
+    "version": 1,
+    "constants": {
+      "THIRD_Y": 1706.6666666666667,
+      "GOAL_LINE_Y": 5120
+    }
+  },
   "woodwork": {
     "version": 1,
     "constants": {

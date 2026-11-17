@@ -52,9 +52,9 @@ docs and an update path. Polish comes after their feedback, not before.
 - Icons are done (`37fdb91`, `docs/plans/2026-11-16-icons.md`), taken before controls drift at the user's choice on
   2026-11-16.
 - Order from here, set by the user on 2026-11-16 after friends' feedback (no confusion reported, two feature asks):
-  1. **Contribution stats** (next): one design covering both asks. (a) A per-session split of you vs your
-     team (goals, saves, assists, score…), perhaps per match too, fair across 2v2/3v3, with friends broken out
-     when filtered. (b) Touches split by field zone for you, teammates and maybe opponents. The data is already
+  1. **Contribution stats** (done, `docs/plans/2026-11-16-contribution-stats.md`): one design covering both
+     asks. (a) A per-session split of you vs your team (goals, saves, assists, score…), perhaps per match
+     too, fair across 2v2/3v3, with friends broken out when filtered. (b) Touches split by field zone for you, teammates and maybe opponents. The data is already
      stored (every player's stats per match; every hit with its ball position, kept past raw thinning).
      Process: `/grill-me`, then `/prototype` (with and without repeated stats), then `/wayfinder` if it spans
      sessions. Grilled 2026-11-16, decided:
@@ -103,7 +103,7 @@ docs and an update path. Polish comes after their feedback, not before.
        gains Shots and Touches on Friends too (the carry data adds them). Friends gets no "Where the
        touches were" for now: long-run thirds flatten out; you vs a friend without opponents could
        come later.
-  2. **Animations and transitions exploration** (placeholder): dropped on 2026-11-13, reopened by the user
+  2. **Animations and transitions exploration** (next; placeholder): dropped on 2026-11-13, reopened by the user
      2026-11-16 as an exploration step. Scope is still open.
   3. **Controls drift**, last.
 - Icons: the look was picked by a prototype on 2026-11-13 (branch `prototype/icons`, `c92c5c7`, never merged). The

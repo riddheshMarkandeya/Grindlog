@@ -128,7 +128,7 @@ describe("buildPlay: hits and touches", () => {
   test("every player a hit lists is a hitter, with the hit's speed and ball location", () => {
     const events = [at(0, "RoundStarted"), hit(100, ["A", "B"], 70, { X: 1, Y: 2, Z: 3 }), statfeed(200, "Shot", "A"), statfeed(300, "Shot", "B")];
     const play = buildPlay(events, summary());
-    expect(play.touches).toEqual({ [key("A")]: [{ x: 1, y: 2, z: 3 }], [key("B")]: [{ x: 1, y: 2, z: 3 }] });
+    expect(play.touches).toEqual({ [key("A")]: [{ x: 1, y: 2, z: 3, team: 0 }], [key("B")]: [{ x: 1, y: 2, z: 3, team: 1 }] });
     expect(play.hardestShot).toEqual({ [key("A")]: 70, [key("B")]: 70 });
   });
 
@@ -143,6 +143,12 @@ describe("buildPlay: hits and touches", () => {
       hit(1400, ["A"]), // merged
     ];
     expect(touchCount(events)).toEqual({ [key("A")]: 3, [key("B")]: 1 });
+  });
+
+  test("a touch carries the hitter's team at that hit, so a switch mid-match is framed by the new team", () => {
+    const switchedState = at(1000, "UpdateState", { Players: [{ ...PEOPLE.A, TeamNum: 1 }, PEOPLE.B, PEOPLE.C], Game: {} });
+    const events = [at(0, "RoundStarted"), hit(100, ["A"]), switchedState, at(2000, "BallHit", { Players: [{ ...ref("A"), TeamNum: 1 }], Ball: { PostHitSpeed: 1, Location: { X: 0, Y: 0, Z: 93 } } })];
+    expect(buildPlay(events, summary()).touches[key("A")]).toMatchObject([{ team: 0 }, { team: 1 }]);
   });
 
   test("hits outside play are ignored", () => {

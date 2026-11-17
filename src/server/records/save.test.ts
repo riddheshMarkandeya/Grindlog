@@ -140,6 +140,10 @@ describe("record writer", () => {
       boost_avg: null,
       supersonic_ms: null,
       empty_boost_ms: null,
+      // Left out of the row's extras, so stored as not computed.
+      touches_defence: null,
+      touches_midfield: null,
+      touches_attack: null,
     });
     expect(storage.tracker.all("SELECT * FROM match_goals ORDER BY idx")).toEqual([
       { match_guid: "G", idx: 0, team_num: 0, scorer_key: "Epic|me|0", assister_key: null, toucher_key: "Epic|me|0", x: 10, y: -20, z: 93, distance: 5000, speed_kmh: 88, deflected: 0, aerial: 1, own_goal: 0 },

@@ -102,11 +102,11 @@ test("a friend: scorebug, both zones, the mode switch, the pager and a match lin
   const priv = page.getByRole("button", { name: "Private" });
   await page.getByRole("button", { name: "3v3" }).click();
   await expect(note).toContainText("Your 3v3 matches with them (4)");
-  await expect(legend).toHaveText(["You", "Sammy", "3rd teammate"]);
+  await expect(legend).toHaveText(["You", "Sammy", "Teammate"]);
   const bars = page.getByRole("img", { name: /^\w+: you \d+%/ });
-  await expect(bars).toHaveCount(5);
+  await expect(bars).toHaveCount(7);
   const labels = await Promise.all((await bars.all()).map((b) => b.getAttribute("aria-label")));
-  expect(labels.map((l) => l?.split(":")[0])).toEqual(["Score", "Goals", "Assists", "Saves", "MVPs"]);
+  expect(labels.map((l) => l?.split(":")[0])).toEqual(["Score", "Goals", "Assists", "Saves", "Shots", "Touches", "MVPs"]);
   await expect(priv).toHaveAttribute("aria-disabled", "true");
   await page.getByRole("button", { name: "2v2" }).click();
   await expect(note).toContainText("Your 2v2 matches with them (3)");
@@ -174,12 +174,12 @@ test("a pair: the Together card, both zones, the four-way carry and the links to
 
   // Max was on your team too: the grey rest. No 3v3 together, so it opens on 4v4.
   const zone = page.getByRole("region", { name: "Both on your team" });
-  await expect(zone.getByRole("list", { name: "Bar colours" }).getByRole("listitem")).toHaveText(["You", "Kim", "Lee", "4th teammate"]);
+  await expect(zone.getByRole("list", { name: "Bar colours" }).getByRole("listitem")).toHaveText(["You", "Kim", "Lee", "Teammate"]);
   const bars = zone.getByRole("img", { name: /^\w+: you \d+%/ });
-  await expect(bars.first()).toHaveAttribute("aria-label", /^Score: you \d+%, Kim \d+%, Lee \d+%, 4th teammate \d+%$/);
+  await expect(bars.first()).toHaveAttribute("aria-label", /^Score: you \d+%, Kim \d+%, Lee \d+%, Teammate \d+%$/);
   await expect(zone.getByRole("columnheader")).toHaveText(["Per match", "With both", "Other matches", "Diff", "Kim", "Lee"]);
   // The share bars and the comparison are two panels with a gap between them, not one merged box.
-  const panels = zone.getByRole("region", { name: /^Who carries · / }).locator(".panel");
+  const panels = zone.getByRole("region", { name: /^Contribution · / }).locator(".panel");
   const [first, second] = [await panels.nth(0).boundingBox(), await panels.nth(1).boundingBox()];
   expect((second?.y ?? NaN) - ((first?.y ?? NaN) + (first?.height ?? NaN))).toBeGreaterThanOrEqual(8);
   await expect(zone.getByText(/with both on your team \(3\) against your .* matches where neither was/)).toBeVisible();

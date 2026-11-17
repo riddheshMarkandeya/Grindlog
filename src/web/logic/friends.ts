@@ -1,9 +1,8 @@
 // The Friends pages' display logic: the head-to-head pager, the team size × Online/Private switch
 // over the modes a friend has, carry bars, records as text, and the words that change between one
-// friend's page and a pair's.
+// friend's page and a pair's. The Recap's Contribution panel uses the switch and the carry bars too.
 import type { FriendDetail } from "../../shared/schemas/responses";
-import { sum } from "../../shared/aggregate";
-import { decimal, WHOLE_FROM, whole } from "./format";
+import { decimal, pctText, WHOLE_FROM, whole } from "./format";
 import { pct } from "./recap";
 
 export type Mode = NonNullable<FriendDetail["view"]["with"]["defaultMode"]>;
@@ -18,6 +17,8 @@ export function pageOf<T>(rows: readonly T[], page: number): { rows: T[]; page: 
   const p = Math.min(Math.max(page, 0), pages - 1);
   return { rows: rows.slice(p * PAGE_SIZE, (p + 1) * PAGE_SIZE), page: p, pages };
 }
+
+export const MODE_LABEL: Record<Mode, string> = { "2": "2v2", "3": "3v3", "4": "4v4", p2: "Private 2v2", p3: "Private 3v3" };
 
 export const sizeOf = (m: Mode): Size => (m.startsWith("p") ? m.slice(1) : m) as Size;
 const kindOf = (m: Mode): Kind => (m.startsWith("p") ? "private" : "online");
@@ -49,25 +50,24 @@ export function pickKind(modes: readonly Mode[], current: Mode, kind: Kind): Mod
   return modes.includes(next) ? next : current;
 }
 
-/** [you, ...friends, rest] as whole percents of the team's total, and the even share at that team size. */
-export function carryShares(shares: readonly number[], mode: Mode): { pcts: number[]; even: number } | null {
-  const total = sum(shares);
-  if (total === 0) return null;
-  return { pcts: shares.map((s) => pct(s / total)), even: 100 / Number(sizeOf(mode)) };
+/** An even share of the team's total at the mode's team size, in percent (the bars' tick). */
+export const evenShare = (mode: Mode): number => 100 / Number(sizeOf(mode));
+
+/** The grey end's label for more than one teammate, or for one the data shows where the mode says none can be. */
+export const OTHERS = "Teammates";
+
+/**
+ * The label for the grey end (the rest of your team) with `friends` friends on your team; null when
+ * the mode leaves no one for it, unless the panel's data draws it anyway (`drawn`), as Teammates.
+ */
+export function carryRest(mode: Mode, friends: number, drawn: boolean): string | null {
+  const others = Number(sizeOf(mode)) - friends - 1;
+  if (others <= 0) return drawn ? OTHERS : null;
+  return others > 1 ? OTHERS : "Teammate";
 }
 
-// By team size: with one teammate left over, they're the last one on the team.
-const LAST = { "2": "2nd", "3": "3rd", "4": "4th" } as const;
-/** The grey end's label when more than one teammate can be in it. */
-export const OTHERS = "Others";
-
-/** The legend label for the grey end of a carry bar with `friends` friends on your team; null when no one can be in it. */
-export function carryRest(mode: Mode, friends: number): string | null {
-  const size = sizeOf(mode);
-  const others = Number(size) - friends - 1;
-  if (others <= 0) return null;
-  return others > 1 ? OTHERS : `${LAST[size]} teammate`;
-}
+/** A carry segment's hover: "You · 12 of 31 · 39%", with the segment's own (summed-to-100) percent. */
+export const shareTitle = (name: string, n: number, total: number, p: number): string => `${name} · ${whole(n)} of ${whole(total)} · ${pctText(p)}`;
 
 /** The words a friend page uses, for one friend or for a pair ("A and B", "all three"). */
 export function sideCopy(names: readonly string[]) {
@@ -85,7 +85,6 @@ export function sideCopy(names: readonly string[]) {
     againstEmpty: one ? `You haven't played against ${who} yet.` : `You haven't played against ${who} on the same team yet.`,
     withColumn: one ? `With ${who}` : "With both",
     together: one ? "together" : "with both",
-    anyOfYou: one ? "either" : "any",
     theirColumns: one ? "Their column is their scoreboard only." : "Their columns are their scoreboard only.",
     /** What the Compare table weighs, for `label` matches (e.g. "3v3"): `w` with, `wo` without. */
     compareNote: (label: string, w: number, wo: number) =>
@@ -97,8 +96,10 @@ export function sideCopy(names: readonly string[]) {
 export type SideCopy = ReturnType<typeof sideCopy>;
 
 export const recordText = ({ w, l }: { w: number; l: number }): string => `${whole(w)}–${whole(l)}`;
+/** The record as read aloud, beside `recordText` shown with aria-hidden. */
+export const recordLabel = ({ w, l }: { w: number; l: number }): string => `${whole(w)} won, ${whole(l)} lost`;
 
-export const winPctText = ({ w, l }: { w: number; l: number }): string => (w + l === 0 ? "–" : `${String(pct(w / (w + l)))}%`);
+export const winPctText = ({ w, l }: { w: number; l: number }): string => pctText(w + l === 0 ? null : pct(w / (w + l)));
 
 /** The matches a page counts: the record's total, so a count beside "18–14" says 32, not the 33 played (n). */
 export const decided = ({ w, l }: { w: number; l: number }): number => w + l;
