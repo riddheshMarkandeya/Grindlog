@@ -1,6 +1,7 @@
 import { NavLink } from "react-router";
 import { CHANNEL } from "../../shared/channel";
-import icon from "../assets/icon-small.svg";
+// The build picks the file by channel: teal on dev builds.
+import icon from "@channel/logo.svg";
 import { cx } from "./cx";
 import styles from "./Header.module.css";
 import { IconLabel } from "./Icon";

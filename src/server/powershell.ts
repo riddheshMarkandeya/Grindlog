@@ -10,13 +10,13 @@ export interface CommandResult {
  * Runs a program in a hidden window, killed after `timeoutMs`: a hung WMI query, toast or registry
  * read must never hold up the poll that awaits it. Throws only when the program can't be started.
  */
-export async function runCommand(argv: string[], timeoutMs: number): Promise<CommandResult> {
-  const proc = Bun.spawn(argv, { windowsHide: true, stdout: "pipe", stderr: "pipe", timeout: timeoutMs });
+export async function runCommand(argv: string[], timeoutMs: number, env?: Record<string, string>): Promise<CommandResult> {
+  const proc = Bun.spawn(argv, { windowsHide: true, stdout: "pipe", stderr: "pipe", timeout: timeoutMs, ...(env && { env: { ...process.env, ...env } }) });
   const [stdout, stderr, code] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text(), proc.exited]);
   return { code: proc.signalCode === null ? code : null, stdout, stderr, timedOut: proc.signalCode !== null };
 }
 
-/** `runCommand` for a PowerShell script. */
-export function runPowerShell(script: string, timeoutMs: number): Promise<CommandResult> {
-  return runCommand(["powershell", "-NoProfile", "-NonInteractive", "-Command", script], timeoutMs);
+/** `runCommand` for a PowerShell script. `env` adds to this process's: the way to hand it paths and other values unquoted. */
+export function runPowerShell(script: string, timeoutMs: number, env?: Record<string, string>): Promise<CommandResult> {
+  return runCommand(["powershell", "-NoProfile", "-NonInteractive", "-Command", script], timeoutMs, env);
 }

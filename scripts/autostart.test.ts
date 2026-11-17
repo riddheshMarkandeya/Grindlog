@@ -1,8 +1,9 @@
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { iconIssue, removeShortcuts, shortcutFile, swapExe, taskXml, writeShortcut } from "./autostart";
+import type { CommandResult } from "../src/server/powershell";
+import { removeShortcuts, SHORTCUT_SCRIPT, swapExe, taskXml, writeShortcut, type ShortcutRunner } from "./autostart";
 
 describe("taskXml", () => {
   const xml = taskXml({ userId: String.raw`PC\me`, exe: String.raw`C:\Users\A&B\bin\grindlog-dev.exe`, args: "--supervisor", workDir: String.raw`C:\Users\A&B\bin` });
@@ -33,27 +34,6 @@ describe("taskXml", () => {
   });
 });
 
-describe("shortcutFile", () => {
-  test("an Internet Shortcut to the URL with its icon, with CRLF line ends", () => {
-    const icon = String.raw`C:\bin\web\favicon.ico`;
-    expect(shortcutFile("http://127.0.0.1:49100/", icon)).toBe(`[InternetShortcut]\r\nURL=http://127.0.0.1:49100/\r\nIconFile=${icon}\r\nIconIndex=0\r\n`);
-  });
-});
-
-describe("iconIssue", () => {
-  test("none for an ASCII path that exists", () => {
-    expect(iconIssue(String.raw`C:\Users\me\favicon.ico`, true)).toBeNull();
-  });
-
-  test("a missing icon means a generic one until the next install", () => {
-    expect(iconIssue(String.raw`C:\Users\me\favicon.ico`, false)).toContain("missing");
-  });
-
-  test("a non-ASCII path is flagged, since it may not survive the file's encoding", () => {
-    expect(iconIssue(String.raw`C:\Users\José\favicon.ico`, true)).toContain("non-ASCII");
-  });
-});
-
 describe("Start menu shortcuts", () => {
   let appData: string;
   let programs: string;
@@ -69,21 +49,46 @@ describe("Start menu shortcuts", () => {
     rmSync(appData, { recursive: true, force: true });
   });
 
-  test("writing the shortcut adds this channel's and leaves others alone, a friend's install's included", () => {
-    mkdirSync(programs, { recursive: true });
-    writeFileSync(join(programs, "Grindlog.url"), "prod");
-    writeShortcut(String.raw`C:\bin\web\favicon.ico`);
-    expect(readdirSync(programs).sort()).toEqual(["Grindlog Dev.url", "Grindlog.url"]);
-    const dev = readFileSync(join(programs, "Grindlog Dev.url"), "utf8");
-    expect(dev).toContain("URL=http://127.0.0.1:49102/");
-    expect(dev).toContain(String.raw`IconFile=C:\bin\web\favicon.ico`);
+  // A curly apostrophe: PowerShell reads it as a quote, so a path quoted into the script would break.
+  const exe = String.raw`C:\Users\O’Brien\bin\grindlog-dev.exe`;
+  const result = (code: number | null, stderr = "", timedOut = false): CommandResult => ({ code, stdout: "", stderr, timedOut });
+  const logged = (run: ShortcutRunner) => async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    await writeShortcut(exe, run);
+    const text = log.mock.calls.flat().join("\n");
+    log.mockRestore();
+    return text;
+  };
+
+  test("writes this channel's .lnk through a constant script, the paths in env, never in the script", async () => {
+    const run = vi.fn<ShortcutRunner>(() => Promise.resolve(result(0)));
+    await writeShortcut(exe, run);
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(run).toHaveBeenCalledWith(SHORTCUT_SCRIPT, { GRINDLOG_LNK: join(programs, "Grindlog Dev.lnk"), GRINDLOG_EXE: exe, GRINDLOG_BIN: String.raw`C:\Users\O’Brien\bin` });
+    expect(SHORTCUT_SCRIPT).not.toContain("O’Brien");
   });
 
-  test("removing takes only this channel's shortcut", () => {
+  test("the old Internet Shortcut goes once the .lnk is written, and stays if it isn't; a friend's install's is left", async () => {
+    for (const [r, left] of [[result(0), ["Grindlog.lnk"]], [result(1, "COM failed"), ["Grindlog Dev.url", "Grindlog.lnk"]]] as const) {
+      mkdirSync(programs, { recursive: true });
+      for (const name of ["Grindlog Dev.url", "Grindlog.lnk"]) writeFileSync(join(programs, name), "x");
+      await logged(() => Promise.resolve(r))();
+      expect(readdirSync(programs).sort()).toEqual(left);
+    }
+  });
+
+  test("a failed write, a timeout or a PowerShell that won't start is logged with the dashboard's address and doesn't throw", async () => {
+    const tail = "; the dashboard is at http://127.0.0.1:49102/";
+    expect(await logged(() => Promise.resolve(result(1, "COM failed\r\n")))()).toContain(`Could not create the Start menu shortcut (exit 1: COM failed)${tail}`);
+    expect(await logged(() => Promise.resolve(result(null, "", true)))()).toContain(`Could not create the Start menu shortcut (PowerShell timed out)${tail}`);
+    expect(await logged(() => Promise.reject(new Error("ENOENT powershell")))()).toContain(`Could not create the Start menu shortcut (ENOENT powershell)${tail}`);
+  });
+
+  test("removing takes only this channel's shortcuts, the old Internet Shortcut included", () => {
     mkdirSync(programs, { recursive: true });
-    for (const name of ["Grindlog Dev.url", "Grindlog.url", "Other.url"]) writeFileSync(join(programs, name), "x");
+    for (const name of ["Grindlog Dev.lnk", "Grindlog Dev.url", "Grindlog.lnk", "Other.url"]) writeFileSync(join(programs, name), "x");
     removeShortcuts();
-    expect(readdirSync(programs).sort()).toEqual(["Grindlog.url", "Other.url"]);
+    expect(readdirSync(programs).sort()).toEqual(["Grindlog.lnk", "Other.url"]);
   });
 
   test("removing is fine with nothing there", () => {

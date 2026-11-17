@@ -63,8 +63,10 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   close/mid/long, `periods.ts` local days and periods, `playlist-filter.ts` filter groups, `schemas/` API params
   and response shapes),
   `scripts/` (standalone `capture.ts`; `make-icons.ts` packs `src/web/assets/icon.svg` and
-  `icon-small.svg` into `src/web/public/favicon.ico` and the tray set with state dots and a teal dev line into
-  `src/tray/icons/` (`bun run icons`, output committed); `build-tray.ts` compiles the tray with `csc.exe`;
+  `icon-small.svg` into `src/web/public/favicon.ico`, a teal dev copy (`src/web/assets/favicon-dev.ico`,
+  `icon-small-dev.svg`) and the tray set with state dots and a teal dev line into `src/tray/icons/`
+  (`bun run icons`, output committed; on dev builds `vite.config.ts` adds the dev favicon and aliases
+  `@channel/logo.svg` to the teal logo, and the dev exes embed the teal icon); `build-tray.ts` compiles the tray with `csc.exe`;
   `build-exe.ts` the shared `bun build --compile` args and `COPYRIGHT` (exes, tray, installer; LICENSE repeats it);
   `build-release.ts` (`bun run build-release [--tag vX.Y.Z]`:
   prod web, exe and tray staged in `release/app`, `rcedit.ts` sets `InternalName`, a smoke run of the exe, then
@@ -104,10 +106,11 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   `grindlog.exe`), so a friend's install and the developer's share no data, port, task or exe.
 - Background: `bun run install-autostart` compiles `grindlog-dev.exe` and the dashboard (`bin\web`,
   which the tracker serves) into `%LOCALAPPDATA%\GrindlogDev\bin\`, registers the `GrindlogDev`
-  logon task (`grindlog-dev.exe --supervisor`) and adds the `Grindlog Dev` Start menu shortcut to
-  `http://127.0.0.1:49102/`. It runs that snapshot, not the repo. `bun run deploy` ships code
+  logon task (`grindlog-dev.exe --supervisor`) and adds the `Grindlog Dev.lnk` Start menu app shortcut
+  (`grindlog-dev.exe --open`: starts the tracker if needed, then opens `http://127.0.0.1:49102/`; it
+  replaces older installs' `Grindlog Dev.url`). It runs that snapshot, not the repo. `bun run deploy` ships code
   changes: check, e2e, then install-autostart (builds while the old one records, then swaps and
-  restarts), then recompute. `uninstall-autostart` removes the task, shortcut and `bin`.
+  restarts), then recompute. `uninstall-autostart` removes the task, both shortcut kinds and `bin`.
 - Data and logs: `%LOCALAPPDATA%\GrindlogDev\` (`logs\tracker.log`, `logs\supervisor.log` and `logs\launcher.log` (`--open`/`--quit`),
   5 × 5 MB, JSON lines); `GRINDLOG_DATA_DIR` overrides it for tests and dev runs. Also `tracker.db` (settings, seasons,
   IDs, match records, `meta` app state such as the last recomputed version; backed up to `backups/`, 7 kept), `raw.db` (raw events; after 90 days a

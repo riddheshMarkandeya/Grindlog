@@ -1,5 +1,12 @@
 import { describe, expect, test } from "vitest";
-import { assemblyInfo, findCsc, trayCompileArgs, trayIconPaths } from "./build-tray";
+import { assemblyInfo, exeIcon, findCsc, trayCompileArgs, trayIconPaths } from "./build-tray";
+
+describe("exeIcon", () => {
+  test("dev exes take the teal icon, prod's the orange favicon", () => {
+    expect(exeIcon("dev")).toMatch(/assets[\\/]favicon-dev\.ico$/);
+    expect(exeIcon("prod")).toMatch(/public[\\/]favicon\.ico$/);
+  });
+});
 
 describe("trayIconPaths", () => {
   test("picks the channel's set: dev gets the tinted icons", () => {

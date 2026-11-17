@@ -1,7 +1,18 @@
 import { describe, expect, test } from "vitest";
-import { packIco, traySet, traySvg } from "./make-icons";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { devSvg, packIco, traySet, traySvg } from "./make-icons";
 
 const png = (size: number, bytes: number[]) => ({ size, data: Uint8Array.from(bytes) });
+
+describe("devSvg", () => {
+  const asset = (name: string) => readFileSync(join(import.meta.dirname, "..", "src", "web", "assets", name), "utf8");
+
+  test("the committed dev logo is the small master in the dev channel's colour", () => {
+    expect(devSvg(asset("icon-small.svg"))).not.toContain("#d95926");
+    expect(asset("icon-small-dev.svg")).toBe(devSvg(asset("icon-small.svg")));
+  });
+});
 
 describe("packIco", () => {
   const ico = Buffer.from(packIco([png(16, [1, 2, 3]), png(256, [4, 5])]));

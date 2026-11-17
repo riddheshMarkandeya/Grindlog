@@ -27,7 +27,7 @@ export interface Identity {
 export function identity(channel: Channel = CHANNEL): Identity {
   return channel === "prod"
     ? { dataDirName: "Grindlog", port: 49100, exe: "grindlog.exe", trayExe: "grindlog-tray.exe", task: "Grindlog", shortcut: "Grindlog.lnk" }
-    : { dataDirName: "GrindlogDev", port: 49102, exe: "grindlog-dev.exe", trayExe: "grindlog-dev-tray.exe", task: "GrindlogDev", shortcut: "Grindlog Dev.url" };
+    : { dataDirName: "GrindlogDev", port: 49102, exe: "grindlog-dev.exe", trayExe: "grindlog-dev-tray.exe", task: "GrindlogDev", shortcut: "Grindlog Dev.lnk" };
 }
 
 /** Where the tracker keeps its logs and databases. GRINDLOG_DATA_DIR overrides it (tests, dev). */

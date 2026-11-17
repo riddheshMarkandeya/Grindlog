@@ -1,6 +1,7 @@
-// Renders the icon SVGs in the installed Chrome and packs them into favicon.ico, for the browser tab,
-// the Start menu shortcut and the exes, and into the tray's state icons. `bun run icons`; the output
-// is committed.
+// Renders the icon SVGs in the installed Chrome and packs them into favicon.ico (the browser tab and
+// the release exes), a teal favicon-dev.ico plus header logo for the dev channel (its tab, header and
+// exe, so it can't pass for a friend's install), and the tray's state icons. `bun run icons`; the
+// output is committed.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Browser } from "@playwright/test";
@@ -10,6 +11,9 @@ const MASTER = join(REPO, "src", "web", "assets", "icon.svg");
 // Drawn on a 16 px grid, because the master's bars smear at the small sizes.
 const SMALL = join(REPO, "src", "web", "assets", "icon-small.svg");
 const OUT = join(REPO, "src", "web", "public", "favicon.ico");
+// In assets/, not public/: Vite copies public/ into every build, and only dev builds take these.
+const DEV_OUT = join(REPO, "src", "web", "assets", "favicon-dev.ico");
+const DEV_LOGO = join(REPO, "src", "web", "assets", "icon-small-dev.svg");
 const SIZES = [{ size: 16, svg: SMALL }, { size: 24, svg: SMALL }, ...[32, 48, 64, 128, 256].map((size) => ({ size, svg: MASTER }))];
 const TRAY_OUT = join(REPO, "src", "tray", "icons");
 
@@ -41,6 +45,9 @@ export function traySvg(svg: string, grid: 16 | 64, { line, dot }: { line: strin
   const circle = (r: number, fill: string) => `<circle cx="${n(DOT.c)}" cy="${n(DOT.c)}" r="${n(r)}" fill="${fill}"/>`;
   return recoloured.replace("</svg>", `${circle(DOT.r + DOT.ring, TILE)}${circle(DOT.r, dot)}</svg>`);
 }
+
+/** A master SVG in the dev channel's colour with no state dot: the dev favicon and header logo. */
+export const devSvg = (svg: string): string => traySvg(svg, 16, { line: TRAY_CHANNELS.dev, dot: null });
 
 const ICO_HEADER_BYTES = 6;
 const ICO_ENTRY_BYTES = 16;
@@ -87,13 +94,17 @@ if (import.meta.main) {
     process.exit(1);
   }
   try {
-    const pngs = [];
-    for (const { size, svg } of SIZES) {
-      pngs.push({ size, data: await renderPng(browser, readFileSync(svg, "utf8"), size) });
-      console.log(`Rendered ${String(size)} px from ${svg}`);
+    for (const [out, colour] of [[OUT, (svg: string) => svg], [DEV_OUT, devSvg]] as const) {
+      const pngs = [];
+      for (const { size, svg } of SIZES) {
+        pngs.push({ size, data: await renderPng(browser, colour(readFileSync(svg, "utf8")), size) });
+        console.log(`Rendered ${String(size)} px from ${svg} for ${out}`);
+      }
+      writeFileSync(out, packIco(pngs));
+      console.log(`Wrote ${out}`);
     }
-    writeFileSync(OUT, packIco(pngs));
-    console.log(`Wrote ${OUT}`);
+    writeFileSync(DEV_LOGO, devSvg(readFileSync(SMALL, "utf8")));
+    console.log(`Wrote ${DEV_LOGO}`);
     const small = readFileSync(SMALL, "utf8");
     const master = readFileSync(MASTER, "utf8");
     mkdirSync(TRAY_OUT, { recursive: true });

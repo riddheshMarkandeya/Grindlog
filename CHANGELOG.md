@@ -19,6 +19,8 @@ All notable changes to Grindlog are listed here. The format is based on
 - The goal map has one layout on both pages: the pitch, then Scored and Conceded side by side.
 - Icons across the dashboard: the nav, buttons, stat cards and tiles, match rows and markers. They replace the
   game's statfeed icons, and the share card marks its stood-out line with a trend arrow.
+- Developer installs only: a teal favicon, header logo and exe icon, and a Start menu app shortcut that starts
+  the tracker and shows up in search (it was a web link that search skipped). Release builds are unchanged.
 
 ## [0.1.3] - 2026-11-13
 

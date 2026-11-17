@@ -1,27 +1,28 @@
 // Installs the developer's background tracker: compiles the one exe (tracker and supervisor) and
 // the tray exe into <dataDir>\bin, builds the dashboard into <dataDir>\bin\web, registers a logon
-// task that runs the exe as the supervisor, and adds a Start menu shortcut to the dashboard.
+// task that runs the exe as the supervisor, and adds a Start menu shortcut that opens the dashboard.
 // Running it again is the update path. Every name comes from this build's channel, so it never
 // touches a friend's install.
 // `bun run install-autostart` / `bun run uninstall-autostart`.
 import { closeSync, existsSync, mkdirSync, openSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { dataDir, identity } from "../src/server/paths";
 import { APP_NAME, CHANNEL } from "../src/shared/channel";
 import { DASHBOARD_HOST } from "../src/shared/constants";
 import { version as appVersion } from "../package.json";
 import { killExe } from "../src/server/control";
+import { runPowerShell, type CommandResult } from "../src/server/powershell";
 import { parseTaskState } from "../src/server/logon-task";
 import { compileArgs } from "./build-exe";
-import { buildTray, TrayBuildFailed } from "./build-tray";
+import { buildTray, exeIcon, TrayBuildFailed } from "./build-tray";
 import { stopTracker } from "./stop";
 
 const ID = identity();
 const REPO = join(import.meta.dirname, "..");
 const ENTRY = join(REPO, "src", "server", "grindlog.ts");
 // Absolute, because the builds run with no cwd.
-const EXE_ICON = join(REPO, "src", "web", "public", "favicon.ico");
+const EXE_ICON = exeIcon(CHANNEL);
 const DASHBOARD_URL = `http://${DASHBOARD_HOST}:${String(ID.port)}/`;
 
 const xmlEscape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -43,11 +44,6 @@ export function taskXml({ userId, exe, args, workDir }: { userId: string; exe: s
   <Actions Context="Author"><Exec><Command>${xmlEscape(exe)}</Command><Arguments>${xmlEscape(args)}</Arguments><WorkingDirectory>${xmlEscape(workDir)}</WorkingDirectory></Exec></Actions>
 </Task>
 `;
-}
-
-/** A Start menu Internet Shortcut: it opens the URL in the default browser and never runs the tracker. */
-export function shortcutFile(url: string, iconFile: string): string {
-  return `[InternetShortcut]\r\nURL=${url}\r\nIconFile=${iconFile}\r\nIconIndex=0\r\n`;
 }
 
 class StepFailed extends Error {}
@@ -201,38 +197,70 @@ function removeShortcut(path: string): void {
   }
 }
 
-/** Why the shortcut would show a generic icon, or null. */
-export function iconIssue(iconFile: string, exists: boolean): string | null {
-  // A failed swap keeps the old build, which may predate the icon.
-  if (!exists) return `${iconFile} is missing, so the shortcut shows a generic icon until the next install.`;
-  // Windows is expected to read a .url in the system code page, and this one is written as UTF-8.
-  if (/[^\x20-\x7e]/.test(iconFile)) return `${iconFile} has non-ASCII characters, so the shortcut may show a generic icon.`;
-  return null;
+// Mirrors the installer's prod shortcut: the exe with --open starts the app if it isn't running and
+// opens the dashboard. Every path comes in through env, so no character in it can end a quoted string.
+export const SHORTCUT_SCRIPT = `
+$ErrorActionPreference = 'Stop'
+$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:GRINDLOG_LNK)
+$s.TargetPath = $env:GRINDLOG_EXE
+$s.Arguments = '--open'
+$s.WorkingDirectory = $env:GRINDLOG_BIN
+$s.IconLocation = $env:GRINDLOG_EXE + ',0'
+$s.Save()`;
+
+export type ShortcutRunner = (script: string, env: Record<string, string>) => Promise<CommandResult>;
+
+// A hung COM call would otherwise hold up the install's last step.
+const SHORTCUT_TIMEOUT_MS = 15_000;
+const runShortcutScript: ShortcutRunner = (script, env) => runPowerShell(script, SHORTCUT_TIMEOUT_MS, env);
+
+/** This channel's Start menu shortcuts: the app shortcut, and the Internet Shortcut older dev installs wrote. */
+function shortcutPaths(dir: string): { lnk: string; legacy: string } {
+  return { lnk: join(dir, ID.shortcut), legacy: join(dir, ID.shortcut.replace(/\.lnk$/, ".url")) };
 }
 
-/** Best-effort: by now the tracker is installed and running, so a missing shortcut only costs a lookup of the URL. */
-export function writeShortcut(iconFile: string): void {
+/**
+ * Best-effort: by now the tracker is installed and running, so a missing shortcut only costs a lookup
+ * of the URL. Windows Start search lists an app shortcut but not an Internet Shortcut, hence the .lnk.
+ */
+export async function writeShortcut(exe: string, run: ShortcutRunner = runShortcutScript): Promise<void> {
+  const noShortcut = (why: string) => { console.log(`Could not create the Start menu shortcut (${why}); the dashboard is at ${DASHBOARD_URL}`); };
   const dir = startMenuDir();
   if (dir === null) {
-    console.log(`Could not create the Start menu shortcut (APPDATA is not set); the dashboard is at ${DASHBOARD_URL}`);
+    noShortcut("APPDATA is not set");
     return;
   }
-  const issue = iconIssue(iconFile, existsSync(iconFile));
-  if (issue !== null) console.log(issue);
-  const path = join(dir, ID.shortcut);
-  try {
-    mkdirSync(dir, { recursive: true });
-    writeFileSync(path, shortcutFile(DASHBOARD_URL, iconFile));
-    console.log(`Added the Start menu shortcut ${path}`);
-  } catch (err) {
-    // Only filesystem calls above; any failure degrades the same way.
-    console.log(`Could not create the Start menu shortcut (${(err as Error).message}); the dashboard is at ${DASHBOARD_URL}`);
+  const paths = shortcutPaths(dir);
+  const failure = await createLnk(paths.lnk, exe, run);
+  if (failure !== null) {
+    noShortcut(failure);
+    return;
   }
+  console.log(`Added the Start menu shortcut ${paths.lnk}`);
+  // Only now: until the .lnk exists, the old link is the user's only Start menu entry.
+  removeShortcut(paths.legacy);
+}
+
+/** Why the .lnk wasn't written, or null once it is. */
+async function createLnk(lnk: string, exe: string, run: ShortcutRunner): Promise<string | null> {
+  let r: CommandResult;
+  try {
+    mkdirSync(dirname(lnk), { recursive: true });
+    r = await run(SHORTCUT_SCRIPT, { GRINDLOG_LNK: lnk, GRINDLOG_EXE: exe, GRINDLOG_BIN: dirname(exe) });
+  } catch (err) {
+    // The folder couldn't be made or PowerShell couldn't start; either way there's no shortcut.
+    return (err as Error).message;
+  }
+  if (r.timedOut) return "PowerShell timed out";
+  return r.code === 0 ? null : `exit ${String(r.code)}: ${r.stderr.trim()}`;
 }
 
 export function removeShortcuts(): void {
   const dir = startMenuDir();
-  if (dir !== null) removeShortcut(join(dir, ID.shortcut));
+  if (dir === null) return;
+  const { lnk, legacy } = shortcutPaths(dir);
+  removeShortcut(lnk);
+  removeShortcut(legacy);
 }
 
 async function install(): Promise<void> {
@@ -317,7 +345,7 @@ async function install(): Promise<void> {
       console.log("Run at Windows startup stays off, as the dashboard set it.");
     }
   }
-  writeShortcut(join(web, "favicon.ico"));
+  await writeShortcut(exe);
   if (exeSwap.kind === "kept_old") throw new StepFailed(`${APP_NAME} is running again, but not updated: ${exeSwap.reason}`);
   if (swapFailed !== null) throw new StepFailed(`${APP_NAME} is running again, but the dashboard was not updated: ${swapFailed.message}`);
   console.log(`${APP_NAME} is installed in ${bin} and running${switchedOff ? "" : "; it starts at each logon"}. The dashboard is at ${DASHBOARD_URL}`);

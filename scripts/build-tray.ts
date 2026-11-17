@@ -11,12 +11,20 @@ import { StepFailed } from "./steps";
 
 const REPO = join(import.meta.dirname, "..");
 const SOURCE = join(REPO, "src", "tray", "Tray.cs");
-const ICON = join(REPO, "src", "web", "public", "favicon.ico");
+const EXE_ICONS: Readonly<Record<Channel, string>> = {
+  prod: join(REPO, "src", "web", "public", "favicon.ico"),
+  // Teal, from `bun run icons`, so the developer's exes can't pass for a friend's.
+  dev: join(REPO, "src", "web", "assets", "favicon-dev.ico"),
+};
+
 const TRAY_ICONS = join(REPO, "src", "tray", "icons");
 // Marks the exe DPI-aware, or Windows stretches the 16 px icon frame and the menu at 125/150 %.
 const MANIFEST = join(REPO, "src", "tray", "tray.manifest");
 const TRAY_STATES = ["ready", "active", "attention", "stopped"] as const;
 type TrayIcons = Record<(typeof TRAY_STATES)[number], string>;
+
+/** The icon a channel's exes embed: what Explorer, Task Manager and the Start menu show. */
+export const exeIcon = (channel: Channel): string => EXE_ICONS[channel];
 
 /** The channel's state icons from `bun run icons`; Tray.cs loads them as Grindlog.tray.<state>.ico. */
 export function trayIconPaths(channel: Channel, dir = TRAY_ICONS): TrayIcons {
@@ -75,7 +83,7 @@ export function buildTray({ out, channel, version }: { out: string; channel: Cha
   try {
     const info = join(dir, "AssemblyInfo.cs");
     writeFileSync(info, assemblyInfo({ title: appName(channel), version }));
-    const res = Bun.spawnSync([csc, ...trayCompileArgs({ out, icon: ICON, trayIcons: trayIconPaths(channel), manifest: MANIFEST, sources: [SOURCE, info] })], { stdout: "pipe", stderr: "pipe", timeout: 60_000 });
+    const res = Bun.spawnSync([csc, ...trayCompileArgs({ out, icon: exeIcon(channel), trayIcons: trayIconPaths(channel), manifest: MANIFEST, sources: [SOURCE, info] })], { stdout: "pipe", stderr: "pipe", timeout: 60_000 });
     // csc prints its errors to stdout.
     if (res.exitCode !== 0) throw new TrayBuildFailed(`csc failed (exit ${String(res.exitCode)}):\n${(res.stdout.toString() + res.stderr.toString()).trim()}`);
   } finally {

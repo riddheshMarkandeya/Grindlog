@@ -15,12 +15,21 @@ test.afterEach(({ consoleErrors }) => {
   expect(consoleErrors).toEqual([]);
 });
 
-test("a dev build says so, in the header and the tab title, so it isn't mistaken for a friend's install; a prod build doesn't", async ({ page }) => {
+test("a dev build says so, in the header, logo, favicon and tab title, so it isn't mistaken for a friend's install; a prod build doesn't", async ({ page, request }) => {
   // The web build takes its channel from this variable, as vite.config.ts reads it.
   const prod = process.env.GRINDLOG_CHANNEL === "prod";
   await page.goto("/");
   await expect(page.getByRole("banner").getByText("Dev", { exact: true })).toHaveCount(prod ? 0 : 1);
   await expect(page).toHaveTitle(prod ? "Grindlog" : "Grindlog Dev");
+  const favicon = prod ? "/favicon.ico" : "/favicon-dev.ico";
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute("href", favicon);
+  expect((await request.get(favicon)).headers()["content-type"]).toMatch(/icon/);
+  // The teal logo is the orange one recoloured; the colour is the only way to tell them apart.
+  // A logo this small is inlined as a data URL, URL-encoded or base64.
+  const logo = (await page.getByRole("banner").locator("img").first().getAttribute("src")) ?? "";
+  const data = /^data:[^,]*?(;base64)?,(.*)$/s.exec(logo);
+  const svg = data ? (data[1] ? atob(data[2] ?? "") : decodeURIComponent(data[2] ?? "")) : await (await request.get(logo)).text();
+  expect(svg).toContain(prod ? "#d95926" : "#14b8a6");
 });
 
 test("before the match: redirect, live status, chip, navigation, deep link, not found", async ({ page }) => {

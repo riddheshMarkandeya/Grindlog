@@ -9,7 +9,7 @@ describe("identity", () => {
   });
 
   test("dev shares none of prod's names or its port, so both can be installed side by side", () => {
-    expect(identity("dev")).toEqual({ dataDirName: "GrindlogDev", port: 49102, exe: "grindlog-dev.exe", trayExe: "grindlog-dev-tray.exe", task: "GrindlogDev", shortcut: "Grindlog Dev.url" });
+    expect(identity("dev")).toEqual({ dataDirName: "GrindlogDev", port: 49102, exe: "grindlog-dev.exe", trayExe: "grindlog-dev-tray.exe", task: "GrindlogDev", shortcut: "Grindlog Dev.lnk" });
   });
 
   test("an unbundled run is dev", () => {

@@ -182,11 +182,6 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   fine in the same Chrome, and in a clean one, so there is no repro. Next time, before retrying, read
   `[grindlog] share/export_failed` in that tab's console, since the error goes nowhere else: `empty blob` means
   the canvas gave nothing back, and anything else is the SVG step of `toBlob`.
-- [ ] **[bug (latent), Low, Standard]** Trigger: an install reports "the dashboard was not updated"
-  with EPERM or EBUSY on `bin\web`. The shortcut's `IconFile` points inside the folder the install
-  renames, so a shell handle on `favicon.ico` could block the swap. Not seen. Fix: a stable icon path
-  outside `web`, such as `bin\grindlog.ico`. Record:
-  `docs/plans/2026-11-05-name-and-icon.md`.
 - [ ] **[bug (latent), Low, Standard]** Trigger: the Friends landing e2e or the shell "redirect is
   pending" e2e flakes, or a header click is seen undone after `/` → `/recap`. `<Navigate>` replaces
   from a passive effect, so a click landing between the redirect's commit and that effect can
