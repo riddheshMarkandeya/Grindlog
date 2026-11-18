@@ -9,6 +9,8 @@ import { useWidth } from "../../components/useWidth";
 import { bucketHref, seasonMarks, wlEnds, wlGeometry, wlLabel, wlRecord, type WlGeometry } from "../../logic/trend-chart";
 import type { TrendsState } from "../../logic/trends";
 import styles from "./Trends.module.css";
+import { cx } from "../../components/cx";
+import { useDrawOnce } from "./chart-motion";
 
 const HEIGHT = 110;
 
@@ -17,8 +19,8 @@ type Column = WlGeometry["columns"][number];
 function Bars({ c }: { c: Column }) {
   return (
     <>
-      {c.win && <path className={styles.winBar} d={c.win.d} />}
-      {c.loss && <path className={styles.lossBar} d={c.loss.d} />}
+      {c.win && <path className={cx(styles.winBar, styles.barPath)} d={c.win.d} />}
+      {c.loss && <path className={cx(styles.lossBar, styles.barPath)} d={c.loss.d} />}
     </>
   );
 }
@@ -40,13 +42,15 @@ export function WinLossChart({ view, state, seasons }: { view: PeriodView; state
   const { ref, width } = useWidth<HTMLDivElement>();
   const kind = view.bucket;
   const g = width > 0 ? wlGeometry(view.buckets, { width, height: HEIGHT }, wlEnds(view.buckets, kind)) : null;
+  const { phase, onDrawEnd } = useDrawOnce("winloss", view, styles.barPath);
   const hint = kind === "day" ? "Select a day to open its recap" : `Select a ${kind} to open it`;
   return (
     <Section level={3} title={`Wins and losses · per ${kind}`} aside={<span className={styles.hint2}>{hint}</span>}>
       <div className="panel">
         <div ref={ref} className={styles.plotBox} style={{ minHeight: HEIGHT }}>
           {g && (
-            <svg className={styles.chart} width={width} height={HEIGHT} role="group" aria-label={`Wins and losses per ${kind}`}>
+            // Drawn: the bars grow from the midline. Then keyed by index, so a bar's d moves to its new value.
+            <svg key={phase} className={cx(styles.chart, phase === "draw" ? styles.drawBars : styles.tweenBars)} width={width} height={HEIGHT} role="group" aria-label={`Wins and losses per ${kind}`} onAnimationEnd={onDrawEnd}>
               <line className={styles.grid} x1={g.plot.left} x2={g.plot.right} y1={g.mid} y2={g.mid} />
               <text className={styles.axis} x={4} y={g.plot.top + 12} aria-hidden="true">W</text>
               <text className={styles.axis} x={4} y={g.plot.bottom - 2} aria-hidden="true">L</text>
@@ -66,12 +70,12 @@ export function WinLossChart({ view, state, seasons }: { view: PeriodView; state
                 if (!b) return null;
                 const href = bucketHref(b, kind, state);
                 return href === null ? (
-                  <g key={b.day} aria-hidden="true">
+                  <g key={i} aria-hidden="true">
                     <Bars c={c} />
                     <title>{wlRecord(b, kind)}</title>
                   </g>
                 ) : (
-                  <BucketLink key={b.day} c={c} href={href} label={wlLabel(b, kind)} top={g.plot.top} height={g.plot.bottom - g.plot.top} />
+                  <BucketLink key={i} c={c} href={href} label={wlLabel(b, kind)} top={g.plot.top} height={g.plot.bottom - g.plot.top} />
                 );
               })}
               {g.xLabels.map((l) => (

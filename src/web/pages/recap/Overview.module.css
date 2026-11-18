@@ -58,6 +58,6 @@
   position: absolute; top: 42px; left: var(--s3); right: var(--s3); z-index: 5; padding: var(--s2) var(--s3);
   background: var(--surf2); border: 1px solid var(--line); border-radius: var(--r); box-shadow: 0 4px 12px var(--shadow);
   color: var(--ink); font-size: 12px; line-height: 1.4; text-align: left;
-  visibility: hidden; opacity: 0; transition: opacity .12s;
+  visibility: hidden; opacity: 0; transition: opacity var(--dur-1) var(--ease-standard);
 }
 .tip.open { visibility: visible; opacity: 1; }

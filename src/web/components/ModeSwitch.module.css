@@ -1,7 +1,10 @@
 /* The team size × Online/Private switch: two segmented button groups. */
 .switches { display: flex; flex-wrap: wrap; gap: var(--s2); }
-.seg { display: inline-flex; gap: 2px; background: var(--surf2); border: 1px solid var(--line); border-radius: var(--r); padding: 2px; }
-.seg button { background: none; border: 0; border-radius: 4px; padding: 3px 12px; color: var(--ink2); font-weight: 600; cursor: pointer; }
+.seg { position: relative; display: inline-flex; gap: 2px; background: var(--surf2); border: 1px solid var(--line); border-radius: var(--r); padding: 2px; }
+.seg button { background: none; border: 0; border-radius: 4px; padding: 3px 12px; color: var(--ink2); font-weight: 600; cursor: pointer; transition: color var(--dur-1) var(--ease-standard), scale var(--dur-1) var(--ease-standard); }
+.seg button:active:not([aria-disabled="true"]) { scale: var(--press); }
 .seg button:hover:not([aria-disabled="true"]) { color: var(--ink); }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--page); }
+.seg::after { top: 2px; bottom: 2px; border-radius: 4px; background: var(--accent); }
+.seg[data-ind] button { background: none; transition: color var(--dur-2) var(--ease-standard), scale var(--dur-1) var(--ease-standard); }
 .seg button[aria-disabled="true"] { opacity: .4; cursor: default; }

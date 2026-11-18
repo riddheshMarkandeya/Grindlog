@@ -55,6 +55,39 @@
   --s4: 16px;
   --s5: 24px;
   --s6: 32px;
+
+  /* Motion. Calm by default: hovers --dur-1, colour/opacity --dur-2, entrances --dur-3, exits faster.
+     Springs only on a selection change: --ease-spring (a switch), --ease-spring-bouncy (the sliding
+     indicators). Every duration in the app comes from here, so the reduced-motion block reaches it. */
+  --dur-1: 100ms;
+  --dur-2: 150ms;
+  --dur-3: 250ms;
+  --dur-exit: 150ms;
+  --ease-standard: cubic-bezier(.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0, 0, 0, 1);
+  --ease-exit: cubic-bezier(.3, 0, 1, 1);
+  --ease-spring: linear(0, .049, .161, .295, .43, .553, .659, .746, .815, .868, .909, .938, .96, .975, .985, .992, .996, .999, 1);
+  --dur-spring: 320ms;
+  --ease-spring-bouncy: linear(0, .052, .17, .316, .463, .597, .712, .804, .875, .927, .963, .987, 1.002, 1.011, 1.014, 1.015, 1.014, 1.012, 1.01, 1.008, 1.006, 1.004, 1.003, 1.002, 1);
+  --dur-spring-bouncy: 430ms;
+  /* A route change: the old page fades out fast, the new one rises in after a beat. */
+  --dur-rise-out: 90ms;
+  --delay-rise: 60ms;
+  /* A chart's first draw, and its later moves between values (the JS line tween uses the same 320ms). */
+  --dur-draw: 600ms;
+  --delay-dots: 350ms;
+  --dur-tween: 320ms;
+  --dur-pulse: 1s;
+  --dur-status: 2.3s;
+  /* Spatial amounts: the press shrink and the rise distance (dialog, page). */
+  --press: .97;
+  --rise: 8px;
+}
+
+/* Reduced motion: anything that moves jumps; fades stay (colour and opacity aren't motion under
+   WCAG 2.3.3). Each spatial effect reads one of these, so this one block covers them. */
+@media (prefers-reduced-motion: reduce) {
+  :root { --press: 1; --rise: 0px; --dur-spring: 0ms; --dur-spring-bouncy: 0ms; --dur-tween: 0ms; }
 }
 
 [data-theme=carbon]{--page:#0c0c0d;--surf:#161618;--surf2:#202023;--line:#2c2c30;--grid:#252528;--ink:#ededed;--ink2:#b0b0b5;--muted:#85858c;--accent:#c6f24e}

@@ -21,13 +21,20 @@
 
 /* Radios drawn as segments or swatches: the input, see-through, covers its label, so a click anywhere on it picks it. */
 .radio { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
-.seg { display: inline-flex; gap: 2px; background: var(--surf2); border: 1px solid var(--line); border-radius: var(--r); padding: 2px; }
-.seg label { position: relative; border-radius: 4px; padding: 4px 12px; cursor: pointer; color: var(--ink2); font-weight: 600; transition: background-color .12s; }
+.seg { position: relative; display: inline-flex; gap: 2px; background: var(--surf2); border: 1px solid var(--line); border-radius: var(--r); padding: 2px; }
+.seg label { position: relative; border-radius: 4px; padding: 4px 12px; cursor: pointer; color: var(--ink2); font-weight: 600; transition: background-color var(--dur-1) var(--ease-standard), scale var(--dur-1) var(--ease-standard); }
 .seg label:hover { color: var(--ink); }
+.seg label:active { scale: var(--press); }
 .seg label:has(.radio:checked) { background: var(--accent); color: var(--page); }
+.seg::after { top: 2px; bottom: 2px; border-radius: 4px; background: var(--accent); }
+.seg[data-ind] label, .seg[data-ind] label:has(.radio:checked) { background: none; transition: color var(--dur-2) var(--ease-standard), scale var(--dur-1) var(--ease-standard); }
 .seg label:has(.radio:focus-visible), .swatch:has(.radio:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 .swatches { display: flex; flex-wrap: wrap; gap: var(--s2); }
-.swatch { position: relative; width: 76px; border: 2px solid transparent; border-radius: var(--r); cursor: pointer; text-align: center; }
+.swatch {
+  position: relative; width: 76px; border: 2px solid transparent; border-radius: var(--r); cursor: pointer; text-align: center;
+  transition: border-color var(--dur-1) var(--ease-standard), scale var(--dur-1) var(--ease-standard);
+}
+.swatch:active { scale: var(--press); }
 .swatch:has(.radio:checked) { border-color: var(--accent); }
 /* data-theme on the chip gives it that theme's tokens, whatever the page's theme is. */
 .chip { display: block; position: relative; height: 44px; border-radius: 4px; border: 1px solid var(--line); background: var(--page); overflow: hidden; }
@@ -38,8 +45,10 @@
 .swatch:has(.radio:checked) .choiceText { color: var(--ink); font-weight: 600; }
 
 /* Switch: a native checkbox with role="switch". */
-.switch { appearance: none; width: 36px; height: 20px; margin: 0; border-radius: 999px; background: var(--line); position: relative; cursor: pointer; flex: none; transition: background-color .15s; }
-.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--ink2); transition: transform .15s, background-color .15s; }
+/* The thumb moves on the standard spring (a selection change; the bouncy one is the indicators'); the
+   colours fade. Under reduced motion --dur-spring is 0, so the thumb jumps and the colours still fade. */
+.switch { appearance: none; width: 36px; height: 20px; margin: 0; border-radius: 999px; background: var(--line); position: relative; cursor: pointer; flex: none; transition: background-color var(--dur-2) var(--ease-standard); }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--ink2); transition: transform var(--dur-spring) var(--ease-spring), background-color var(--dur-2) var(--ease-standard); }
 .switch:checked { background: var(--accent); }
 .switch:checked::after { transform: translateX(16px); background: var(--page); }
 .switch:disabled { cursor: default; }
@@ -52,7 +61,7 @@
 .layout { display: grid; grid-template-columns: 150px minmax(0, 820px); gap: var(--s5); align-items: start; }
 .nav { position: sticky; top: var(--s4); }
 .nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-.nav a { display: block; padding: 6px var(--s2); border-radius: var(--r); color: var(--ink2); text-decoration: none; font-weight: 600; white-space: nowrap; }
+.nav a { display: block; padding: 6px var(--s2); border-radius: var(--r); color: var(--ink2); text-decoration: none; font-weight: 600; white-space: nowrap; transition: background-color var(--dur-1) var(--ease-standard), color var(--dur-1) var(--ease-standard); }
 .nav a:hover { color: var(--ink); background: var(--surf2); }
 .nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
 @media (max-width: 767px) {
@@ -68,10 +77,6 @@
 .list > .row:last-child { border-bottom: 0; }
 .list + .addRow { border-top: 1px solid var(--grid); }
 .actions { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; flex: none; }
-.button { background: var(--surf2); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r); padding: 4px 12px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: border-color .12s; }
-.button:hover:not(:disabled) { border-color: var(--accent); }
-.button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.button:disabled { opacity: .45; cursor: default; }
 .badge { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--accent); color: var(--accent); }
 .warning { margin: 0 0 var(--s3); padding: var(--s2) var(--s3); border: 1px solid var(--flag); border-radius: var(--r); color: var(--ink); font-size: 14px; }
 .addRow { padding: var(--s3) var(--s4); }

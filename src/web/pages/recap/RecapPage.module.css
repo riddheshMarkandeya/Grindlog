@@ -2,7 +2,10 @@
 .loading { min-height: 70vh; }
 .bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3); }
 .end { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); }
-.tabs { display: flex; gap: var(--s4); margin-top: var(--s3); border-bottom: 1px solid var(--line); }
+.tabs { position: relative; display: flex; gap: var(--s4); margin-top: var(--s3); border-bottom: 1px solid var(--line); }
 .tabs a { padding: 8px 2px; margin-bottom: -1px; border-bottom: 2px solid transparent; color: var(--ink2); font-weight: 600; text-decoration: none; }
 .tabs a:hover { color: var(--ink); }
 .tabs a[aria-current] { color: var(--ink); border-bottom-color: var(--accent); }
+/* The indicator sits over the nav's own bottom border, where the tab's border did. */
+.tabs::after { bottom: -1px; height: 2px; background: var(--accent); }
+.tabs[data-ind] a[aria-current] { border-bottom-color: transparent; }

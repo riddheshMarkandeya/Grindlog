@@ -4,7 +4,7 @@
 // "settings"; the Settings page also reads "ids" and "autostart"; the teammate filters and the Friends page read
 // "friends", and that page also reads "friend" (one friend's page), "friend-pair" (a pair's),
 // "friend-suggestions" and "never-suggest". Page queries take the teammate filter last in their key.
-import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { REQUEST_HEADER } from "../shared/constants";
 import { filterValue, type PlaylistFilter } from "../shared/playlist-filter";
 import type { PeriodSpec } from "../shared/periods";
@@ -133,6 +133,9 @@ export function usePeriod(spec: PeriodSpec, filter: PlaylistFilter, today: strin
   return useQuery({
     queryKey: ["period", q, f, today, window, withKey(teammate)],
     queryFn: () => getJson(`/api/period?${q}&filter=${f}&window=${String(window)}${withQuery(teammate)}`, periodResponse),
+    // The last period stays shown (dimmed) while the next loads, so the charts stay mounted and move
+    // between the two instead of redrawing.
+    placeholderData: keepPreviousData,
   });
 }
 

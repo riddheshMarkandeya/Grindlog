@@ -1,6 +1,9 @@
 /* After variant B of the period-views prototype: quick picks, the year strip, the period header and
    metric tiles. */
 .loading { min-height: 50vh; }
+/* The last period, dimmed while the next one loads (under 1s locally, so no spinner). */
+.period { transition: opacity var(--dur-2) var(--ease-standard); }
+.period[aria-busy=true] { opacity: .6; }
 .win { color: var(--win); }
 .loss { color: var(--loss); }
 .ico { width: 18px; height: 18px; vertical-align: middle; }
@@ -10,17 +13,19 @@
 .picks { display: flex; flex-wrap: wrap; gap: 6px; }
 .picks button {
   background: var(--surf2); border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px;
-  color: var(--ink2); font-weight: 600; cursor: pointer; transition: border-color .12s, background-color .12s;
+  color: var(--ink2); font-weight: 600; cursor: pointer; transition: border-color var(--dur-1) var(--ease-standard), background-color var(--dur-1) var(--ease-standard), scale var(--dur-1) var(--ease-standard);
 }
+.picks button:active { scale: var(--press); }
 .picks button:hover { border-color: var(--muted); color: var(--ink); }
 .picks button[aria-pressed=true] { background: var(--accent); border-color: var(--accent); color: var(--page); }
 
 .step {
   display: inline-grid; place-items: center; min-width: 32px; height: 32px; padding: 0 8px;
   background: var(--surf2); border: 1px solid var(--line); border-radius: var(--r);
-  color: var(--ink); cursor: pointer; transition: border-color .12s;
+  color: var(--ink); cursor: pointer; transition: border-color var(--dur-1) var(--ease-standard), scale var(--dur-1) var(--ease-standard);
 }
 .step:hover { border-color: var(--muted); }
+.step:active:not(:disabled) { scale: var(--press); }
 .step:disabled { opacity: .4; cursor: default; }
 .stepper { display: flex; align-items: center; gap: var(--s2); margin-top: var(--s4); }
 .stepper b { min-width: 48px; text-align: center; }
@@ -30,8 +35,9 @@
 .strip button {
   position: absolute; overflow: hidden; padding: 0 6px; text-align: left; white-space: nowrap;
   background: var(--surf); border: 1px solid var(--line); border-radius: 3px; color: var(--ink2);
-  font-size: 12px; cursor: pointer; transition: border-color .12s;
+  font-size: 12px; cursor: pointer; transition: border-color var(--dur-1) var(--ease-standard), scale var(--dur-1) var(--ease-standard);
 }
+.strip button:active:not(:disabled) { scale: var(--press); }
 .strip button:hover:not(:disabled) { border-color: var(--muted); color: var(--ink); }
 .strip button:disabled { opacity: .45; cursor: default; }
 .strip button[aria-pressed=true] { border-color: var(--accent); color: var(--ink); box-shadow: inset 0 -2px 0 var(--accent); }
@@ -56,11 +62,14 @@
 /* The big chart and the W/L chart: drawn at the measured width, so the axis text keeps its size. */
 .hint2 { font-size: 13px; color: var(--muted); }
 .note { margin: var(--s2) 0 0; font-size: 12px; color: var(--ink2); }
-.xmode { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
-.xmode button { background: var(--surf2); border: 0; padding: 4px 12px; color: var(--ink2); font-weight: 600; cursor: pointer; transition: background-color .12s; }
+.xmode { position: relative; display: inline-flex; background: var(--surf2); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.xmode button { background: var(--surf2); border: 0; padding: 4px 12px; color: var(--ink2); font-weight: 600; cursor: pointer; transition: background-color var(--dur-1) var(--ease-standard), scale var(--dur-1) var(--ease-standard); }
+.xmode button:active { scale: var(--press); }
 .xmode button + button { border-left: 1px solid var(--line); }
 .xmode button:hover { color: var(--ink); }
 .xmode button[aria-pressed=true] { background: var(--accent); color: var(--page); }
+.xmode::after { top: 0; bottom: 0; background: var(--accent); }
+.xmode[data-ind] button { background: none; transition: color var(--dur-2) var(--ease-standard), scale var(--dur-1) var(--ease-standard); }
 /* Wider than either chart's padding, which their geometry assumes. */
 .plotBox { margin-top: var(--s3); min-width: 120px; }
 .chart { display: block; overflow: visible; }
@@ -78,6 +87,21 @@
 .key span { display: inline-flex; align-items: center; gap: 6px; }
 .winBar { fill: var(--win); }
 .lossBar { fill: var(--loss); }
+
+/* The first draw this page load: the line strokes in (pathLength 1), the dots fade in after, the W/L
+   bars grow from the midline. Each holds its end state, so under reduced motion (no animation) the
+   chart is simply there. */
+.drawLine { stroke-dasharray: 1; animation: draw-line var(--dur-draw) var(--ease-standard) both; }
+@keyframes draw-line { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.drawDot { animation: draw-fade var(--dur-3) var(--ease-enter) var(--delay-dots) both; }
+@keyframes draw-fade { from { opacity: 0; } }
+.drawBars .barPath { transform-box: fill-box; animation: draw-grow var(--dur-draw) var(--ease-enter) both; }
+.drawBars .winBar { transform-origin: bottom; }
+.drawBars .lossBar { transform-origin: top; }
+@keyframes draw-grow { from { scale: 1 0; } }
+@media (prefers-reduced-motion: reduce) { .drawLine, .drawDot, .drawBars .barPath { animation: none; } }
+/* Later changes: a bar's shape moves to its new value (Chromium animates d; elsewhere it swaps). */
+.tweenBars .barPath { transition: d var(--dur-tween) var(--ease-standard); }
 .hit { fill: transparent; }
 .wlLink { cursor: pointer; }
 .wlLink:hover .hit { fill: var(--surf2); }

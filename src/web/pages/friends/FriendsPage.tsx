@@ -17,6 +17,7 @@ import { WlBar } from "../../components/WlBar";
 import { dateLabel, plural } from "../../logic/format";
 import { recordLabel, recordText } from "../../logic/friends";
 import { useAddFriend, useFriendPairs, useFriends, useNeverSuggest, useNeverSuggested, useSuggestAgain, useSuggestions } from "../../queries";
+import { redirect } from "../../redirect";
 import styles from "./Friends.module.css";
 import { pairPath } from "./PairPage";
 import { focusTo, warnFailed } from "./parts";
@@ -47,8 +48,8 @@ export function FriendsPage() {
   const [status, setStatus] = useState(removed ? `Removed ${removed}` : "");
   // Said once: a reload or Back here shouldn't say it again.
   useEffect(() => {
-    if (removed !== undefined) void navigate(location.pathname, { replace: true, state: null });
-  }, [removed, location.pathname, navigate]);
+    if (removed !== undefined) redirect(navigate, location.pathname, location, { state: null });
+  }, [removed, location, navigate]);
   const [failed, setFailed] = useState<string | null>(null);
   const h1 = useRef<HTMLHeadingElement>(null);
   const page = useRef<HTMLDivElement>(null);
@@ -178,7 +179,7 @@ export function FriendsPage() {
             {never.data.map((p) => (
               <li key={p.id}>
                 <span className={styles.trunc} title={p.name}>{p.name} <span className="muted">· {platformOf(p.id).name}</span></span>
-                <button type="button" className={styles.button} aria-disabled={again.isPending} onClick={() => { if (!again.isPending) suggestAgain(p); }}>Suggest again</button>
+                <button type="button" className={cx("button", styles.nowrap)} aria-disabled={again.isPending} onClick={() => { if (!again.isPending) suggestAgain(p); }}>Suggest again</button>
               </li>
             ))}
           </ul>
@@ -194,8 +195,8 @@ function SuggestionRow({ s, busy, onAdd, onNever }: { s: Suggestion; busy: boole
       <b className={styles.trunc} title={s.name}>{s.name}</b>
       <span className={cx("muted", "num")}>{plural(s.matches, "match", "matches")} · {plural(s.sessions, "session")}</span>
       <span className={styles.acts}>
-        <button type="button" data-add className={cx(styles.button, styles.primary)} aria-disabled={busy} onClick={() => { if (!busy) onAdd(); }}>Add friend</button>
-        <button type="button" className={styles.button} aria-disabled={busy} onClick={() => { if (!busy) onNever(); }}>Never suggest</button>
+        <button type="button" data-add className={cx("button", styles.primary, styles.nowrap)} aria-disabled={busy} onClick={() => { if (!busy) onAdd(); }}>Add friend</button>
+        <button type="button" className={cx("button", styles.nowrap)} aria-disabled={busy} onClick={() => { if (!busy) onNever(); }}>Never suggest</button>
       </span>
     </li>
   );

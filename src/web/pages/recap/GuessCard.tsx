@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { IdAnswer } from "../../../shared/schemas/tables";
 import { ApiError } from "../../api";
+import { cx } from "../../components/cx";
 import { SaveStatus } from "../../components/SaveStatus";
 import { ANSWER_TEXT, loadDismissed, pickGuess, saveDismissed } from "../../logic/guess";
 import { useIds, useSetIdStatus } from "../../queries";
@@ -52,7 +53,7 @@ export function GuessCard() {
       <SaveStatus m={{ isSuccess: false, isError: m.isError, submittedAt: m.submittedAt }} retry={retry} />
       <div className={styles.actions}>
         {(["confirmed", "rejected"] as const).map((status) => (
-          <button key={status} type="button" className={styles.button} disabled={m.isPending} onClick={() => { answer(status); }}>
+          <button key={status} type="button" className={cx("button", styles.nowrap)} disabled={m.isPending} onClick={() => { answer(status); }}>
             {ANSWER_TEXT[status]}
           </button>
         ))}

@@ -3,16 +3,18 @@
 .step {
   display: inline-grid; place-items: center; min-width: 32px; height: 32px; padding: 0 8px;
   background: var(--surf2); border: 1px solid var(--line); border-radius: var(--r);
-  color: var(--ink); text-decoration: none; cursor: pointer; transition: border-color .12s;
+  color: var(--ink); text-decoration: none; cursor: pointer; transition: border-color var(--dur-1) var(--ease-standard), scale var(--dur-1) var(--ease-standard);
 }
 .step:hover { border-color: var(--muted); }
+.step:active:not(:disabled, [aria-disabled="true"]) { scale: var(--press); }
 .step:disabled { opacity: .4; cursor: default; }
 .heading { margin: 0; font-size: 16px; font-weight: 400; }
 .pick {
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); min-height: 32px;
   background: none; border: 1px solid transparent; border-radius: var(--r); padding: 4px 10px;
-  cursor: pointer; transition: border-color .12s;
+  cursor: pointer; transition: border-color var(--dur-1) var(--ease-standard), scale var(--dur-1) var(--ease-standard);
 }
+.pick:active { scale: var(--press); }
 .pick:hover, .pick[aria-expanded=true] { border-color: var(--line); }
 .pick::after { content: "▾"; color: var(--muted); font-size: 11px; }
 .pick b { font-weight: 600; }

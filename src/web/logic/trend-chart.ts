@@ -98,6 +98,8 @@ export function linePoints(mode: XMode, metric: MetricId, view: Pick<PeriodView,
 export interface LineGeometry {
   yTicks: { y: number; label: string }[];
   path: string;
+  /** Every plotted point, as the path joins them; the chart moves these on a data change. */
+  line: { x: number; y: number; hollow: boolean }[];
   dots: { x: number; y: number; hollow: boolean }[];
   avgY: number | null;
   xLabels: { x: number; text: string; anchor: "start" | "middle" | "end" }[];
@@ -172,6 +174,7 @@ export function lineGeometry(
   return {
     yTicks: ticks.map((v) => ({ y: y(v), label: fmt(v) })),
     path: polyline(at),
+    line: at,
     dots: n <= MAX_DOTS ? at : [],
     avgY: avg === null ? null : y(avg),
     xLabels: labelAt.map((i, j) => ({
@@ -183,6 +186,19 @@ export function lineGeometry(
     xOf: x,
     plot,
   };
+}
+
+/**
+ * The line `k` of the way (clamped to 0–1) from `from` to `to`, point by index, with `to`'s length
+ * and its other fields. A point `from` doesn't have starts at `from`'s last point, or where it is
+ * when `from` is empty.
+ */
+export function tweenPoints<T extends { x: number; y: number }>(from: readonly { x: number; y: number }[], to: readonly T[], k: number): T[] {
+  const t = Math.min(1, Math.max(0, k));
+  return to.map((p, i) => {
+    const a = from[i] ?? from.at(-1) ?? p;
+    return { ...p, x: a.x + (p.x - a.x) * t, y: a.y + (p.y - a.y) * t };
+  });
 }
 
 /** A season that starts strictly inside the plotted buckets, at the bucket holding its start. */

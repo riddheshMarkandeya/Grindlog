@@ -2,7 +2,7 @@
 // pages show the picker, the playlist and teammate filters, the tabs, and the Overview, Matches &
 // numbers or one match. The filters live in `?filter=` and `?with=`.
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
-import { Link, Navigate, NavigationType, useNavigate, useNavigationType, useParams, useSearchParams } from "react-router";
+import { Link, NavigationType, useLocation, useNavigate, useNavigationType, useParams, useSearchParams } from "react-router";
 import { filterValue, type PlaylistFilter as Filter } from "../../../shared/playlist-filter";
 import { teammateValue, type TeammateFilter as Teammate } from "../../../shared/teammate-filter";
 import { ApiError } from "../../api";
@@ -13,8 +13,11 @@ import { TeammateFilter } from "../../components/TeammateFilter";
 import { parseFilter, parseTeammate, recapReset } from "../../logic/filter-options";
 import { recapPath, type RecapView } from "../../logic/recap";
 import { useLatestSession, useSessionDetail, useSettings } from "../../queries";
+import { redirect, Redirect } from "../../redirect";
 import { GuessCard } from "./GuessCard";
 import { IconLabel } from "../../components/Icon";
+import { cx } from "../../components/cx";
+import { useIndicator } from "../../components/useIndicator";
 import { Matches } from "./Matches";
 import { MatchView } from "./MatchView";
 import { Overview } from "./Overview";
@@ -79,9 +82,9 @@ export function RecapIndex() {
     if (reset) console.info("[grindlog] recap/with_reset", { with: teammateValue(teammate), reason: "no_session" });
   }, [reset, teammate]);
 
-  if (latest.data?.session) return <Navigate to={recapPath(latest.data.session.key, filter, "overview", teammate)} replace />;
+  if (latest.data?.session) return <Redirect to={recapPath(latest.data.session.key, filter, "overview", teammate)} />;
   // No session with that friend: Anyone, as on a session they aren't in.
-  if (reset) return <Navigate to={recapPath(null, filter)} replace />;
+  if (reset) return <Redirect to={recapPath(null, filter)} />;
   if (latest.isError) return <Notice title="Couldn't load the recap. Is the tracker running?" />;
   if (!latest.data) return <RecapLoading />;
   // Nothing under this filter: an empty history, or a filter that misses everything played.
@@ -106,6 +109,7 @@ export function RecapSession({ view }: { view: SessionView }) {
   const filter = useRecapFilter();
   const teammate = useRecapTeammate();
   const navigate = useNavigate();
+  const location = useLocation();
   const detail = useSessionDetail(session, filter, teammate);
   const page = useRef<HTMLDivElement>(null);
   const pickerButton = useRef<HTMLButtonElement>(null);
@@ -129,8 +133,8 @@ export function RecapSession({ view }: { view: SessionView }) {
     // Runs before the focus effect below, so `seen` still holds the filter before this load.
     resetByFilter.current = seen.current !== null && seen.current.filter !== shownFilter;
     console.info("[grindlog] recap/with_reset", { with: shownWith, session, reason: reset });
-    void navigate(recapPath(session, filter, here, "anyone"), { replace: true });
-  }, [reset, shownWith, shownFilter, session, filter, here, navigate]);
+    redirect(navigate, recapPath(session, filter, here, "anyone"), location);
+  }, [reset, shownWith, shownFilter, session, filter, here, navigate, location]);
 
   // While a session loads, the loading state replaces the controls, so the one used loses focus to
   // the page. Once a session is on screen, focus that fell there goes to the picker, the h1 naming
@@ -189,10 +193,7 @@ export function RecapSession({ view }: { view: SessionView }) {
           {d.summary && <ShareButton detail={d} summary={d.summary} filter={filter} teammate={teammate} />}
         </div>
       </div>
-      <nav className={styles.tabs} aria-label="Recap pages" data-nav="tabs">
-        <Link to={recapPath(session, filter, "overview", teammate)} aria-current={view === "overview" ? "page" : undefined}><IconLabel k="overview">Overview</IconLabel></Link>
-        <Link to={recapPath(session, filter, "matches", teammate)} aria-current={view === "matches" ? "page" : view === "match" ? "true" : undefined}><IconLabel k="matches">Matches &amp; numbers</IconLabel></Link>
-      </nav>
+      <RecapTabs session={session} filter={filter} teammate={teammate} view={view} />
       {!d.summary ? (
         <EmptyState title="No matches under these filters in this session." />
       ) : view === "overview" ? (
@@ -203,5 +204,16 @@ export function RecapSession({ view }: { view: SessionView }) {
         <MatchView detail={d} filter={filter} teammate={teammate} guid={guid} />
       )}
     </div>
+  );
+}
+
+function RecapTabs({ session, filter, teammate, view }: { session: string; filter: Filter; teammate: Teammate; view: SessionView }) {
+  const nav = useRef<HTMLElement>(null);
+  useIndicator(nav, "[aria-current]", "x", view === "overview");
+  return (
+    <nav ref={nav} className={cx(styles.tabs, "ind-x", "vt-keep")} aria-label="Recap pages" data-nav="tabs">
+      <Link to={recapPath(session, filter, "overview", teammate)} aria-current={view === "overview" ? "page" : undefined}><IconLabel k="overview">Overview</IconLabel></Link>
+      <Link to={recapPath(session, filter, "matches", teammate)} aria-current={view === "matches" ? "page" : view === "match" ? "true" : undefined}><IconLabel k="matches">Matches &amp; numbers</IconLabel></Link>
+    </nav>
   );
 }

@@ -7,6 +7,7 @@ import { useEffect, useId, useRef, useState, type MouseEvent, type ReactNode } f
 import { groupFilter, THEMES, type Settings, type SettingsPatch } from "../../../shared/schemas/settings";
 import { cx } from "../../components/cx";
 import { EmptyState } from "../../components/EmptyState";
+import { useIndicator } from "../../components/useIndicator";
 import { filterLabel } from "../../logic/filter-options";
 import { SPEED_LABEL } from "../../logic/format";
 import { parseWindow } from "../../logic/settings";
@@ -58,8 +59,9 @@ function Row({ children, ...frame }: { label: string; help?: string; htmlFor?: s
 
 /** Native radios drawn as segments (or swatches): arrow keys and the group's name come free. */
 function Choice<V extends string>({ labelId, name, value, options, onPick, swatch = false }: { labelId: string; name: string; value: V; options: readonly (readonly [V, string])[]; onPick: (v: V) => void; swatch?: boolean }) {
+  const Group = swatch ? Swatches : Segments;
   return (
-    <div role="radiogroup" aria-labelledby={labelId} className={swatch ? styles.swatches : styles.seg}>
+    <Group labelId={labelId} value={value}>
       {options.map(([v, text]) => (
         <label key={v} className={swatch ? styles.swatch : undefined}>
           <input type="radio" className={styles.radio} name={name} value={v} checked={value === v} onChange={() => { onPick(v); }} />
@@ -72,8 +74,21 @@ function Choice<V extends string>({ labelId, name, value, options, onPick, swatc
           <span className={styles.choiceText}>{text}</span>
         </label>
       ))}
-    </div>
+    </Group>
   );
+}
+
+interface GroupProps { labelId: string; value: string; children: ReactNode }
+
+function Swatches({ labelId, children }: GroupProps) {
+  return <div role="radiogroup" aria-labelledby={labelId} className={styles.swatches}>{children}</div>;
+}
+
+/** Segments: the picked one is marked by one sliding pill. */
+function Segments({ labelId, value, children }: GroupProps) {
+  const group = useRef<HTMLDivElement>(null);
+  useIndicator(group, "label:has(:checked)", "x", value);
+  return <div ref={group} role="radiogroup" aria-labelledby={labelId} className={cx(styles.seg, "ind-x")}>{children}</div>;
 }
 
 function Switch({ labelId, checked, disabled = false, onToggle }: { labelId: string; checked: boolean; disabled?: boolean; onToggle: (on: boolean) => void }) {
@@ -285,7 +300,7 @@ function UpdatesSection() {
             {!u.autoApply && (u.installRequested ? (
               <span ref={pending} tabIndex={-1} className={styles.help}>Installs when Rocket League is closed.</span>
             ) : (
-              <button type="button" className={styles.button} disabled={install.isPending} aria-busy={install.isPending} onClick={() => { ask(ready.version); }}>Install {ready.version}</button>
+              <button type="button" className="button" disabled={install.isPending} aria-busy={install.isPending} onClick={() => { ask(ready.version); }}>Install {ready.version}</button>
             ))}
             <a href={ready.page} target="_blank" rel="noreferrer" className={styles.small}>What changed in {ready.version}</a>
           </div>
@@ -309,7 +324,7 @@ function focusSection(e: MouseEvent<HTMLAnchorElement>, anchor: string) {
   // Always ours: a section whose data failed to load has no heading, and is no reason to write a hash.
   e.preventDefault();
   const heading = document.getElementById(anchor);
-  heading?.scrollIntoView();
+  heading?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   heading?.focus({ preventScroll: true });
 }
 

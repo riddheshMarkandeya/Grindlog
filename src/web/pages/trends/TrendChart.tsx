@@ -1,22 +1,48 @@
 // The big chart of the selected metric, By date (a point per bucket) or By match (a rolling
 // average whose window reaches back before the period). Passive: each column's value is its SVG
 // title on hover, and the period's numbers are the tiles'.
-import { useMemo } from "react";
+import { type AnimationEvent, type ReactNode, useMemo, useRef } from "react";
 import type { Season } from "../../../shared/periods";
 import type { PeriodView } from "../../../shared/schemas/responses";
 import { trendStats } from "../../../shared/trends";
+import { cx } from "../../components/cx";
 import { Section } from "../../components/Section";
+import { useIndicator } from "../../components/useIndicator";
 import { useWidth } from "../../components/useWidth";
 import { autoNote, chartSummary, FEW, lineGeometry, linePoints, modeText, seasonMarks, type ChartMode, type LineGeometry, type LinePoint } from "../../logic/trend-chart";
-import { formatMetric, isRate, METRICS, rawValue, type MetricId, type XMode } from "../../logic/trends";
+import { formatMetric, isRate, METRICS, polyline, rawValue, type MetricId, type XMode } from "../../logic/trends";
+import { useDrawOnce, useTweenedPoints } from "./chart-motion";
 import styles from "./Trends.module.css";
 
 const heightFor = (width: number) => (width < 560 ? 200 : 280);
 
-function Plot({ g, points, width, height, label, marks, avgText }: { g: LineGeometry; points: readonly LinePoint[]; width: number; height: number; label: string; marks: { x: number; name: string }[]; avgText: string | null }) {
+interface PlotProps { g: LineGeometry; points: readonly LinePoint[]; width: number; height: number; label: string; marks: { x: number; name: string }[]; avgText: string | null }
+
+/** The first draw: the line strokes in, then the dots fade in. */
+function DrawPlot({ onDrawEnd, ...p }: PlotProps & { onDrawEnd: (e: AnimationEvent) => void }) {
+  return (
+    <Plot {...p} onAnimationEnd={onDrawEnd}>
+      <path className={cx(styles.line, styles.drawLine)} pathLength={1} d={p.g.path} />
+      {p.g.dots.map((d) => <circle key={`${String(d.x)},${String(d.y)}`} className={cx(d.hollow ? styles.hollow : styles.dot, styles.drawDot)} cx={d.x} cy={d.y} r={4} />)}
+    </Plot>
+  );
+}
+
+/** After the first draw: the line and its dots move from the old values to the new. */
+function TweenPlot(p: PlotProps) {
+  const line = useTweenedPoints(p.g.line, p.points);
+  return (
+    <Plot {...p}>
+      <path className={styles.line} d={polyline(line)} />
+      {p.g.dots.length > 0 && line.map((d, i) => <circle key={i} className={d.hollow ? styles.hollow : styles.dot} cx={d.x} cy={d.y} r={4} />)}
+    </Plot>
+  );
+}
+
+function Plot({ g, points, width, height, label, marks, avgText, children, onAnimationEnd }: PlotProps & { children: ReactNode; onAnimationEnd?: (e: AnimationEvent) => void }) {
   const { plot } = g;
   return (
-    <svg className={styles.chart} width={width} height={height} role="img" aria-label={label}>
+    <svg className={styles.chart} width={width} height={height} role="img" aria-label={label} onAnimationEnd={onAnimationEnd}>
       {g.yTicks.map((t) => (
         <g key={t.y}>
           <line className={styles.grid} x1={plot.left} x2={plot.right} y1={t.y} y2={t.y} />
@@ -35,8 +61,7 @@ function Plot({ g, points, width, height, label, marks, avgText }: { g: LineGeom
           <text className={styles.axis} x={plot.right} y={g.avgY - 4} textAnchor="end">avg {avgText}</text>
         </g>
       )}
-      <path className={styles.line} d={g.path} />
-      {g.dots.map((d) => <circle key={`${String(d.x)},${String(d.y)}`} className={d.hollow ? styles.hollow : styles.dot} cx={d.x} cy={d.y} r={4} />)}
+      {children}
       {g.columns.map((c) => (
         <g key={c.x} className={styles.col}>
           <rect x={c.x} y={plot.top} width={c.w} height={plot.bottom - plot.top} />
@@ -54,22 +79,23 @@ export function TrendChart({ view, size, metric, chart, seasons, onX }: { view: 
   const { ref, width } = useWidth<HTMLDivElement>();
   const { mode } = chart;
   const label = METRICS.find((m) => m.id === metric)?.label ?? metric;
-  const avg = rawValue(metric, trendStats(view.aggregate));
+  const avg = useMemo(() => rawValue(metric, trendStats(view.aggregate)), [metric, view.aggregate]);
   const avgText = avg === null ? null : formatMetric(metric, avg);
   // Kept across resizes: only the geometry follows the width, and By match can hold thousands of points.
   const points = useMemo(() => linePoints(mode, metric, view, size), [mode, metric, view, size]);
   const height = heightFor(width);
-  const g = width > 0 ? lineGeometry(points, avg, { width, height }, { fmt: (v) => formatMetric(metric, v), rate: isRate(metric), centred: mode === "date" }) : null;
+  // Memoized, so the line's points keep their identity until something changes them: the tween
+  // starts on a new array.
+  const g = useMemo(() => (width > 0 ? lineGeometry(points, avg, { width, height }, { fmt: (v) => formatMetric(metric, v), rate: isRate(metric), centred: mode === "date" }) : null), [points, avg, width, height, metric, mode]);
+  const { phase, onDrawEnd } = useDrawOnce("trend", points, styles.drawLine);
   const marks = g && mode === "date" ? seasonMarks(view.buckets, seasons).map((m) => ({ x: g.xOf(m.i), name: m.name })) : [];
+  const plot = g && { g, points, width, height, label: chartSummary(label, mode, view.bucket, size, points.length, avgText), marks, avgText };
 
   return (
     <Section
       level={3} title={`${label} · ${modeText(mode, view.bucket, size)}`}
       aside={
-        <div className={styles.xmode} role="group" aria-label="X axis">
-          <button type="button" aria-pressed={mode === "date"} onClick={() => { onX("date"); }}>By date</button>
-          <button type="button" aria-pressed={mode === "match"} onClick={() => { onX("match"); }}>By match</button>
-        </div>
+        <XAxis mode={mode} onX={onX} />
       }
     >
       <div className="panel">
@@ -80,7 +106,7 @@ export function TrendChart({ view, size, metric, chart, seasons, onX }: { view: 
           ) : width > 0 && g === null ? (
             <p className={styles.note}>Nothing measured for {label} in this period.</p>
           ) : (
-            g && <Plot g={g} points={points} width={width} height={height} label={chartSummary(label, mode, view.bucket, size, points.length, avgText)} marks={marks} avgText={avgText} />
+            plot && (phase === "draw" ? <DrawPlot key="draw" onDrawEnd={onDrawEnd} {...plot} /> : <TweenPlot key="tween" {...plot} />)
           )}
         </div>
         <div className={styles.key}>
@@ -101,5 +127,16 @@ export function TrendChart({ view, size, metric, chart, seasons, onX }: { view: 
         </div>
       </div>
     </Section>
+  );
+}
+
+function XAxis({ mode, onX }: { mode: XMode; onX: (x: XMode) => void }) {
+  const group = useRef<HTMLDivElement>(null);
+  useIndicator(group, '[aria-pressed="true"]', "x", mode);
+  return (
+    <div ref={group} className={cx(styles.xmode, "ind-x", "vt-keep")} role="group" aria-label="X axis">
+      <button type="button" aria-pressed={mode === "date"} onClick={() => { onX("date"); }}>By date</button>
+      <button type="button" aria-pressed={mode === "match"} onClick={() => { onX("match"); }}>By match</button>
+    </div>
   );
 }

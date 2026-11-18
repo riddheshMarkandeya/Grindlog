@@ -1,5 +1,5 @@
 .status { font-size: 12px; font-weight: 600; }
-.tick { color: var(--up); white-space: nowrap; animation: fade 2.3s forwards; }
+.tick { color: var(--up); white-space: nowrap; animation: fade var(--dur-status) forwards; }
 @keyframes fade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .tick { animation: none; } }
 .failed { color: var(--down); }

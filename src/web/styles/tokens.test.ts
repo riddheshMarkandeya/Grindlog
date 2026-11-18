@@ -41,6 +41,9 @@ function resolve(root: Map<string, string>, value: string): string {
 // Hex, the colour functions and the two named colours a neutral is likeliest to be written as.
 const LITERAL_COLOUR = /#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(|(?<![\w-])(?:white|black)(?![\w-])/g;
 
+// A transition/animation declaration whose value holds a literal time (.12s, 1s, 150ms).
+const RAW_DURATION = /(?:transition|animation)(?:-duration|-delay)?\s*:[^;}]*?(?<![\w-])\d*\.?\d+m?s\b[^;}]*/g;
+
 function contrast(a: string, b: string): number {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
   return (hi + 0.05) / (lo + 0.05);
@@ -85,6 +88,20 @@ describe("theme tokens", () => {
     const code = import.meta.glob<string>("../**/*.{ts,tsx}", { query: "?raw", import: "default", eager: true });
     const copies = Object.entries({ ...CSS_FILES, ...code }).filter(([path, text]) => path !== "./tokens.css" && path !== "./tokens.test.ts" && text.includes("Bahnschrift")).map(([path]) => path);
     expect(copies).toEqual([]);
+  });
+
+  test("no raw durations in a transition or animation outside tokens.css", () => {
+    // Durations come from tokens, so the reduced-motion block in tokens.css reaches every effect.
+    const hits = Object.entries(CSS_FILES)
+      .filter(([path]) => path !== "./tokens.css")
+      .flatMap(([path, text]) => [...text.matchAll(RAW_DURATION)].map((m) => `${path}: ${m[0].trim()}`));
+    expect(hits).toEqual([]);
+  });
+
+  test("the reduced-motion block zeroes every spatial token", () => {
+    const body = /@media \(prefers-reduced-motion: reduce\)\s*\{\s*:root\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+    const set = new Map([...body.matchAll(/--([\w-]+):\s*([^;]+);?/g)].map((m) => [m[1], (m[2] ?? "").trim()]));
+    expect(Object.fromEntries(set)).toEqual({ press: "1", rise: "0px", "dur-spring": "0ms", "dur-spring-bouncy": "0ms", "dur-tween": "0ms" });
   });
 
   describe.each(THEMES)("%s contrast", (theme) => {

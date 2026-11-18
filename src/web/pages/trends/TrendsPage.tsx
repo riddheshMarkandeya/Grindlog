@@ -3,7 +3,7 @@
 // title line are built from the URL and the seasons alone, so they stay mounted while a period
 // loads and focus stays on the control used; only the stats, tiles and charts wait for the period.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { dayOf, periodRange, shiftDay } from "../../../shared/periods";
 import { teammateValue } from "../../../shared/teammate-filter";
 import { EmptyState } from "../../components/EmptyState";
@@ -13,6 +13,7 @@ import { offeredFriends, teammateMissing } from "../../logic/filter-options";
 import { chartMode } from "../../logic/trend-chart";
 import { ENOUGH_MATCHES, parseTrends, patchTrends, stripYear, trendsPath, type TrendsState } from "../../logic/trends";
 import { useFriends, usePeriod, usePlayedDays, useSeasons, useSettings } from "../../queries";
+import { redirect } from "../../redirect";
 import { MetricTiles } from "./MetricTiles";
 import { PeriodControls } from "./PeriodControls";
 import { PeriodHeader, StatsLine } from "./PeriodHeader";
@@ -39,6 +40,7 @@ function useTrendsState(): TrendsState {
 export function TrendsPage() {
   const state = useTrendsState();
   const navigate = useNavigate();
+  const location = useLocation();
   const now = useNow();
   const today = dayOf(now);
   const seasons = useSeasons();
@@ -53,7 +55,10 @@ export function TrendsPage() {
   // A friend only ever met as an opponent has nothing to filter by here.
   const offered = useMemo(() => (friends.data === undefined ? undefined : offeredFriends(friends.data)), [friends.data]);
   const firstDay = played.data?.firstDay ?? null;
-  const fromDay = range && range.from !== null ? dayOf(range.from) : (period.data?.firstDay ?? null);
+  // While the next period loads, period.data is still the last one: right for the dimmed stats and
+  // charts, wrong for anything that names this period (its first day, what it's compared with).
+  const current = period.isPlaceholderData ? undefined : period.data;
+  const fromDay = range && range.from !== null ? dayOf(range.from) : (current?.firstDay ?? null);
   const days = fromDay !== null && range && range.to > (range.from ?? -Infinity) ? { from: fromDay, last: lastDay < fromDay ? fromDay : lastDay } : null;
 
   const go = (patch: Partial<TrendsState>) => { void navigate(trendsPath(patchTrends(state, patch))); };
@@ -66,8 +71,8 @@ export function TrendsPage() {
   useEffect(() => {
     if (resetTo === null) return;
     console.info("[grindlog] trends/with_reset", { with: missingWith });
-    void navigate(resetTo, { replace: true });
-  }, [resetTo, missingWith, navigate]);
+    redirect(navigate, resetTo, location);
+  }, [resetTo, missingWith, navigate, location]);
 
   // Logged when the chart's mode or its inputs change, so the console says why By match was shown.
   const chart = period.data ? chartMode(state.x, period.data.buckets, period.data.rolling.length) : null;
@@ -149,21 +154,24 @@ export function TrendsPage() {
         <EmptyState title="This season isn't in the season table." />
       ) : (
         <>
-          <PeriodHeader spec={state.spec} range={range} days={days} ctx={ctx} view={period.data} titleRef={titleRef} onStep={(spec) => { go({ spec, year: null }); }} />
-          {period.isError && !period.data ? (
-            <EmptyState title="Couldn't load this period. Is the tracker running?" />
-          ) : !period.data ? (
-            <Loading label="Loading the period…" className={styles.loading} />
-          ) : period.data.aggregate.matches === 0 ? (
-            <EmptyState title="No matches in this period with these filters." />
-          ) : (
-            <>
-              <StatsLine view={period.data} />
-              <MetricTiles view={period.data} metric={state.metric} onMetric={(metric) => { go({ metric }); }} />
-              {chart && <TrendChart view={period.data} size={rollingWindow} metric={state.metric} chart={chart} seasons={seasons.data} onX={(x) => { go({ x }); }} />}
-              <WinLossChart view={period.data} state={state} seasons={seasons.data} />
-            </>
-          )}
+          <PeriodHeader spec={state.spec} range={range} days={days} ctx={ctx} view={current} titleRef={titleRef} onStep={(spec) => { go({ spec, year: null }); }} />
+          <div className={styles.period} aria-busy={period.isPlaceholderData}>
+            {period.isError && !period.data ? (
+              <EmptyState title="Couldn't load this period. Is the tracker running?" />
+            ) : !period.data || (period.isPlaceholderData && period.data.aggregate.matches === 0) ? (
+              // The last period's "no matches" would read as this one's while it loads.
+              <Loading label="Loading the period…" className={styles.loading} />
+            ) : period.data.aggregate.matches === 0 ? (
+              <EmptyState title="No matches in this period with these filters." />
+            ) : (
+              <>
+                <StatsLine view={period.data} />
+                <MetricTiles view={period.data} metric={state.metric} onMetric={(metric) => { go({ metric }); }} />
+                {chart && <TrendChart view={period.data} size={rollingWindow} metric={state.metric} chart={chart} seasons={seasons.data} onX={(x) => { go({ x }); }} />}
+                <WinLossChart view={period.data} state={state} seasons={seasons.data} />
+              </>
+            )}
+          </div>
         </>
       )}
     </>

@@ -259,6 +259,26 @@ test("remove: Escape goes back; Remove returns to the landing without them", asy
   expect404(consoleErrors, /404 .*\/api\/friends\/detail/);
 });
 
+test("a remove that lands after you've moved to another friend doesn't pull you back to the landing", async ({ page, request }) => {
+  const max = "Epic|e2e-max|0";
+  const res = await request.post(`/api/friends?id=${encodeURIComponent(max)}`, { headers: { "X-Grindlog-Request": "1" } });
+  expect(res.ok() || res.status() === 409).toBe(true);
+  const { promise: held, resolve: release } = Promise.withResolvers<undefined>();
+  await page.route("**/api/friends/remove?*", async (route) => { await held; await route.continue(); }, { times: 1 });
+  await page.goto(`/friends/${encodeURIComponent(max)}`);
+  await page.getByRole("button", { name: "Remove friend" }).click();
+  await page.getByRole("button", { name: "Remove", exact: true }).click();
+  await goInApp(page, SAM);
+  await expect(h1(page)).toHaveText(/^Sam/);
+  const landed = page.waitForResponse("**/api/friends/remove?*");
+  release(undefined);
+  await landed;
+  // Two frames: whatever the landed remove would render has committed.
+  await page.evaluate("new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))");
+  await expect(page).toHaveURL(SAM);
+  await expect(h1(page)).toHaveText(/^Sam/);
+});
+
 test("a link to someone who isn't a friend says so", async ({ page, consoleErrors }) => {
   await page.goto("/friends/Epic%7Ce2e-other%7C0");
   await expect(page.getByText("This player isn't one of your friends.")).toBeVisible();

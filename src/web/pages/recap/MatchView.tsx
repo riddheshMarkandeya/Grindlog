@@ -14,6 +14,7 @@ import { GoalMap } from "../../components/GoalMap";
 import { Icon, IconLabel } from "../../components/Icon";
 import { Section } from "../../components/Section";
 import { TouchThirds } from "../../components/TouchThirds";
+import { useIndicator } from "../../components/useIndicator";
 import { filterValue } from "../../../shared/playlist-filter";
 import { clock, whole } from "../../logic/format";
 import { flagLines, flagShort, isMyMvp, letter, matchLabel, recapPath, resultWord, scoreboardTeams, scoreFor, type ScoreTeam } from "../../logic/recap";
@@ -47,9 +48,10 @@ function Rail({ detail, filter, teammate, guid }: Filters) {
     if (!b || !open) return;
     b.scrollTop += open.getBoundingClientRect().top - b.getBoundingClientRect().top - (b.clientHeight - open.offsetHeight) / 2;
   }, [guid]);
+  useIndicator(box, "[aria-current=page]", "y", guid);
 
   return (
-    <nav ref={box} className={styles.rail} aria-label="Matches" data-nav="rail">
+    <nav ref={box} className={cx(styles.rail, "ind-y", "vt-keep")} aria-label="Matches" data-nav="rail">
       <Link className={styles.all} to={recapPath(detail.key, filter, "matches", teammate)}>
         <IconLabel k="back">All matches</IconLabel><span className={styles.meta}>full numbers table</span>
       </Link>

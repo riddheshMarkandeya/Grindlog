@@ -270,9 +270,9 @@ function Matches({ matches, friends }: { matches: AgainstSide["matches"]; friend
       </div>
       {pages > 1 && (
         <div className={styles.pager}>
-          <button type="button" className={styles.button} aria-disabled={page === 0} onClick={() => { go(page - 1); }}>← Newer</button>
+          <button type="button" className={cx("button", styles.nowrap)} aria-disabled={page === 0} onClick={() => { go(page - 1); }}>← Newer</button>
           <span className="muted" aria-live="polite">{whole(first)}–{whole(first + rows.length - 1)} of {whole(matches.length)}</span>
-          <button type="button" className={styles.button} aria-disabled={page === pages - 1} onClick={() => { go(page + 1); }}>Older →</button>
+          <button type="button" className={cx("button", styles.nowrap)} aria-disabled={page === pages - 1} onClick={() => { go(page + 1); }}>Older →</button>
         </div>
       )}
       <p className={styles.note}>★ MVP. Newest first, 10 a page; a date opens the match.</p>

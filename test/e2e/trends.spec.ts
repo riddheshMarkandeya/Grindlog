@@ -49,6 +49,26 @@ test("every quick pick shows its title line, pressed, then its stats or the empt
   await expect(page.getByText(/nothing earlier/)).toBeVisible();
 });
 
+test("while the next period loads, the old one stays dimmed under aria-busy, without the old compared text", async ({ page }) => {
+  await page.goto("/trends");
+  await charted(page);
+  const region = page.locator("[class*=period][aria-busy]");
+  const titleLine = page.locator("[class*=head] .muted");
+  const before = await titleLine.textContent();
+  expect(before).toMatch(/compared with|had no matches|nothing earlier/);
+  // Hold the next period's request, so the page sits in its loading state.
+  const { promise: held, resolve: release } = Promise.withResolvers<undefined>();
+  await page.route("**/api/period?*", async (route) => { await held; await route.continue(); }, { times: 1 });
+  await page.getByRole("group", { name: "Quick periods" }).getByRole("button", { name: "All time" }).click();
+  await expect(title(page)).toHaveText("All time");
+  await expect(region).toHaveAttribute("aria-busy", "true");
+  await expect(bigChart(page)).toBeVisible();
+  await expect(titleLine).not.toHaveText(before ?? "");
+  release(undefined);
+  await expect(region).toHaveAttribute("aria-busy", "false");
+  await expect(page.getByText(/nothing earlier/)).toBeVisible();
+});
+
 test("the current month's strip cell, then ‹, reaches last month with its stats and the ⚑ note", async ({ page }) => {
   await lastMonth(page);
   await expect(page.getByText("1 left early, counted as a loss", { exact: true })).toBeVisible();

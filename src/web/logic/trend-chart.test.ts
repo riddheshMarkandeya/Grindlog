@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { dayStart, shiftDay, type Season } from "../../shared/periods";
 import type { PeriodView } from "../../shared/schemas/responses";
 import type { TrendStats } from "../../shared/trends";
-import { autoNote, bucketHref, bucketLabel, chartMode, chartSummary, LINE_PAD, modeText, linePoints, lineGeometry, seasonMarks, wlEnds, wlGeometry, wlLabel, wlRecord, type LinePoint } from "./trend-chart";
+import { autoNote, bucketHref, bucketLabel, chartMode, chartSummary, LINE_PAD, modeText, linePoints, lineGeometry, seasonMarks, tweenPoints, wlEnds, wlGeometry, wlLabel, wlRecord, type LinePoint } from "./trend-chart";
 import type { TrendsState } from "./trends";
 
 type ViewBucket = PeriodView["buckets"][number];
@@ -272,5 +272,31 @@ describe("where a bucket goes", () => {
     const b = first(days("2026-10-12", [3]));
     expect(bucketHref({ ...b, session: null }, "week", state)).toBe("/trends?kind=week&day=2026-10-12&filter=ranked&metric=saves");
     expect(bucketHref({ ...b, day: "2026-10-01", session: null }, "month", state)).toBe("/trends?kind=month&day=2026-10-01&filter=ranked&metric=saves");
+  });
+});
+
+describe("tweenPoints", () => {
+  const from = [{ x: 0, y: 0 }, { x: 10, y: 20 }];
+  test("halfway between matched points, keeping the target's other fields", () => {
+    expect(tweenPoints(from, [{ x: 10, y: 10, hollow: true }, { x: 20, y: 40, hollow: false }], 0.5)).toEqual([
+      { x: 5, y: 5, hollow: true },
+      { x: 15, y: 30, hollow: false },
+    ]);
+  });
+  test("a growing line: new points start from the old last point", () => {
+    expect(tweenPoints(from, [{ x: 0, y: 0 }, { x: 10, y: 20 }, { x: 30, y: 0 }], 0.5)).toEqual([{ x: 0, y: 0 }, { x: 10, y: 20 }, { x: 20, y: 10 }]);
+  });
+  test("a shrinking line has the target's length", () => {
+    expect(tweenPoints([...from, { x: 99, y: 99 }], [{ x: 0, y: 10 }], 1)).toEqual([{ x: 0, y: 10 }]);
+  });
+  test("from nothing, the target as it is", () => {
+    expect(tweenPoints([], [{ x: 3, y: 4 }], 0)).toEqual([{ x: 3, y: 4 }]);
+  });
+  test("k is clamped: 0 is the start, 1 and past it the target", () => {
+    const to = [{ x: 10, y: 10 }, { x: 20, y: 40 }];
+    expect(tweenPoints(from, to, -1)).toEqual(from);
+    expect(tweenPoints(from, to, 0)).toEqual(from);
+    expect(tweenPoints(from, to, 1)).toEqual(to);
+    expect(tweenPoints(from, to, 2)).toEqual(to);
   });
 });

@@ -46,8 +46,8 @@ function SeasonView({ row, last, locked, saved, failed, onEdit, onDelete }: { ro
         <div className={styles.help}>{span(row, last)}</div>
       </div>
       <div className={styles.actions}>
-        <button type="button" className={styles.button} data-edit={row.id} aria-describedby={nameId} disabled={locked} onClick={onEdit}>Edit</button>
-        <button type="button" className={styles.button} aria-describedby={nameId} disabled={locked} onClick={onDelete}>Delete</button>
+        <button type="button" className="button" data-edit={row.id} aria-describedby={nameId} disabled={locked} onClick={onEdit}>Edit</button>
+        <button type="button" className="button" aria-describedby={nameId} disabled={locked} onClick={onDelete}>Delete</button>
       </div>
     </li>
   );
@@ -99,8 +99,8 @@ function SeasonEditor({ editing, pending, onChange, onSave, onCancel }: { editin
             />
           </label>
           <div className={styles.actions}>
-            <button type="submit" className={styles.button} disabled={pending}>Save</button>
-            <button type="button" className={styles.button} disabled={pending} onClick={onCancel}>Cancel</button>
+            <button type="submit" className="button" disabled={pending}>Save</button>
+            <button type="button" className="button" disabled={pending} onClick={onCancel}>Cancel</button>
             <SaveStatus m={{ isSuccess: false, isError: editing.failed && !pending, submittedAt: 0 }} retry={onSave} />
           </div>
         </div>
@@ -224,7 +224,7 @@ function Table({ seasons, del }: { seasons: Season[]; del: ReturnType<typeof use
         </ul>
       )}
       <div className={styles.addRow}>
-        <button type="button" className={styles.button} data-add disabled={locked} onClick={() => { edit(null); }}>+ Add</button>
+        <button type="button" className="button" data-add disabled={locked} onClick={() => { edit(null); }}>+ Add</button>
       </div>
     </div>
   );

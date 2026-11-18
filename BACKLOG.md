@@ -182,13 +182,6 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   fine in the same Chrome, and in a clean one, so there is no repro. Next time, before retrying, read
   `[grindlog] share/export_failed` in that tab's console, since the error goes nowhere else: `empty blob` means
   the canvas gave nothing back, and anything else is the SVG step of `toBlob`.
-- [ ] **[bug (latent), Low, Standard]** Trigger: the Friends landing e2e or the shell "redirect is
-  pending" e2e flakes, or a header click is seen undone after `/` → `/recap`. `<Navigate>` replaces
-  from a passive effect, so a click landing between the redirect's commit and that effect can
-  still be overwritten; `useTransitions={false}` only closed the transition window. Fix: a redirect
-  that checks `window.location.pathname` in its effect, at the 5 replace-after-async sites
-  (`RecapPage` ×3, `TrendsPage`, `App` `/`) plus `FriendPage`'s mutation `onSuccess`. Record:
-  `useTransitions` commit body.
 - [ ] **[tooling, Low, Standard]** Trigger: a rules-diff report saying "removed: N in an ignored
   playlist" while the same run's recompute skipped or failed an ignored-playlist match. `diffRecords`
   counts every stored ignored-playlist match missing from the recompute as removed. A skipped or

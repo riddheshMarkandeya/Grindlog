@@ -17,6 +17,9 @@
 .row { grid-template-columns: 22px minmax(0, 1fr) auto; }
 .all:hover, .row:hover { background: var(--surf2); }
 .row[aria-current] { background: var(--surf2); box-shadow: inset 3px 0 0 var(--accent); }
+/* The open match's highlight as one row-shaped indicator. The rail is sticky, so already positioned. */
+.rail::after { left: 0; right: 0; background: var(--surf2); box-shadow: inset 3px 0 0 var(--accent); }
+.rail[data-ind] .row[aria-current] { background: none; box-shadow: none; }
 .row:focus-visible, .all:focus-visible { outline-offset: -2px; }
 .row i { font-style: normal; font-weight: 700; color: var(--muted); }
 .row.win i { color: var(--win); }

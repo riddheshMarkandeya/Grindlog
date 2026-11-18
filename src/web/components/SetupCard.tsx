@@ -110,12 +110,12 @@ export function SetupCard() {
       {(action !== null || outcome !== null) && (
         <div className={styles.actions}>
           {action && (
-            <button type="button" className={cx(styles.button, styles.primary)} disabled={m.isPending} aria-busy={m.isPending} onClick={() => { fix(card.kind === "port_warning"); }}>
+            <button type="button" className={cx("button", styles.primary)} disabled={m.isPending} aria-busy={m.isPending} onClick={() => { fix(card.kind === "port_warning"); }}>
               {m.isPending ? "Changing…" : action}
             </button>
           )}
           {outcome && (
-            <button type="button" className={styles.button} onClick={() => { setOutcome(null); }}>
+            <button type="button" className="button" onClick={() => { setOutcome(null); }}>
               Dismiss
             </button>
           )}

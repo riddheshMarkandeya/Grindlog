@@ -2,7 +2,7 @@
 // page shares. Everything is worked out on the server; the open forms are this view's own state,
 // reset per friend.
 import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { platformOf } from "../../../shared/platforms";
 import type { FriendDetail } from "../../../shared/schemas/responses";
 import { ApiError } from "../../api";
@@ -11,6 +11,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { SaveStatus } from "../../components/SaveStatus";
 import { useFriendDetail, useRemoveFriend, useSetNickname } from "../../queries";
+import { redirect } from "../../redirect";
 import styles from "./Friends.module.css";
 import { focusTo, useOpenFocus, warnFailed } from "./parts";
 import { BackLink, Bug, Zones } from "./zones";
@@ -116,8 +117,8 @@ function Nickname({ friend }: { friend: FriendDetail["friend"] }) {
           placeholder={friend.lastSeenName ?? friend.id}
           onChange={(e) => { setValue(e.target.value); }}
         />
-        <button type="submit" className={cx(styles.button, styles.primary)} aria-disabled={save.isPending}>Save</button>
-        <button type="button" className={styles.button} onClick={cancel}>Cancel</button>
+        <button type="submit" className={cx("button", styles.primary, styles.nowrap)} aria-disabled={save.isPending}>Save</button>
+        <button type="button" className={cx("button", styles.nowrap)} onClick={cancel}>Cancel</button>
         <span className="muted">Empty uses the name they last played as.</span>
         <SaveStatus m={save} retry={() => { submit(); }} />
       </form>
@@ -134,6 +135,7 @@ function Nickname({ friend }: { friend: FriendDetail["friend"] }) {
 }
 
 function Remove({ friend }: { friend: FriendDetail["friend"] }) {
+  const location = useLocation();
   const remove = useRemoveFriend();
   const navigate = useNavigate();
   const [asking, setAsking] = useState(false);
@@ -144,7 +146,9 @@ function Remove({ friend }: { friend: FriendDetail["friend"] }) {
   const confirm = () => {
     if (remove.isPending) return;
     remove.mutate({ id: friend.id }, {
-      onSuccess: () => { void navigate("/friends", { replace: true, state: { removed: friend.name } }); },
+      // Leaving during the request usually unmounts this first (React Query then drops these
+      // callbacks), but a page transition keeps it mounted until its snapshot, so check.
+      onSuccess: () => { redirect(navigate, "/friends", location, { state: { removed: friend.name } }); },
       onError: (e) => {
         warnFailed("remove", e);
         yes.current?.focus();
@@ -152,12 +156,12 @@ function Remove({ friend }: { friend: FriendDetail["friend"] }) {
     });
   };
 
-  if (!asking) return <button ref={trigger} type="button" className={styles.button} onClick={() => { setAsking(true); }}>Remove friend</button>;
+  if (!asking) return <button ref={trigger} type="button" className={cx("button", styles.nowrap)} onClick={() => { setAsking(true); }}>Remove friend</button>;
   return (
     <div className={styles.confirm} role="group" aria-label={`Remove ${friend.name}?`} onKeyDown={(e) => { if (e.key === "Escape") setAsking(false); }}>
       <span>Remove {friend.name}? Your matches stay; they leave the filter and this page.</span>
-      <button ref={yes} type="button" className={styles.button} aria-disabled={remove.isPending} onClick={confirm}>Remove</button>
-      <button type="button" className={styles.button} onClick={() => { remove.reset(); setAsking(false); }}>Keep</button>
+      <button ref={yes} type="button" className={cx("button", styles.nowrap)} aria-disabled={remove.isPending} onClick={confirm}>Remove</button>
+      <button type="button" className={cx("button", styles.nowrap)} onClick={() => { remove.reset(); setAsking(false); }}>Keep</button>
       {remove.isError && <span className={styles.error} role="alert">Couldn't remove {friend.name}. Try again.</span>}
     </div>
   );

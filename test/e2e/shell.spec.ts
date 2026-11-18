@@ -4,6 +4,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page, Route } from "@playwright/test";
 import { expect, test } from "./fixtures";
+import { indDuration, indPos, leftOf, transitionEnd } from "./indicator";
 
 test.describe.configure({ mode: "serial" });
 
@@ -72,6 +73,57 @@ test("a header click while the start page's redirect is pending is kept", async 
   await page.evaluate("new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))");
   await expect(page).toHaveURL(/\/friends$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Friends");
+});
+
+test("a redirect decided on a URL that has since moved on is skipped and logged", async ({ page }) => {
+  const held = new Promise<Route>((resolve) => void page.route("**/api/sessions/latest?*", resolve, { times: 1 }));
+  await page.goto("/recap");
+  const latest = await held;
+  // The URL moves on without the router seeing it yet: the state a click leaves between the
+  // redirect's render and its effect, made to last.
+  await page.evaluate(`history.pushState(null, "", "/friends")`);
+  const skipped = page.waitForEvent("console", (m) => m.text().includes("[grindlog] redirect/skipped"));
+  await latest.continue();
+  await skipped;
+  await expect(page).toHaveURL(/\/friends$/);
+});
+
+test("a second header click during the first's page transition wins", async ({ page }) => {
+  await page.goto("/trends");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Trends");
+  const nav = page.getByRole("navigation", { name: "Pages" });
+  // force: Playwright's actionability wait would otherwise hold the click until the transition ends.
+  await nav.getByRole("link", { name: "Recap" }).click({ force: true });
+  await page.waitForTimeout(60);
+  await nav.getByRole("link", { name: "Friends" }).click({ force: true });
+  await expect(page).toHaveURL(/\/friends$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Friends");
+});
+
+test("the header's selection line slides to the clicked tab, and fades out on Settings", async ({ page }) => {
+  await page.goto("/trends");
+  const nav = page.getByRole("navigation", { name: "Pages" });
+  const trends = nav.getByRole("link", { name: "Trends" });
+  const friends = nav.getByRole("link", { name: "Friends" });
+  // Placed at the active tab on load without sliding in, then live.
+  await expect(nav).toHaveAttribute("data-ind", "live");
+  expect(await indPos(nav)).toBe(await leftOf(trends));
+  const slid = transitionEnd(nav);
+  await friends.click();
+  await slid;
+  expect(await indPos(nav)).toBe(await leftOf(friends));
+  await expect(nav).toHaveAttribute("data-ind", "live");
+  await page.getByRole("link", { name: "Settings" }).click();
+  await expect(nav).toHaveAttribute("data-ind", "none");
+});
+
+test("reduced motion: the header line jumps instead of sliding", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/trends");
+  const nav = page.getByRole("navigation", { name: "Pages" });
+  await expect(nav).toHaveAttribute("data-ind", "live");
+  expect(await indDuration(nav, "translate")).toBe("0s");
+  expect(await page.evaluate(`matchMedia("(prefers-reduced-motion: reduce)").matches`)).toBe(true);
 });
 
 test("axe: every page in every theme has no violations", async ({ page }) => {

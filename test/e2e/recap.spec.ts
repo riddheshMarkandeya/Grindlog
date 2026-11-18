@@ -4,6 +4,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
+import { indPos, topOf } from "./indicator";
 
 const THEMES = ["carbon", "slate", "oled"] as const;
 const bug = (page: Page, name: string) => page.getByRole("img", { name, exact: true });
@@ -378,6 +379,19 @@ test("Matches & numbers: every match in a capped box; a row opens its match", as
   // A step to another session stays on Matches & numbers.
   await prev(page).click();
   await expect(page).toHaveURL(/\/recap\/e2e-old\/matches(\?filter=everything)?$/);
+});
+
+test("a row arriving above the open match moves the rail's highlight with it", async ({ page }) => {
+  await page.goto("/recap/e2e-long-00/match/e2e-long-25");
+  const open = rail(page).locator("[aria-current=page]");
+  await expect(rail(page)).toHaveAttribute("data-ind", "live");
+  await expect.poll(() => indPos(rail(page))).toBe(await topOf(open));
+  // A capped rail doesn't resize when a row lands above, as a live match does; its list does.
+  await rail(page).locator("ol").evaluate((ol) => {
+    const list = ol as unknown as { prepend(n: unknown): void; firstElementChild: { cloneNode(deep: boolean): unknown } };
+    list.prepend(list.firstElementChild.cloneNode(true));
+  });
+  await expect.poll(async () => (await indPos(rail(page))) === (await topOf(open))).toBe(true);
 });
 
 test("the match page: header, scoreboard, the touches, the match's goal map and extras", async ({ page }) => {

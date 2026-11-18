@@ -44,7 +44,7 @@ function IdLine({ row }: { row: IdRow }) {
       </div>
       <div className={styles.actions} ref={actions}>
         {ANSWERS[row.status].map((status) => (
-          <button key={status} type="button" className={styles.button} aria-describedby={nameId} onClick={() => { answer(status); }}>
+          <button key={status} type="button" className="button" aria-describedby={nameId} onClick={() => { answer(status); }}>
             {ANSWER_TEXT[status]}
           </button>
         ))}

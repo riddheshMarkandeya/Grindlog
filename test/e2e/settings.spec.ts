@@ -4,6 +4,7 @@ import AxeBuilder from "@axe-core/playwright";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { openCard, shareDialog } from "./share-card";
+import { indPos, leftOf } from "./indicator";
 
 test.use({ seed: "settings" });
 
@@ -65,6 +66,27 @@ test("each setting saves, says so, and survives a reload", async ({ page }) => {
   await expect(window).toHaveValue("35");
   await expect(page.getByRole("switch", { name: "Mood line" })).not.toBeChecked();
   await expect(page.getByRole("switch", { name: "Show remarks" })).toBeChecked();
+});
+
+test("a segmented choice's pill slides to the picked option", async ({ page }) => {
+  await page.goto("/settings");
+  const group = page.getByRole("radiogroup", { name: "Clock" });
+  await expect(group).toHaveAttribute("data-ind", "live");
+  const label12 = group.locator("label").filter({ has: page.getByRole("radio", { name: "12h" }) });
+  await page.getByRole("radio", { name: "12h" }).click();
+  await expect.poll(() => indPos(group)).toBe(await leftOf(label12));
+  // The pill is the only highlight: the picked label doesn't light up under it as well.
+  await expect(label12).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+});
+
+test("a section link focuses its heading, which scrolls into view", async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 500 });
+  await page.goto("/settings");
+  await page.getByRole("navigation", { name: "Settings sections" }).getByRole("link", { name: "Seasons" }).click();
+  const heading = page.getByRole("heading", { name: "Seasons", exact: true });
+  await expect(heading).toBeFocused();
+  await expect(heading).toBeInViewport();
+  await expect(page).toHaveURL(/\/settings$/);
 });
 
 test("the theme reaches the share card", async ({ page, request }) => {

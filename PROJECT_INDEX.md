@@ -51,8 +51,14 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   `Contribution.tsx` the share bars (Friends and the recap), `TouchThirds.tsx` touches by third (`logic/thirds.ts`),
   `Bars.module.css` their shared styles and `BarPct.tsx` a segment's % label that hides where it can't fit,
   `ModeSwitch.tsx` the team size and Online/Private picker, `WlBar.tsx` a thin win/loss bar,
-  `PlaylistRecords.tsx` By playlist rows;
-  `styles/tokens.css` themes carbon, slate, oled; `pages/` placeholders until WP6+),
+  `PlaylistRecords.tsx` By playlist rows, `useIndicator.ts` the sliding selection indicator (header nav, Recap
+  tabs, match rail, X axis, Settings segments, ModeSwitch; `.ind-x`/`.ind-y` in `global.css`);
+  `usePageTransition.ts` the shown location behind a view transition (`<main>` rises on a new path, crossfades on
+  a new filter; `logic/page-transition.ts`), `redirect.tsx` replace-redirects skipped once the URL has moved on;
+  `styles/tokens.css` themes carbon, slate, oled and the motion tokens (durations, easings, springs, `--press`,
+  `--rise`; the reduced-motion block zeroes the spatial ones, and a test bans raw durations elsewhere),
+  `global.css` the shared `.button`; `pages/trends/chart-motion.ts` the charts' draw-once and tween;
+  `pages/` placeholders until WP6+),
   `src/tray/` (`Tray.cs` the C# 5 tray exe: polls `/api/tray` every 2 s, icon states, menu, balloons; `tray.manifest`
   DPI awareness; `icons/<channel>-<state>.ico` from `bun run icons`; built by `scripts/build-tray.ts`; live
   `tray.test.ts`),
@@ -144,6 +150,9 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   Task Scheduler doesn't restart a crashed task.
 
 ## Plans
+- `docs/plans/2026-11-17-motion.md`: motion build: tokens and reduced motion, shared button and press, dialog
+  fade-rise, sliding indicators, chart draw/tween, page transitions and the redirect guard, Settings motion.
+- `docs/reviews/2026-11-17-motion.md`: motion build review summary.
 - `docs/plans/2026-11-16-contribution-stats.md`: friends release step 6.1, contribution stats: the `touch_thirds`
   rule and migration, `shared/contribution.ts`, the recap's Contribution and touches panels, the match page's
   touch rows, named goal hovers; implementation notes per package and review log.
@@ -268,6 +277,9 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   (done; the spec WPs cite; build order lives in the roadmap).
 
 ## Research
+- `docs/research/2026-11-17-ui-motion.md`: what motion to add and how (tokens, springs, reduced motion); its
+  "Prototype verdict" section is the motion build's spec.
+- `docs/research/2026-11-17-route-view-transitions.md`: page-transition mechanisms for React Router, ranked.
 - `docs/research/2026-11-06-installer-updater.md`: installer and self-update tooling; recommends Inno Setup plus a
   small hand-written updater, with Velopack the runner-up.
 - `docs/research/2026-11-06-tray-technology.md`: what to build the tray with; recommends a .NET Framework 4.8

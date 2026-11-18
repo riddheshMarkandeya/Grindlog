@@ -15,8 +15,6 @@
 .more summary { cursor: pointer; color: var(--ink2); font-size: 13px; font-weight: 600; }
 .more summary:hover { color: var(--ink); }
 .actions { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s3); }
-.button { background: var(--surf2); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r); padding: 4px 12px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: border-color .12s; }
-.button:hover:not(:disabled) { border-color: var(--accent); }
-.button:focus-visible, .primary:focus-visible, .more summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.primary:focus-visible, .more summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .primary { background: var(--accent); border-color: var(--accent); color: var(--page); }
 .primary:disabled { opacity: .6; cursor: default; }
