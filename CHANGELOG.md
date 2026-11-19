@@ -6,6 +6,8 @@ All notable changes to Grindlog are listed here. The format is based on
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-11-18
+
 ### Added
 - Contribution on the recap: your share of your team's score, goals, assists, saves, shots, touches and MVPs this
   session, per team size, with filtered friends broken out. Beside it, "Where the touches were": you, friends,
@@ -21,6 +23,9 @@ All notable changes to Grindlog are listed here. The format is based on
 - The goal map has one layout on both pages: the pitch, then Scored and Conceded side by side.
 - Icons across the dashboard: the nav, buttons, stat cards and tiles, match rows and markers. They replace the
   game's statfeed icons, and the share card marks its stood-out line with a trend arrow.
+- Motion across the dashboard: buttons and cards respond to a press, selection lines slide between tabs, charts
+  draw in and then animate between values, and pages rise in as you move between them. With reduced motion turned
+  on in Windows, things fade instead of moving.
 - Developer installs only: a teal favicon, header logo and exe icon, and a Start menu app shortcut that starts
   the tracker and shows up in search (it was a web link that search skipped). Release builds are unchanged.
 
@@ -56,7 +61,8 @@ The first release.
 - Update checks against GitHub releases, with signed downloads, installs only while the game is closed, and an
   automatic rollback if a new version doesn't start.
 
-[Unreleased]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.1...v0.1.3
 [0.1.1]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/riddheshMarkandeya/Grindlog/releases/tag/v0.1.0
