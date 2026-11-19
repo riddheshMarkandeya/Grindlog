@@ -18,5 +18,11 @@ export default tseslint.config(
     extends: [reactHooks.configs.flat.recommended],
     languageOptions: { globals: { ...globals.browser, ...globals.worker } },
   },
+  {
+    // The landing page's tsconfig sits outside site/ (so it isn't published), where the project
+    // service wouldn't find it.
+    files: ["site/**/*.js"],
+    languageOptions: { globals: globals.browser, parserOptions: { projectService: false, project: "./tsconfig.site.json" } },
+  },
   { files: ["eslint.config.mjs"], extends: [tseslint.configs.disableTypeChecked] },
 );

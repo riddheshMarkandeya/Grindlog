@@ -1,0 +1,171 @@
+/* The landing page. Colours and motion copy the dashboard's carbon theme tokens by value, because
+   the site deploys on its own. */
+
+@font-face { font-family: "Barlow Condensed"; src: url(fonts/barlow-condensed-800-italic.woff2) format("woff2"); font-weight: 800; font-style: italic; font-display: swap; }
+@font-face { font-family: "Barlow Condensed"; src: url(fonts/barlow-condensed-700-italic.woff2) format("woff2"); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: "Barlow Condensed"; src: url(fonts/barlow-condensed-700-normal.woff2) format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+
+:root {
+  color-scheme: dark;
+  /* Bahnschrift, the dashboard's display face, is Windows-only; most visitors arrive on a phone. */
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --page: #0c0c0d;
+  --surf: #161618;
+  --surf2: #202023;
+  --line: #2c2c30;
+  --ink: #ededed;
+  --ink2: #b0b0b5;
+  --muted: #85858c;
+  --accent: #c6f24e;
+  --friend-a: #8fc0f5;
+  --friend-b: #5fc4c4;
+  --r: 6px;
+  /* Motion: hovers --dur-1, colour and opacity --dur-2, entrances --dur-3; calm, no bounce. */
+  --dur-1: 100ms;
+  --dur-2: 150ms;
+  --dur-3: 250ms;
+  --ease-standard: cubic-bezier(.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0, 0, 0, 1);
+  --rise: 8px;
+  --press: .97;
+}
+/* Reduced motion keeps the fades and drops every movement. */
+@media (prefers-reduced-motion: reduce) { :root { --rise: 0px; --press: 1; } }
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 16px/1.55 "Segoe UI", system-ui, sans-serif; }
+a { color: var(--accent); }
+img { max-width: 100%; height: auto; display: block; }
+figure { margin: 0; }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+.display { font-family: var(--display); font-style: italic; font-weight: 800; letter-spacing: -.01em; line-height: 1; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+.small { color: var(--ink2); font-size: 15px; }
+.muted { color: var(--muted); }
+.label { font-family: var(--display); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: 14px; color: var(--muted); }
+h2 { font-size: 28px; margin: 0 0 12px; line-height: 1.2; }
+section { padding: 72px 0; }
+
+.btn, .ghost { transition: transform var(--dur-1) var(--ease-standard), background-color var(--dur-2), border-color var(--dur-2), color var(--dur-2); }
+.btn { display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: var(--page); font-weight: 700; text-decoration: none; padding: 12px 20px; border-radius: var(--r); }
+.btn:hover { transform: translateY(-1px); }
+.btn:active { transform: scale(var(--press)); }
+.ghost { color: var(--ink2); text-decoration: none; border: 1px solid var(--line); padding: 11px 18px; border-radius: var(--r); }
+.ghost:hover { border-color: var(--ink2); color: var(--ink); }
+
+/* Hero */
+.hero { padding: 64px 24px 0; text-align: center; }
+.eyebrow { margin: 0 0 12px; }
+.hero h1 { font-size: clamp(48px, 8vw, 92px); margin: 0; }
+.hero h1 span { color: var(--accent); }
+.lede { color: var(--ink2); max-width: 620px; margin: 16px auto 24px; font-size: 18px; }
+.lede b { color: var(--ink); }
+.acts { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; align-items: center; }
+.hero .muted { margin: 12px 0 0; }
+.window { margin: 48px auto 0; max-width: 1080px; border: 1px solid var(--line); border-radius: 10px 10px 0 0; border-bottom: 0; overflow: hidden; box-shadow: 0 -20px 80px -40px rgb(198 242 78 / .25); }
+.window .bar { height: 30px; background: var(--surf2); display: flex; align-items: center; gap: 6px; padding: 0 12px; }
+.window .bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+.window .bar span { margin-left: 12px; font-size: 12px; color: var(--ink2); }
+/* A short staggered rise on load. */
+.hero > * { animation: rise 500ms var(--ease-enter) both; }
+.hero > :nth-child(2) { animation-delay: 40ms; }
+.hero > :nth-child(3) { animation-delay: 90ms; }
+.hero > :nth-child(4) { animation-delay: 140ms; }
+.hero > :nth-child(5) { animation-delay: 180ms; }
+/* The screenshot, the page's largest paint, only moves: a fade would hold its paint back. */
+.hero > :nth-child(6) { animation-name: rise-only; animation-delay: 230ms; animation-duration: 700ms; }
+@keyframes rise { from { opacity: 0; transform: translateY(calc(var(--rise) * 2)); } }
+@keyframes rise-only { from { transform: translateY(calc(var(--rise) * 2)); } }
+
+/* Clickable screenshots: they open full size in the lightbox. */
+.zoom { all: unset; box-sizing: border-box; display: block; cursor: zoom-in; transition: transform var(--dur-2) var(--ease-standard), border-color var(--dur-2), box-shadow var(--dur-2) var(--ease-standard); }
+.zoom:hover { transform: translateY(calc(var(--rise) * -.5)); border-color: var(--ink2); box-shadow: 0 12px 32px -16px rgb(0 0 0 / .8); }
+.zoom:active { transform: scale(var(--press)); }
+.zoom:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.shot { border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--surf); }
+.narrow { max-width: 420px; justify-self: center; }
+
+/* Friends spotlight */
+.spot { background: linear-gradient(180deg, var(--surf) 0, var(--page) 100%); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.spot-title { font-size: clamp(36px, 5vw, 56px); margin: 0 0 32px; }
+.spot-title span { color: var(--accent); }
+.spot .grid { display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: auto auto; gap: 16px; }
+.spot .grid .big { grid-row: span 2; }
+.spot figcaption { font-size: 14px; color: var(--muted); padding: 10px 2px 0; }
+.points { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 32px; }
+.points div { border-left: 2px solid var(--friend-a); padding-left: 14px; }
+.points div:nth-child(2) { border-color: var(--friend-b); }
+.points div:nth-child(3) { border-color: var(--accent); }
+.points b { display: block; margin-bottom: 4px; }
+
+/* Feature tour */
+.row { display: grid; grid-template-columns: 1fr 1.7fr; gap: 48px; align-items: center; margin-bottom: 80px; }
+.row:last-child { margin-bottom: 0; }
+.row.flip { grid-template-columns: 1.7fr 1fr; }
+.row.flip .txt { order: 2; }
+
+/* More screens */
+.more { padding-top: 0; }
+.more h2 { margin-bottom: 20px; }
+.gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.gallery .zoom { border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--surf); }
+.gallery img { aspect-ratio: 16 / 10; object-fit: cover; object-position: top; }
+/* The setup card is a wide strip; cropping it to the grid's shape would cut its text off. */
+.gallery img.fit { object-fit: contain; object-position: center; background: var(--page); }
+.gallery span { display: block; padding: 8px 10px; font-size: 14px; color: var(--ink2); }
+
+/* Lightbox: fades and scales in where @starting-style is supported; elsewhere it just appears. */
+dialog { border: 1px solid var(--line); border-radius: var(--r); background: var(--surf); color: var(--ink); padding: 0; max-width: min(1200px, 94vw); max-height: 92vh; opacity: 0; transform: scale(.97); transition: opacity var(--dur-3) var(--ease-enter), transform var(--dur-3) var(--ease-enter), overlay var(--dur-3) allow-discrete, display var(--dur-3) allow-discrete; }
+dialog[open] { opacity: 1; transform: none; }
+@starting-style { dialog[open] { opacity: 0; transform: scale(.97); } }
+dialog::backdrop { background: rgb(0 0 0 / .75); transition: background-color var(--dur-3), overlay var(--dur-3) allow-discrete, display var(--dur-3) allow-discrete; }
+@starting-style { dialog[open]::backdrop { background: rgb(0 0 0 / 0); } }
+dialog img { max-height: calc(92vh - 52px); width: auto; margin: auto; }
+dialog .bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 14px; color: var(--ink2); }
+dialog button { background: var(--surf2); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r); padding: 6px 12px; cursor: pointer; font: inherit; }
+
+/* Install */
+.install { border-top: 1px solid var(--line); padding-bottom: 0; }
+.steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; counter-reset: step; padding: 0; margin: 0; }
+.steps li { list-style: none; background: var(--surf); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; }
+.steps li::before { counter-increment: step; content: counter(step); font: italic 800 44px/1 var(--display); color: var(--accent); display: block; margin-bottom: 8px; }
+.steps b { display: block; margin-bottom: 4px; }
+.steps .small { font-size: 14px; }
+.steps strong { color: var(--ink); }
+
+/* What's new and FAQ */
+.two { display: grid; grid-template-columns: 1fr 1.3fr; gap: 48px; padding-top: 96px; }
+/* A grid column won't shrink below its widest content by default; wide release notes would push the page sideways. */
+.two > * { min-width: 0; }
+.news { background: var(--surf); border: 1px solid var(--line); border-radius: var(--r); padding: 24px; }
+.news-body { color: var(--ink2); margin: 8px 0 12px; overflow-wrap: anywhere; }
+.news-body ul { margin: 8px 0; padding-left: 20px; }
+.news-body :is(pre, table) { max-width: 100%; overflow-x: auto; }
+.news-body :is(h1, h2, h3) { font-size: 17px; color: var(--ink); margin: 12px 0 4px; }
+.faq details { border-top: 1px solid var(--line); padding: 12px 0; }
+.faq summary { cursor: pointer; font-weight: 600; transition: color var(--dur-2); }
+.faq summary:hover { color: var(--accent); }
+.faq p { color: var(--ink2); margin: 8px 0 0; }
+.faq details[open] p { animation: rise var(--dur-3) var(--ease-enter); }
+
+footer { border-top: 1px solid var(--line); padding: 24px 0; color: var(--muted); font-size: 14px; }
+
+/* Scroll reveal: only under html.js, which main.js sets as it starts watching, so content never
+   stays hidden when the script fails; main.js adds .in once per block. */
+.js .reveal { opacity: 0; transform: translateY(calc(var(--rise) * 2)); transition: opacity 500ms var(--ease-enter), transform 500ms var(--ease-enter); }
+.js .reveal.in { opacity: 1; transform: none; }
+.spot .grid .reveal:nth-child(2) { transition-delay: 80ms; }
+.spot .grid .reveal:nth-child(3) { transition-delay: 160ms; }
+
+@media (max-width: 760px) {
+  .row, .row.flip, .two { grid-template-columns: 1fr; gap: 20px; }
+  .row.flip .txt { order: 0; }
+  .spot .grid { grid-template-columns: 1fr; }
+  .spot .grid .big { grid-row: auto; }
+  .points { grid-template-columns: 1fr; }
+  .gallery, .steps { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 420px) {
+  .gallery, .steps { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Scripts and styles from this site only, so HTML injected from release notes can't run anything.
+     Images also from GitHub's hosts, for pictures in release notes. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https://github.com https://*.githubusercontent.com; connect-src https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Grindlog: free Rocket League stats tracker for your PC</title>
+<meta name="description" content="Track every Rocket League match with the game's official Stats API. Session recaps, goal maps, trends and stats with your friends, saved on your own Windows PC. Free and open source.">
+<link rel="canonical" href="https://riddheshmarkandeya.github.io/Grindlog/">
+<meta name="theme-color" content="#0c0c0d">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Grindlog">
+<meta property="og:title" content="Grindlog: free Rocket League stats tracker">
+<meta property="og:description" content="Session recaps, trends and stats with your friends, from Rocket League's official Stats API. Runs on your own PC.">
+<meta property="og:url" content="https://riddheshmarkandeya.github.io/Grindlog/">
+<meta property="og:image" content="https://riddheshmarkandeya.github.io/Grindlog/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Grindlog: a Rocket League session recap with wins, losses and every match">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.ico">
+<link rel="preload" href="fonts/barlow-condensed-800-italic.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/barlow-condensed-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css">
+<script type="module" src="main.js"></script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Grindlog","description":"Rocket League stats tracker that runs on your own PC, using the game's official Stats API.","applicationCategory":"GameApplication","operatingSystem":"Windows 10, Windows 11","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"downloadUrl":"https://github.com/riddheshMarkandeya/Grindlog/releases/latest","license":"https://opensource.org/licenses/MIT","url":"https://riddheshmarkandeya.github.io/Grindlog/","image":"https://riddheshmarkandeya.github.io/Grindlog/og.png"}</script>
+</head>
+<body>
+
+<header class="hero wrap">
+  <p class="label eyebrow">Rocket League stats tracker</p>
+  <h1 class="display">Know your <span>grind</span>.</h1>
+  <p class="lede">Rocket League stats that run on your own PC. Every match saved from the game's official Stats API: your sessions, your trends, and <b>your record with every friend you queue with</b>.</p>
+  <div class="acts">
+    <a class="btn" href="https://github.com/riddheshMarkandeya/Grindlog/releases/latest" target="_blank" rel="noopener">Download for Windows</a>
+    <a class="ghost" href="https://github.com/riddheshMarkandeya/Grindlog" target="_blank" rel="noopener">View on GitHub</a>
+  </div>
+  <p class="small muted">Free, open source, Windows 10/11</p>
+  <div class="window">
+    <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span>127.0.0.1:49100</span></div>
+    <picture>
+      <source media="(max-width: 600px)" srcset="screens/recap-m.png" width="780" height="1400">
+      <img src="screens/recap.png" width="2560" height="1600" fetchpriority="high" alt="Grindlog's session recap: wins and losses, time played, best streak, MVPs and every match in order">
+    </picture>
+  </div>
+</header>
+
+<main>
+  <section class="spot" aria-labelledby="friends-title">
+    <div class="wrap">
+      <h2 id="friends-title" class="display spot-title reveal">Stats with <span>your friends</span></h2>
+      <div class="grid">
+        <figure class="big reveal">
+          <button class="shot zoom" type="button">
+            <picture>
+              <source media="(max-width: 600px)" srcset="screens/friend-m.png" width="780" height="1400">
+              <img src="screens/friend.png" width="2560" height="1600" loading="lazy" alt="A friend's page: your record together and head-to-head, streaks, and how you do by playlist">
+            </picture>
+          </button>
+          <figcaption>Together and head-to-head, by playlist</figcaption>
+        </figure>
+        <figure class="reveal">
+          <button class="shot zoom" type="button"><img src="screens/pair.png" width="2560" height="1600" loading="lazy" alt="A pair page: your record when two friends are both on your team, and everyone's share of the score"></button>
+          <figcaption>Pick two friends: your trio's record</figcaption>
+        </figure>
+        <figure class="reveal">
+          <button class="shot zoom" type="button"><img src="screens/friend-matches.png" width="2560" height="1600" loading="lazy" alt="Your stats and a friend's side by side, match by match"></button>
+          <figcaption>Match by match, side by side</figcaption>
+        </figure>
+      </div>
+      <div class="points reveal">
+        <div><b>Together vs against</b><span class="small">Win % with them on your team and head-to-head.</span></div>
+        <div><b>Who carries who</b><span class="small">Your share of score, goals and saves next to theirs.</span></div>
+        <div><b>Your regulars, found</b><span class="small">People often on your team are suggested. One click to add.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tour" aria-label="Features">
+    <div class="wrap">
+      <div class="row reveal">
+        <div class="txt"><span class="label">Sessions</span><h2>See how tonight went</h2><p class="small">Wins, losses, time played, best streak and MVPs, every match in order, and how it compares with your last 30 days.</p></div>
+        <button class="shot zoom" type="button"><img src="screens/recap.png" width="2560" height="1600" loading="lazy" alt="A session recap compared with your 30-day average"></button>
+      </div>
+      <div class="row flip reveal">
+        <div class="txt"><span class="label">Stats</span><h2>Every match, in detail</h2><p class="small">Both scoreboards, your touches by third, and where each goal came from.</p></div>
+        <button class="shot zoom" type="button"><img src="screens/match.png" width="2560" height="1600" loading="lazy" alt="A match page: both teams' scoreboards and each player's touches by third of the field"></button>
+      </div>
+      <div class="row reveal">
+        <div class="txt"><span class="label">Trends</span><h2>Are you getting better?</h2><p class="small">Win %, goals, shots and saves over any week, month or season, by date or by match.</p></div>
+        <button class="shot zoom" type="button"><img src="screens/trends.png" width="2560" height="1600" loading="lazy" alt="Trends over all time: win %, goals, shots, shooting %, assists and saves per game, with a rolling win % chart"></button>
+      </div>
+      <div class="row flip reveal">
+        <div class="txt"><span class="label">Share</span><h2>Post your session</h2><p class="small">A share card with your record, the session's run and the stat that stood out.</p></div>
+        <button class="shot zoom narrow" type="button"><img src="screens/share.png" width="788" height="1200" loading="lazy" alt="A share card: the session's record, win rate, its run of wins and losses, and the stat that stood out"></button>
+      </div>
+    </div>
+  </section>
+
+  <section class="more" aria-labelledby="more-title">
+    <div class="wrap">
+      <h2 id="more-title">More screens</h2>
+      <div class="gallery reveal">
+        <button class="zoom" type="button"><img src="screens/friends.png" width="2560" height="1600" loading="lazy" alt="Your friends and pairs, with your record together and against each"><span>Your friends and pairs</span></button>
+        <button class="zoom" type="button"><img src="screens/recap-goals.png" width="2560" height="1600" loading="lazy" alt="A session's goal map: where each goal for and against came from"><span>Session goal map</span></button>
+        <button class="zoom" type="button"><img class="fit" src="screens/setup.png" width="2560" height="524" loading="lazy" alt="The setup card that turns on Rocket League's Stats API in one click"><span>One-click Stats API setup</span></button>
+      </div>
+    </div>
+  </section>
+
+  <section class="install wrap" aria-labelledby="install-title">
+    <h2 id="install-title">Install in four steps</h2>
+    <ol class="steps reveal">
+      <li><b><a href="https://github.com/riddheshMarkandeya/Grindlog/releases/latest" target="_blank" rel="noopener">Download the installer</a></b><span class="small">from the latest release.</span></li>
+      <li><b>Run it</b><span class="small">Windows warns on the first install only, because the app isn't code-signed: <strong>More info → Run anyway</strong>.</span></li>
+      <li><b>Turn on the Stats API</b><span class="small">The dashboard opens, and its setup card does it in one click.</span></li>
+      <li><b>Restart Rocket League</b><span class="small">The game reads the setting when it starts.</span></li>
+    </ol>
+  </section>
+
+  <section class="wrap two">
+    <div>
+      <h2>What's new</h2>
+      <div class="news" id="news">
+        <span class="label" id="news-label">Latest release</span>
+        <div class="news-body" id="news-body" hidden></div>
+        <a href="https://github.com/riddheshMarkandeya/Grindlog/releases/latest" target="_blank" rel="noopener">See what's new on GitHub →</a>
+      </div>
+    </div>
+    <div class="faq">
+      <h2>FAQ</h2>
+      <details><summary>Is it safe? Will it get me banned?</summary><p>It uses the game's official Stats API: no injection, no memory reading.</p></details>
+      <details><summary>Where does my data go?</summary><p>It stays in %LOCALAPPDATA%\Grindlog. The app only goes online to GitHub, for updates and seasons.</p></details>
+      <details><summary>Mac, Linux, console?</summary><p>Windows only.</p></details>
+      <details><summary>Steam or Epic?</summary><p>Both. If the one-click setup can't find the file, the card shows the steps by hand.</p></details>
+      <details><summary>Why does Windows warn me?</summary><p>Windows warns on the first install only, because the app isn't code-signed.</p></details>
+      <details><summary>Found a bug?</summary><p><a href="https://github.com/riddheshMarkandeya/Grindlog/issues" target="_blank" rel="noopener">Open an issue on GitHub</a>.</p></details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">Not affiliated with or endorsed by Psyonix or Epic Games · MIT licence · <a href="https://github.com/riddheshMarkandeya/Grindlog" target="_blank" rel="noopener">GitHub</a></div>
+</footer>
+
+<dialog id="lightbox" aria-labelledby="lightbox-caption">
+  <div class="bar"><span id="lightbox-caption"></span><button type="button" autofocus>Close</button></div>
+  <img id="lightbox-img" alt="">
+</dialog>
+
+</body>
+</html>

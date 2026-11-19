@@ -90,10 +90,18 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   `stop.ts`, `autostart.ts`, `move-data.ts` (`bun run move-data <from> <to> [--copy]`: a verified
   copy of a data dir without `bin`; a move keeps the source as `<to>.pre-move-backup`), `replay.ts` fake Stats API,
   `import-capture.ts` (also writes records), `recompute.ts`, `make-fixture.ts`, `definitions.ts`,
-  `rules-diff.ts`), `test/fixtures/`
+  `rules-diff.ts`, `screens-data.ts` (`bun run screens-data [--from dir] [--since YYYY-MM-DD] [--max-matches N]`:
+  a pseudonymised, leak-scanned copy of a data dir's `tracker.db` in `%TEMP%\grindlog-screens` for the landing
+  page's screenshots)), `test/fixtures/`
   (anonymised capture excerpts), `test/e2e/` (Playwright on Node: `fixtures.ts` starts
   `stack.ts` under Bun, which seeds a temp data dir and runs the real tracker against a gated
-  replay; `shell.spec.ts`).
+  replay; `shell.spec.ts`; the `screens` seed copies the screens-data db; `site.spec.ts` tests the landing page
+  from disk), `test/site/` (`bun run site:screens`: a prod-look build shot into `site/screens/*.png` and the
+  `og.html` template into `site/og.png`).
+- Landing page: `site/` (static, no build: `index.html`, `style.css`, `main.js` with the pure `whats-new.js`, the
+  lightbox and scroll reveal; CSP meta, no inline scripts; type-checked by `tsconfig.site.json`, kept out of
+  the published dir), published by `.github/workflows/pages.yml` on a push to
+  master that touches `site/`.
 - Root docs: `README.md` (friends first: install, privacy, updates, uninstall, building), `LICENSE` (MIT),
   `THIRD_PARTY_NOTICES.md` (what ships: Bun and zod in the exe, the dashboard's packages; the installer puts it
   and LICENSE next to the app as `.txt`), `CHANGELOG.md` (Keep a Changelog; Unreleased moves to the version at
@@ -116,7 +124,8 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
 - Channel: every source run and the CLI install are the dev channel (`GrindlogDev`, port 49102,
   `grindlog-dev.exe`, task `GrindlogDev`, "Grindlog Dev" with a Dev badge). Only a build with
   `GRINDLOG_CHANNEL=prod` baked in (`--define`, never read at runtime; only `build-release` passes it, with
-  `GRINDLOG_VERSION`) is prod (`Grindlog`, 49100,
+  `GRINDLOG_VERSION`, and `site:screens` for its web build, which leaves a prod-look `dist/` until the next `e2e`
+  or `web:build`) is prod (`Grindlog`, 49100,
   `grindlog.exe`), so a friend's install and the developer's share no data, port, task or exe.
 - Background: `bun run install-autostart` compiles `grindlog-dev.exe` and the dashboard (`bin\web`,
   which the tracker serves) into `%LOCALAPPDATA%\GrindlogDev\bin\`, registers the `GrindlogDev`

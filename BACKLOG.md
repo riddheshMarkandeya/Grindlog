@@ -83,8 +83,6 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
     host `shutdown_rejected`): a page looping header-less requests writes one each and can rotate match diagnostics
     out of the logs. Deferred from 3b's review (`docs/reviews/2026-11-10-wp3b-tray-view.md`).
 
-- [ ] **[feature, Med, Standard]** (public release map step 4) Landing page on GitHub Pages: one static page,
-  download → releases/latest, What's new from the GitHub releases API with a plain-link fallback.
 - [ ] **[misc, Med, Standard]** (public release map step 5) Reddit post and GitHub issue templates: subreddit
   self-promotion rules first, then the pitch, GIF/screens and FAQ.
 - [ ] **[feature, Low, Substantial]** (public release map step 7) Account profiles: a header dropdown of all
@@ -142,7 +140,7 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   card's fix inserts a wrong exporter key the Documents ini lacks (after the section's last setting), or appends the
   whole section. No game-written Documents ini has been seen without them, so the insert is fitted to an assumption.
   Check that the game read the inserted line, and fit `fixStatsIni` to that file.
-- [ ] **[bug (latent), Low, Standard]** (public release map step 3) Trigger: the first Steam user. Nothing confirms the Documents ini path for Steam;
+- [ ] **[bug (latent), Low, Standard]** Trigger: the first Steam user. Nothing confirms the Documents ini path for Steam;
   Epic is the only install locator. `user_missing` flags a wrong path, so fit it to that user's log.
 - [ ] **[bug (latent), Low, Standard]** Trigger: `send_rate_off` returns after a game patch on a machine that had it on.
   The Documents ini's `[IniVersion]` matches the default ini's timestamp, so a patch might regenerate it (not seen). The

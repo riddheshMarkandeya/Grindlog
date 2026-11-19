@@ -38,7 +38,9 @@ Every stat rule lives in `src/server/rules/registry.ts` with a version. Change o
 ## Privacy
 
 Never commit `captures/`, `HARs/` or any real match data; they are git-ignored. Test fixtures in `test/fixtures/`
-are anonymised excerpts of captures.
+are anonymised excerpts of captures. The landing page's screenshots (`site/screens/`, `site/og.png`) are the one
+exception: they come only from `bun run screens-data` (pseudonymised and leak-scanned) through `bun run site:screens`,
+and every PNG is looked over for real names, ids and Windows paths before it's committed.
 
 ## Stats API data nobody has seen yet
 

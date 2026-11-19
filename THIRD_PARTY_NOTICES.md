@@ -23,6 +23,13 @@ licence, and how to relink Bun against a modified JavaScriptCore are at <https:/
 
 zod is also in the dashboard files below.
 
+## On the landing page (`site/`, not installed)
+
+### Barlow Condensed (from @fontsource/barlow-condensed 5)
+
+- Licence: SIL Open Font License 1.1, full text in `site/fonts/OFL.txt`
+- Copyright 2017 The Barlow Project Authors
+
 ## In the dashboard (`web` folder)
 
 ### react 19.3.0, react-dom 19.3.0, scheduler 0.28.0

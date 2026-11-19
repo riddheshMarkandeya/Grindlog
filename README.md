@@ -4,6 +4,8 @@ Grindlog is a Rocket League stats tracker that runs on your own PC. It listens t
 you play, saves every match, and shows your sessions, stats and trends on a dashboard in your browser. Everything
 stays on your machine.
 
+Screens and the latest release notes are on the [Grindlog page](https://riddheshmarkandeya.github.io/Grindlog/).
+
 Grindlog is not affiliated with or endorsed by Psyonix or Epic Games.
 
 ## Install

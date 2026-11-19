@@ -8,12 +8,15 @@
 // GRINDLOG_E2E_KEEP=1 keeps the temp dir (and its logs/tracker.log). Every seed gets a stand-in for
 // the game's Documents Config folder (GRINDLOG_STATS_CONFIG_DIR) with a good TAStatsAPI.ini, so no
 // run reads or writes the real one; the `setup` seed is `empty` with the Stats API off in that ini
-// and STATS_API_URL at a port nothing listens on, so the setup card shows.
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+// and STATS_API_URL at a port nothing listens on, so the setup card shows. The `screens` seed is no
+// seed: it copies the pseudonymised real tracker.db that `bun run screens-data` wrote, for the
+// landing page's screenshots (test/site).
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { startReplayServer } from "../../scripts/replay";
+import { OUT_DIR as SCREENS_DATA_DIR } from "../../scripts/screens-data";
 import { describeStopResult } from "../../scripts/stop";
 import { requestStop } from "../../src/server/control";
 import { createLogger } from "../../src/server/log";
@@ -250,6 +253,13 @@ const SEED_DATA: Partial<Record<string, Seed>> = {
   setup: "empty",
 };
 
+function copyScreensData(dir: string): void {
+  const src = join(SCREENS_DATA_DIR, "tracker.db");
+  if (!existsSync(src)) throw new Error(`${src} is missing; run bun run screens-data first`);
+  copyFileSync(src, join(dir, "tracker.db"));
+  say("copied the screens data", { from: src });
+}
+
 async function main(): Promise<void> {
   const dist = join(REPO, "dist");
   if (!existsSync(join(dist, "index.html"))) throw new Error(`${dist}\\index.html is missing; run vite build first (bun run e2e does)`);
@@ -259,7 +269,8 @@ async function main(): Promise<void> {
   try {
     // The installed path, so the tracker's default staticDir is what's served.
     cpSync(dist, join(dir, "bin", "web"), { recursive: true });
-    seed(dir, SEED_DATA[mode ?? ""] ?? "rich");
+    if (mode === "screens") copyScreensData(dir);
+    else seed(dir, SEED_DATA[mode ?? ""] ?? "rich");
   } catch (err) {
     removeDir(dir);
     throw err;

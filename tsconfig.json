@@ -6,6 +6,8 @@
     "moduleResolution": "bundler",
     "types": ["bun"],
     "strict": true,
+    // For the unit test that imports site/whats-new.js.
+    "allowJs": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
@@ -13,6 +15,6 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "scripts", "test", "vitest.config.ts", "vite.config.ts", "playwright.config.ts"],
+  "include": ["src", "scripts", "test", "vitest.config.ts", "vite.config.ts", "playwright.config.ts", "playwright.site.config.ts"],
   "exclude": ["src/web"]
 }

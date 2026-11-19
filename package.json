@@ -11,6 +11,7 @@
     "recompute": "bun run scripts/recompute.ts",
     "rules-diff": "bun run scripts/rules-diff.ts",
     "move-data": "bun run scripts/move-data.ts",
+    "screens-data": "bun run scripts/screens-data.ts",
     "definitions": "bun run scripts/definitions.ts",
     "icons": "bun run scripts/make-icons.ts",
     "deploy": "bun run check && bun run e2e && bun run install-autostart && bun run recompute",
@@ -21,7 +22,8 @@
     "web:dev": "vite",
     "web:build": "vite build",
     "e2e": "vite build && playwright test",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p src/web",
+    "site:screens": "GRINDLOG_CHANNEL=prod vite build && playwright test -c playwright.site.config.ts",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p src/web && tsc --noEmit -p tsconfig.site.json",
     "lint": "eslint . --max-warnings 0",
     "test": "bun --bun vitest run",
     "check": "bun run typecheck && bun run lint && bun run test"
