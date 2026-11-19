@@ -6,6 +6,11 @@ All notable changes to Grindlog are listed here. The format is based on
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-11-18
+
+### Changed
+- A maintenance release with no visible changes. It tests that "Check now" finds and downloads a new version.
+
 ## [0.1.4] - 2026-11-18
 
 ### Added
@@ -61,7 +66,8 @@ The first release.
 - Update checks against GitHub releases, with signed downloads, installs only while the game is closed, and an
   automatic rollback if a new version doesn't start.
 
-[Unreleased]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.1...v0.1.3
 [0.1.1]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.0...v0.1.1
