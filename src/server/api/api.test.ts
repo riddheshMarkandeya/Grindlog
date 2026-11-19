@@ -534,6 +534,17 @@ describe("records recomputed", () => {
   });
 });
 
+describe("seasons changed", () => {
+  test("tells open pages the seasons moved, so every season period may have", async () => {
+    const events = sse(await fetch(url("/api/events")));
+    await events.next();
+    api.seasonsChanged();
+    expect(await events.next()).toEqual({ event: "seasons_changed", data: {} });
+    expect(logger.lines.find((l) => l.event === "seasons_changed")?.fields).toEqual({ subscribers: 1 });
+    await events.cancel();
+  });
+});
+
 describe("friends", () => {
   const SAM = "Epic|sam|0";
   const post = (path: string, headers: Record<string, string> = { [REQUEST_HEADER]: "1" }) => fetch(url(path), { method: "POST", headers });

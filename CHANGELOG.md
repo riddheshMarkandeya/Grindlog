@@ -6,6 +6,13 @@ All notable changes to Grindlog are listed here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- New seasons arrive on their own: once a day Grindlog fetches the season list from its GitHub repository. Seasons
+  you edit or delete stay as you left them. Switch it off in Settings → Seasons.
+
+### Fixed
+- Season 23 starts on June 10, not June 9 (unless you changed it yourself).
+
 ## [0.1.5] - 2026-11-18
 
 ### Changed

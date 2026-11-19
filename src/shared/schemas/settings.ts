@@ -19,6 +19,8 @@ export const settingFields = {
   rollingWindow,
   remarks: z.boolean(),
   moodLine: z.boolean(),
+  /** Add new seasons from the repo's season file once a day. */
+  autoSeasons: z.boolean(),
 };
 
 export const settingsSchema = z.object(settingFields);
@@ -35,12 +37,14 @@ export const DEFAULT_SETTINGS: Settings = {
   rollingWindow: ROLLING_WINDOW,
   remarks: true,
   moodLine: true,
+  autoSeasons: true,
 };
 
 export const SETTINGS_SECTIONS = {
   appearance: ["theme", "clock", "speed"],
   defaults: ["startPage", "recapFilter", "trendsFilter", "rollingWindow"],
   remarks: ["remarks", "moodLine"],
+  seasons: ["autoSeasons"],
 } as const satisfies Record<string, readonly SettingKey[]>;
 export type SectionId = keyof typeof SETTINGS_SECTIONS;
 
@@ -50,7 +54,7 @@ export const boolParam = z.stringbool({ truthy: ["true"], falsy: ["false"] });
 
 /** A save as `POST /api/settings` takes it, in the query string: any of the keys, at least one, nothing else. */
 export const settingsPatch = z
-  .object({ ...settingFields, rollingWindow: windowParam, remarks: boolParam, moodLine: boolParam })
+  .object({ ...settingFields, rollingWindow: windowParam, remarks: boolParam, moodLine: boolParam, autoSeasons: boolParam })
   .partial()
   .strict()
   .refine((p) => Object.keys(p).length > 0, "no settings to save");

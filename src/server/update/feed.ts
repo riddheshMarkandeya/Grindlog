@@ -75,9 +75,9 @@ export type FetchResult =
   | { kind: "release"; release: Release; etag?: string }
   | { kind: "error"; error: string; status?: number; rateLimitReset?: number };
 
-type FetchFn = (url: string, init?: RequestInit) => Promise<Response>;
+export type FetchFn = (url: string, init?: RequestInit) => Promise<Response>;
 
-const FETCH_TIMEOUT_MS = 30_000;
+export const FETCH_TIMEOUT_MS = 30_000;
 
 /** The latest release from `source`. Never throws: every failure is an `error` result. */
 export async function fetchLatest(source: FeedSource, { etag, fetch = globalThis.fetch }: { etag?: string; fetch?: FetchFn }): Promise<FetchResult> {

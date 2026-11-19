@@ -159,6 +159,23 @@ export const trackerMigrations: readonly string[] = [
   ALTER TABLE match_players ADD COLUMN touches_midfield INTEGER;
   ALTER TABLE match_players ADD COLUMN touches_attack INTEGER;
   `,
+  // Seasons from the repo's season file. A row remembers the file name it came from, and the start
+  // the file last gave it until the user edits it, so a corrected date moves only rows nobody
+  // changed. A deleted file season is remembered so the file never brings it back. Seed rows still
+  // as seeded are adopted as file rows, so the file can correct them too; a seed season deleted
+  // (or renamed) before now counts as dismissed, as the user's change wins.
+  `
+  ALTER TABLE seasons ADD COLUMN file_name  TEXT; -- the season file's name for this row; null if added by hand
+  ALTER TABLE seasons ADD COLUMN file_start TEXT; -- the start the file last set; null once edited by hand
+  CREATE UNIQUE INDEX seasons_file_name ON seasons (file_name COLLATE NOCASE);
+  CREATE TABLE seasons_dismissed (file_name TEXT PRIMARY KEY COLLATE NOCASE);
+  CREATE TEMP TABLE seed (name TEXT, start_date TEXT);
+  INSERT INTO seed VALUES ('S22', '2026-03-11'), ('S23', '2026-06-09'), ('S24', '2026-09-23');
+  UPDATE seasons SET file_name = name, file_start = start_date WHERE (name, start_date) IN (SELECT name, start_date FROM seed);
+  INSERT INTO seasons_dismissed (file_name)
+    SELECT name FROM seed WHERE NOT EXISTS (SELECT 1 FROM seasons WHERE seasons.name = seed.name COLLATE NOCASE);
+  DROP TABLE seed;
+  `,
 ];
 
 export const rawMigrations: readonly string[] = [

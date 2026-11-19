@@ -439,6 +439,8 @@ export const sseEvents = {
   session_break: breakResponse,
   /** A background recompute ended: any record may have changed. */
   records_recomputed: z.object({}),
+  /** The season file added or moved a season: any season period may have changed. */
+  seasons_changed: z.object({}),
 };
 export type SseEvents = { [K in keyof typeof sseEvents]: z.infer<(typeof sseEvents)[K]> };
 

@@ -224,8 +224,8 @@ function StartupSection() {
   );
 }
 
-/** Says plainly that update checks are the app's only internet traffic. */
-const UPDATES_INTRO = "Grindlog's only internet use: it checks GitHub for new versions every few hours, and installs only ones signed by its developer.";
+/** Says plainly all the internet traffic there is: update checks and the season list. */
+const UPDATES_INTRO = "Grindlog goes online only to GitHub: every few hours to check for new versions (it installs only ones signed by its developer), and once a day for the season list, which you can switch off under Seasons.";
 
 /** How the last update ended comes first, so a failed one isn't hidden behind "up to date". */
 function updateSentence(u: UpdateResponse): string {
@@ -381,6 +381,7 @@ function focusSection(e: MouseEvent<HTMLAnchorElement>, anchor: string) {
 export function SettingsPage() {
   // App logs a failed load (settings/load_failed).
   const q = useSettingsQuery();
+  const autoSeasonsId = useId();
   return (
     <div className={styles.layout}>
       <h1 className="visually-hidden">Settings</h1>
@@ -404,7 +405,15 @@ export function SettingsPage() {
         <StartupSection />
         <UpdatesSection />
         <YouSection />
-        <SeasonsSection />
+        <SeasonsSection
+          auto={
+            q.data && (
+              <Row label="Add new seasons automatically" help="Checks Grindlog's GitHub repository once a day. Seasons you edit or delete stay as you left them." labelId={autoSeasonsId}>
+                {(save) => <Switch labelId={autoSeasonsId} checked={q.data.autoSeasons} onToggle={(autoSeasons) => { save({ autoSeasons }); }} />}
+              </Row>
+            )
+          }
+        />
       </div>
     </div>
   );

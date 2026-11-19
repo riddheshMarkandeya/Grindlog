@@ -56,6 +56,8 @@ export function parseTrustedComment(line: string): { version: string; file: stri
 
 export const UPDATE_REPO = "riddheshMarkandeya/Grindlog";
 export const RELEASES_API = `https://api.github.com/repos/${UPDATE_REPO}/releases/latest`;
+/** The season file every install fetches daily, so a new season needs no release. */
+export const SEASONS_FILE_URL = `https://raw.githubusercontent.com/${UPDATE_REPO}/master/seasons.json`;
 /** The only https prefix the tray opens; it is passed to the tray so both sides share it. */
 export const RELEASE_PAGE_PREFIX = `https://github.com/${UPDATE_REPO}/releases/tag/`;
 /** Where a user reinstalls from when an update and its rollback both failed. */

@@ -15,6 +15,9 @@ import { toRecord } from "./records/record";
 import { createRecordWriter } from "./records/save";
 import { startReleaseRecompute, type ReleaseRecompute } from "./release-recompute";
 import { runtimeInfo } from "./runtime-info";
+import { createSeasons } from "./seasons";
+import { firstRunDelayMs, seasonsSource, startSeasonSync } from "./seasons-file";
+import { createSettings } from "./settings";
 import { VERSION } from "../shared/version";
 import { checkStatsConfig, expectedPort, LOCATORS, userIniPath } from "./stats-config";
 import { applyStatsFix, runStatsFix, SETUP_CHECK_MS } from "./stats-setup";
@@ -32,6 +35,7 @@ interface Parts {
   recorder?: Recorder;
   maintenance?: Maintenance;
   releaseRecompute?: ReleaseRecompute;
+  seasonSync?: ReturnType<typeof startSeasonSync>;
   client?: StatsClient;
   gameWatch?: GameWatch;
   api?: Api;
@@ -54,6 +58,7 @@ function main(): void {
       ["flush", () => parts.recorder?.flush()],
       // A stopped recompute leaves its marker unwritten, so the next start reruns it in full.
       ["release_recompute", () => parts.releaseRecompute?.stop()],
+      ["season_sync", () => parts.seasonSync?.stop()],
       ["maintenance", () => parts.maintenance?.stop()],
       ["storage", () => parts.storage?.close()],
       // Last: --quit reads a refused port as nothing left to flush and may then end the supervisor,
@@ -176,9 +181,10 @@ function main(): void {
     };
   };
   const updates = createUpdates({ dir: updateDir(), logger: log, running: VERSION, enabled: disabledReason(CHANNEL, VERSION, UPDATE_KEY) === null });
+  const reader = createQueryReader({ tracker: storage.tracker, logger: log });
   const api = (parts.api = createApi({
     tracker: storage.tracker,
-    reader: createQueryReader({ tracker: storage.tracker, logger: log }),
+    reader,
     status,
     staticDir: staticDir(),
     logger: log,
@@ -199,6 +205,20 @@ function main(): void {
     onDone: (result) => {
       recomputeFailed = result.failed;
       api.recordsRecomputed();
+    },
+    logger: log,
+  });
+  // Its own stores over the same tracker.db as the API's: both are stateless, and a transaction
+  // runs synchronously, so a sync can't interleave with an edit from the Settings page.
+  const settings = createSettings({ tracker: storage.tracker, logger: log });
+  const seasons = createSeasons({ tracker: storage.tracker, reader, logger: log });
+  parts.seasonSync = startSeasonSync({
+    source: seasonsSource(process.env),
+    firstDelayMs: firstRunDelayMs(process.env),
+    autoSeasons: () => settings.get().autoSeasons,
+    sync: seasons.sync,
+    onChanged: () => {
+      api.seasonsChanged();
     },
     logger: log,
   });

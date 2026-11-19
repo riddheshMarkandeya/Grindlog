@@ -416,6 +416,15 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
         logger.error(C, "records_recomputed_failed", { err });
       }
     },
+    /** Tells open pages the season file changed the seasons, so any season period may have moved. Never throws. */
+    seasonsChanged(): void {
+      try {
+        hub.publish("seasons_changed", {});
+        logger.info(C, "seasons_changed", { subscribers: hub.count() });
+      } catch (err) {
+        logger.error(C, "seasons_changed_failed", { err });
+      }
+    },
     stop: () => {
       stopped = true;
       hub.stop();

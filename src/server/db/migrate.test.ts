@@ -179,8 +179,40 @@ describe("tracker schema", () => {
       `INSERT INTO match_players (match_guid, player_key, primary_id, name, is_bot, team_num, teams_seen, present_at_end,
         score, goals, shots, assists, saves, touches, demos) VALUES ('G', 'k', 'k', 'n', 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0)`,
     );
-    migrate(d, "tracker", trackerMigrations, { logger });
+    migrate(d, "tracker", trackerMigrations.slice(0, 8), { logger });
     expect(d.pragma("user_version")).toBe(8);
     expect(d.get("SELECT touches_defence, touches_midfield, touches_attack FROM match_players")).toEqual({ touches_defence: null, touches_midfield: null, touches_attack: null });
+  });
+
+  test("a DB at version 8 adopts the unchanged seed seasons as season-file rows; an edited or added one stays the user's", () => {
+    const logger = memoryLogger();
+    const d = db();
+    migrate(d, "tracker", trackerMigrations.slice(0, 8), { logger });
+    d.run("UPDATE seasons SET start_date = '2026-09-24' WHERE name = 'S24'");
+    d.run("INSERT INTO seasons (name, start_date) VALUES ('S25', '2026-12-09')");
+    migrate(d, "tracker", trackerMigrations.slice(0, 9), { logger });
+    expect(d.pragma("user_version")).toBe(9);
+    expect(d.all("SELECT name, file_name AS fileName, file_start AS fileStart FROM seasons ORDER BY start_date")).toEqual([
+      { name: "S22", fileName: "S22", fileStart: "2026-03-11" },
+      { name: "S23", fileName: "S23", fileStart: "2026-06-09" },
+      { name: "S24", fileName: null, fileStart: null },
+      { name: "S25", fileName: null, fileStart: null },
+    ]);
+    expect(tables(d)).toContain("seasons_dismissed");
+    expect(() => d.run("UPDATE seasons SET file_name = 's22' WHERE name = 'S25'")).toThrow(/UNIQUE/);
+  });
+
+  test("a seed season deleted before version 9 is recorded as dismissed, so the season file never brings it back", () => {
+    const logger = memoryLogger();
+    const fresh = db("fresh.db");
+    migrate(fresh, "tracker", trackerMigrations.slice(0, 9), { logger });
+    expect(fresh.all("SELECT file_name AS name FROM seasons_dismissed")).toEqual([]);
+
+    const d = db();
+    migrate(d, "tracker", trackerMigrations.slice(0, 8), { logger });
+    d.run("DELETE FROM seasons WHERE name = 'S22'");
+    d.run("UPDATE seasons SET start_date = '2026-09-24' WHERE name = 'S24'");
+    migrate(d, "tracker", trackerMigrations.slice(0, 9), { logger });
+    expect(d.all("SELECT file_name AS name FROM seasons_dismissed")).toEqual([{ name: "S22" }]);
   });
 });

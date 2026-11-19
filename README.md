@@ -32,8 +32,13 @@ needs 64-bit Windows 10 version 1903 or later.
 ## Privacy
 
 Your matches, stats and logs stay in `%LOCALAPPDATA%\Grindlog`. The dashboard only listens on `127.0.0.1`, so other
-devices can't reach it. Grindlog goes online only for updates, through this repository's GitHub releases. It
-checks 3 minutes after it starts, then about every 6 hours, and downloads an update when you install one.
+devices can't reach it. Grindlog goes online only to this GitHub repository, for two things:
+
+- **Updates**, through its releases: it checks 3 minutes after it starts, then about every 6 hours, and downloads an
+  update when you install one.
+- **The season list**: once a day it fetches [`seasons.json`](seasons.json) from this repository, so a new season
+  shows up without an update. Seasons you edit or delete stay as you left them. Switch it off in Settings → Seasons
+  ("Add new seasons automatically").
 
 ## Updates
 

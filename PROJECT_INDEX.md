@@ -13,7 +13,11 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   (shared with `stop.ts` and `autostart.ts`), `runtime-info.ts` version, channel, Windows and Bun for
   `started` lines, `game-watch.ts` game detection and the "Stats API off" toast, `notifier.ts` routes toasts through the
   tray (acked queue, 10 s PowerShell fallback) or PowerShell, `tray-view.ts` the pure tray view for `/api/tray` (update lines included), `fs-retry.ts` `renameRetry` (EPERM/EBUSY/EACCES, for antivirus holds), `exit-codes.ts`, `log.ts`
-  logger, `paths.ts` per-channel `identity()` (data dir, port, exe, task, shortcut) and paths from it, `storage.ts` opens both DBs, `maintenance.ts` schedules retention and backups, `release-recompute.ts` rebuilds every match record in
+  logger, `paths.ts` per-channel `identity()` (data dir, port, exe, task, shortcut) and paths from it, `storage.ts` opens both DBs, `maintenance.ts` schedules retention and backups, `seasons.ts` the seasons table's writes (with the season-file
+  `sync`: an edited row stops following the file, a deleted one goes on `seasons_dismissed`), `seasons-file.ts` parses
+  and fetches the repo-root `seasons.json` (`SEASONS_FILE_URL`) daily, 60 s after start (`GRINDLOG_SEASONS_FEED`: `off`, an
+  http(s) URL or a file path; `GRINDLOG_SEASONS_DELAY_MS` brings the first run forward for e2e; ends with the
+  `seasons_changed` event when it added or moved one), `release-recompute.ts` rebuilds every match record in
   the background when a release build's version differs from tracker.db's `meta.recomputed_version` (dev builds
   never; pauses while a match records; ends with the `records_recomputed` event); `db/`: `sqlite.ts` driver seam, `migrate.ts`, `migrations.ts`,
   `backup.ts`, `retention.ts`; `recorder/`: Stats API client, lifecycle, raw store, dedup,
@@ -128,6 +132,8 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   rebuild gives a different record (`retention/thin_mismatch`), and every other event is kept).
 
 ## Decisions
+- `docs/decisions/2026-11-18-season-file-in-repo.md`: new seasons from `seasons.json` in the repo, fetched daily;
+  scraping and a migration per release rejected; the user's edits and deletes always win.
 - `docs/decisions/2026-11-10-tray-view-contract.md`: `/api/tray` (header-gated GET, view from the pure `trayView`);
   toasts through the tray, acked with a 10 s PowerShell fallback; acks name the tracker run; `/`-only urls.
 - `docs/decisions/2026-11-10-tray-process-model.md`: the tray exe as a second supervised child; exit 0 = Quit,
@@ -153,6 +159,9 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   Task Scheduler doesn't restart a crashed task.
 
 ## Plans
+- `docs/plans/2026-11-18-public-release-map.md`: the public release map (order agreed 2026-11-18); take the first open step.
+- `docs/plans/2026-11-18-season-file.md`: public release step 1, seasons from `seasons.json` in the repo: migration,
+  sync rules, daily fetch, the Settings switch; review log.
 - `docs/plans/2026-11-17-motion.md`: motion build: tokens and reduced motion, shared button and press, dialog
   fade-rise, sliding indicators, chart draw/tween, page transitions and the redirect guard, Settings motion.
 - `docs/reviews/2026-11-17-motion.md`: motion build review summary.

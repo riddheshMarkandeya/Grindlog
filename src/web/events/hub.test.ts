@@ -87,12 +87,14 @@ describe("the events hub", () => {
     last().emit("match_ended", JSON.stringify({ guid: "G1", sessionKey: "G0" }));
     last().emit("session_break", JSON.stringify({ at: 5 }));
     last().emit("records_recomputed", JSON.stringify({}));
+    last().emit("seasons_changed", JSON.stringify({}));
     const expected: HubMessage[] = [
       { type: "link", link: "connecting" },
       { type: "link", link: "open" },
       { type: "match_ended", data: { guid: "G1", sessionKey: "G0" } },
       { type: "session_break", data: { at: 5 } },
       { type: "records_recomputed", data: {} },
+      { type: "seasons_changed", data: {} },
     ];
     expect(a.got).toEqual(expected);
     expect(b.got).toEqual(expected);

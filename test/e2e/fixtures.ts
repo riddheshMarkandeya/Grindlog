@@ -23,9 +23,9 @@ export interface Stack {
  * What the stack's DB holds. A spec file picks one with `test.use({ seed })`; files with the same
  * seed share a worker and stack, so a spec that writes takes a seed of its own ("friends-page" is
  * "friends" for the Friends page spec, and "update" is "rich" with the tracker started as a
- * release, since its spec restarts the tracker).
+ * release, since its spec restarts the tracker; "seasons" is "rich" with the season file synced from a fixture).
  */
-export type Seed = "rich" | "empty" | "few" | "share" | "settings" | "tables" | "friends" | "friends-page" | "update" | "setup" | "guess";
+export type Seed = "rich" | "empty" | "few" | "share" | "settings" | "tables" | "friends" | "friends-page" | "update" | "setup" | "guess" | "seasons";
 
 export const test = base.extend<{ consoleErrors: string[] }, { stack: Stack; seed: Seed }>({
   seed: ["rich", { scope: "worker", option: true }],

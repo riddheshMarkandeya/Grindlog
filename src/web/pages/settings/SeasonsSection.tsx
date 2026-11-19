@@ -1,8 +1,8 @@
-// Settings › Seasons: the season table, edited in place. Rocket League doesn't tell the tracker when
-// a season starts, so each new one is added here. One row edits at a time; Enter saves, Esc cancels.
+// Settings › Seasons: the season table, edited in place. New seasons arrive from Grindlog's season
+// file; this is where the user fixes a date or adds one by hand. One row edits at a time; Enter saves, Esc cancels.
 // After each change focus lands on what's left to act on (the row's Edit, the next row, or "+ Add").
 // While a save or delete is on its way every action waits, so no answer lands on a row it wasn't for.
-import { useEffect, useId, useRef, useState, type SyntheticEvent } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode, type SyntheticEvent } from "react";
 import { dayOf, type Season } from "../../../shared/periods";
 import { seasonConflict } from "../../../shared/schemas/responses";
 import { SEASON_NAME_MAX, seasonInput } from "../../../shared/schemas/tables";
@@ -230,7 +230,8 @@ function Table({ seasons, del }: { seasons: Season[]; del: ReturnType<typeof use
   );
 }
 
-export function SeasonsSection() {
+/** `auto`: the "Add new seasons automatically" row, left out while the settings can't load. */
+export function SeasonsSection({ auto }: { auto?: ReactNode }) {
   const q = useSeasons();
   // Here, not in the table: a deleted row's "✓ Saved" shows by the heading, as the row is gone.
   const del = useDeleteSeason();
@@ -238,9 +239,10 @@ export function SeasonsSection() {
     <Section
       anchor="seasons"
       title="Seasons"
-      intro="Rocket League doesn't tell the tracker when a season starts. Add each new one here."
+      intro="Rocket League doesn't tell the tracker when a season starts, so Grindlog keeps this list. Fix a date or add a season here."
       status={<SaveStatus m={{ isSuccess: del.isSuccess, isError: false, submittedAt: del.submittedAt }} />}
     >
+      {auto}
       {q.data ? <Table seasons={q.data} del={del} /> : <TableState what="the seasons" failed={q.isError} retry={() => { void q.refetch(); }} />}
     </Section>
   );

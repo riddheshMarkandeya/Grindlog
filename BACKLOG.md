@@ -42,6 +42,11 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   (`eventNameOf`/`matchGuidOf`), hardcoded URL and reconnect loop; reuse `parseFrame`,
   `statsApiUrl` and maybe `startStatsClient`, or retire it now the recorder stores raw events.
   Record: Review log in `docs/plans/2026-10-19-wp3a-recorder.md`.
+- [ ] **[refactor, Low, Standard]** The season sync (`src/server/seasons-file.ts`) and the update checks
+  (`update/checker.ts`, `update/feed.ts`) each have their own delayed-then-interval scheduler and capped
+  GitHub fetch. Extract a shared `startPeriodicJob` and a streamed `fetchText({maxBytes, signal})`, which would
+  also give the season fetch a real byte cap where today it checks Content-Length and then the text length.
+  Record: Review log in `docs/plans/2026-11-18-season-file.md`.
 - [ ] **[design, Low, Standard]** (public release map step 8) Controls drift: about six button styles, two segmented controls
   (Trends `.xmode` buttons, Settings `.seg` radios, plus Friends' own `.seg`), two `.link` rules,
   and Trends `.picks button` against the match page's `.chip`. One shared set, as the display-drift
@@ -77,20 +82,6 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   - [ ] **[misc, Low, Standard]** Rate-limit the rejected-request warn lines (`api/tray_rejected`, `write_rejected`,
     host `shutdown_rejected`): a page looping header-less requests writes one each and can rotate match diagnostics
     out of the logs. Deferred from 3b's review (`docs/reviews/2026-11-10-wp3b-tray-view.md`).
-
-- [ ] **[feature, Med, Standard]** (public release map step 1) Set up new seasons automatically, and
-  keep them editable. Source the user found: `ggseason.com/blog/rocket-league-all-seasons-dates/`, captured
-  in `HARs/`, with a season table of number, name, start and end. Not trivial, because:
-  - It would be this local-only app's first outbound request, which friends should be told about.
-  - It scrapes a third party's HTML, so a page change needs a sanity check and a logged failure. A plain
-    script fetch got a 200 on 2026-11-06, but the site is behind Cloudflare and that may change.
-  - A fetch must not overwrite an edit or bring back a deleted season, so rows need to record their source.
-  - The table gains a season only once it has launched. S25's December 9 is only "reported", in the prose.
-  The user prefers a simpler route, to settle when this is picked up: a season file in the GitHub repo that
-  every install fetches, which needs no scraping or release, though it is still an outbound request and
-  the row-source rule still applies. Or ship the list in the app and add each season by migration in a
-  release, once step 4's update path exists. Also: the seed has S23 starting 2026-06-09 and that page says June 10,
-  so check which is right, since it decides which season a match on that day counts in.
 
 - [ ] **[ux, Low, Standard]** (public release map step 2) Toasts show "Windows PowerShell" as their app name, not Grindlog: they're sent
   through PowerShell's AppUserModelID (seen in WP7 step 6's rollback toast). A friend may not connect it to

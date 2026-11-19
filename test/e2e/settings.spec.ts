@@ -9,7 +9,7 @@ import { indPos, leftOf } from "./indicator";
 test.use({ seed: "settings" });
 
 const THEMES = ["carbon", "slate", "oled"] as const;
-const DEFAULTS = "theme=carbon&clock=24h&speed=kmh&startPage=recap&recapFilter=everything&trendsFilter=ranked&rollingWindow=20&remarks=true&moodLine=true";
+const DEFAULTS = "theme=carbon&clock=24h&speed=kmh&startPage=recap&recapFilter=everything&trendsFilter=ranked&rollingWindow=20&remarks=true&moodLine=true&autoSeasons=true";
 const HEADER = { "X-Grindlog-Request": "1" };
 // The failed saves tests bring about on purpose.
 const SAVE_FAILED = /^Failed to load resource: .* (500|409|429) .*\/api\/(settings|autostart|update)/;
@@ -54,6 +54,8 @@ test("each setting saves, says so, and survives a reload", async ({ page }) => {
   await expect(window).toBeFocused();
   await page.getByRole("switch", { name: "Mood line" }).click();
   await expect(saved(page, "Mood line")).toHaveText("✓ Saved");
+  await page.getByRole("switch", { name: "Add new seasons automatically" }).click();
+  await expect(saved(page, "Add new seasons automatically")).toHaveText("✓ Saved");
 
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "slate");
@@ -66,6 +68,7 @@ test("each setting saves, says so, and survives a reload", async ({ page }) => {
   await expect(window).toHaveValue("35");
   await expect(page.getByRole("switch", { name: "Mood line" })).not.toBeChecked();
   await expect(page.getByRole("switch", { name: "Show remarks" })).toBeChecked();
+  await expect(page.getByRole("switch", { name: "Add new seasons automatically" })).not.toBeChecked();
 });
 
 test("a segmented choice's pill slides to the picked option", async ({ page }) => {

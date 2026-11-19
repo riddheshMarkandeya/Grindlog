@@ -8,7 +8,7 @@ describe("settings", () => {
     expect(keys).toEqual(Object.keys(DEFAULT_SETTINGS).sort());
   });
 
-  test("the defaults: carbon, 24h, km/h, recap, everything / ranked, 20, remarks and mood on", () => {
+  test("the defaults: carbon, 24h, km/h, recap, everything / ranked, 20, remarks and mood on, seasons automatic", () => {
     expect(DEFAULT_SETTINGS).toEqual({
       theme: "carbon",
       clock: "24h",
@@ -19,6 +19,7 @@ describe("settings", () => {
       rollingWindow: 20,
       remarks: true,
       moodLine: true,
+      autoSeasons: true,
     });
   });
 });
@@ -29,10 +30,11 @@ describe("settingsPatch", () => {
   });
 
   test("query strings become typed values", () => {
-    expect(settingsPatch.parse({ rollingWindow: "35", remarks: "false", moodLine: "true", trendsFilter: "casual" })).toEqual({
+    expect(settingsPatch.parse({ rollingWindow: "35", remarks: "false", moodLine: "true", autoSeasons: "false", trendsFilter: "casual" })).toEqual({
       rollingWindow: 35,
       remarks: false,
       moodLine: true,
+      autoSeasons: false,
       trendsFilter: "casual",
     });
   });
@@ -45,6 +47,7 @@ describe("settingsPatch", () => {
       { rollingWindow: "x" },
       { rollingWindow: "" },
       { remarks: "yes" },
+      { autoSeasons: "1" },
       { theme: "midnight" },
       { recapFilter: "13" },
       { clock: "24H" },

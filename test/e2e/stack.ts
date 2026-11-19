@@ -284,6 +284,9 @@ async function main(): Promise<void> {
     GRINDLOG_TASK: E2E_TASK,
     GRINDLOG_STATS_CONFIG_DIR: configDir,
     STATS_API_URL: `ws://127.0.0.1:${String(statsPort)}`,
+    // Never the real repo: off, or (`seasons`) the fixture file, synced a second after start.
+    GRINDLOG_SEASONS_FEED: mode === "seasons" ? join(REPO, "test", "fixtures", "season-file.json") : "off",
+    ...(mode === "seasons" && { GRINDLOG_SEASONS_DELAY_MS: "1000" }),
   };
   delete env.GRINDLOG_STATIC_DIR;
 

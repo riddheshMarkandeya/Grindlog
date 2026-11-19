@@ -34,7 +34,8 @@ export function useLiveEvents(): void {
             void queryClient.invalidateQueries({ predicate: staleAfterLive });
             break;
           case "records_recomputed":
-            // A background recompute may have changed any record.
+          case "seasons_changed":
+            // A background recompute may have changed any record, and a season change any season period.
             void queryClient.invalidateQueries();
             break;
           case "version": {

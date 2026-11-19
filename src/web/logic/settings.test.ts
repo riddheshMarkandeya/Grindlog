@@ -12,6 +12,7 @@ describe("settings page logic", () => {
 
   test("a section's reset is its keys at their defaults, nothing else", () => {
     expect(sectionDefaults("remarks")).toEqual({ remarks: true, moodLine: true });
+    expect(sectionDefaults("seasons")).toEqual({ autoSeasons: true });
   });
 
   test("a patch goes out as the query the server parses back to the same values", () => {
