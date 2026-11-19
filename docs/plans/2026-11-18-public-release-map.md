@@ -14,7 +14,7 @@ installs are checked, there is a landing page to link to, and the post answers t
 ## Steps
 | # | Step | Status | Plan or next action |
 |---|---|---|---|
-| 1 | Seasons from a repo season file | Built and reviewed; to push, then release 0.1.6 | S25 starts around 2026-12-09, so the sync has to ship in a release (0.1.6) before then. Plan: `docs/plans/2026-11-18-season-file.md`. |
+| 1 | Seasons from a repo season file | Pushed and proved against the real URL (fa34a48); ships with the next release | S25 starts around 2026-12-09; if no release ships before then, installs add S25 by hand. Plan: `docs/plans/2026-11-18-season-file.md`. |
 | 2 | Toast app name | Open | Toasts say "Windows PowerShell"; send them as Grindlog (BACKLOG item). |
 | 3 | Steam check | Open | BACKLOG Watch list "the first Steam user": a Steam friend, or a self-test. |
 | 4 | Landing page on GitHub Pages | Open | One static page: download → releases/latest, What's new from the GitHub releases API with a plain-link fallback. `/prototype` 2–3 looks, then build; a few `/grill-me` questions at most. |
