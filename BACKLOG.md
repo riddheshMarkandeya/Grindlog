@@ -4,8 +4,8 @@ Tags: `[type, priority, effort]` — type bug/refactor/feature/performance/test-
 priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
 
 - [ ] **[misc, Med, Trivial]** v1 roadmap (`docs/plans/2026-10-16-v1-roadmap.md`): every work package
-  is deployed (WP9, the last, on 2026-11-02). Left: add S25 in Settings › Seasons when it starts. Open items from the work packages:
-  - **[design, Low, Trivial]** Add back the themes midnight, dusk, steel and daylight (values in the
+  is deployed (WP9, the last, on 2026-11-02). Open items from the work packages:
+  - **[design, Low, Trivial]** (public release map step 8) Add back the themes midnight, dusk, steel and daylight (values in the
     `prototype/settings-layout` tokens; each needs a `tokens.css` block, and the token test covers
     it). Daylight has the real cost: every chart gets checked in light mode, and so does the WP6c
     share card's corner glow (built for dark themes). Record:
@@ -42,33 +42,32 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   (`eventNameOf`/`matchGuidOf`), hardcoded URL and reconnect loop; reuse `parseFrame`,
   `statsApiUrl` and maybe `startStatsClient`, or retire it now the recorder stores raw events.
   Record: Review log in `docs/plans/2026-10-19-wp3a-recorder.md`.
-- [ ] **[design, Low, Standard]** Controls drift: about six button styles, two segmented controls
+- [ ] **[design, Low, Standard]** (public release map step 8) Controls drift: about six button styles, two segmented controls
   (Trends `.xmode` buttons, Settings `.seg` radios, plus Friends' own `.seg`), two `.link` rules,
   and Trends `.picks button` against the match page's `.chip`. One shared set, as the display-drift
   work did for panels and tables. On the way, `PeriodControls.tsx:45` uses `styles.controls`,
   which no CSS defines. Record: `docs/plans/2026-11-03-display-drift.md`.
-- [ ] **[design, Low, Standard]** Trends data line: the line, dots and sparklines use `--accent`,
+- [ ] **[design, Low, Standard]** (public release map step 8) Trends data line: the line, dots and sparklines use `--accent`,
   which the colour rule in `src/web/styles/tokens.css` now keeps for selection and focus; on oled
   the accent is white, the same as the text. Choose a data colour (a new token, checked on every
   theme). Record: `docs/plans/2026-11-03-display-drift.md`.
-- [ ] **[feature, Low, Standard]** Settings › Appearance: choose the colour pair for sides (blue /
+- [ ] **[feature, Low, Standard]** (public release map step 8) Settings › Appearance: choose the colour pair for sides (blue /
   orange) and for results (green / red), each on its own and apart from the theme (user,
   2026-10-28). Also helps red-green colour blindness. The pairs are already tokens
   (`--blue`/`--orange`, `--win`/`--loss` in `src/web/styles/tokens.css`), so it's a setting that
   overrides them on `<html>`, plus a check that each pair stays readable on every theme. Unblocked
   (2026-11-04): each token now has one meaning, written at the top of `tokens.css`, and
   `--up`/`--down` are mixed from `--win`/`--loss`, so overriding the result pair moves both.
-- [ ] **[idea, Low, TBD]** Playful UI touches: the flat peeling corner (variant L on the
+- [ ] **[idea, Low, TBD]** (public release map step 8) Playful UI touches: the flat peeling corner (variant L on the
   `prototype/recap-stood-out` branch, never merge) was liked as a stood-out mark (user, 2026-11-04).
   Look at where flat-but-fun details fit the dashboard. Trigger: a UI polish pass.
-- [ ] **[idea, Low, TBD]** A dashboard "What changed" card after an update, instead of the tray opening the GitHub
+- [ ] **[idea, Low, TBD]** (public release map step 8) A dashboard "What changed" card after an update, instead of the tray opening the GitHub
   release page (user, 2026-11-09). Needs markdown rendering for the release body, an update-state field and a way to
   dismiss it. Trigger: friend feedback asks for it. Context: "Release workflow" in
   `docs/plans/2026-11-06-distribution-map.md`.
 
-- Friends release step 4, distribution: done, all seven work packages. The open items below were deferred from them.
-  The design is the frozen map `docs/plans/2026-11-06-distribution-map.md` ("Decisions so far"; each package's scope
-  is under "Build work packages").
+- Deferred from friends release step 4 (distribution, done; design in the frozen map
+  `docs/plans/2026-11-06-distribution-map.md`):
   - [ ] **[refactor, Low, Standard]** 2 (release-aware app) is done; left over: once a deployed exe has `--quit`,
     `stop.ts` and `stopInstalled` end a sleeping supervisor through it instead of `killExe`'s path-filtered kill
     (deferred from package 1's review, `docs/reviews/2026-11-10-wp1-rename-identity.md`).
@@ -78,27 +77,8 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   - [ ] **[misc, Low, Standard]** Rate-limit the rejected-request warn lines (`api/tray_rejected`, `write_rejected`,
     host `shutdown_rejected`): a page looping header-less requests writes one each and can rotate match diagnostics
     out of the logs. Deferred from 3b's review (`docs/reviews/2026-11-10-wp3b-tray-view.md`).
-  - [x] **[feature, Med, Standard]** 4. Stats API setup card: the one-click ini write, decimal `parseStatsIni`, the
-    "Is this you?" card.
-  - [x] **[feature, Med, Substantial]** 5. Installer and release pipeline: Inno script, Start menu `.lnk`, tag workflow,
-    `sign-release`, `rcedit` on `InternalName`.
-  - [x] **[feature, Med, Substantial]** 6a. Updater check: minisign verifier, feed and `GRINDLOG_UPDATE_FEED`,
-    download, shared state file, supervisor check loop, `/api/update`, auto-apply choice, tray and dashboard lines.
-    Fold-in: the antivirus backup-rename retry. Plan: `docs/plans/2026-11-12-wp6a-updater-check.md`.
-  - [x] **[feature, Med, Substantial]** 6b. Updater apply: `--update` mode, apply gate, apply, health check, rollback,
-    raw.db pre-migration backup, free-space check, interrupted updates, `updater.log`; see 6a's "Handed to 6b". (The
-    "no release tag between 6a and 6b" rule ends with 6b.) Detached starts use `spawnDetached` (`Bun.spawn` with
-    `detached: true`), which survives the parent's exit, a force-kill and Task Scheduler's End (spike result in
-    `docs/plans/2026-11-10-wp2a-process-control.md`). The migrator refuses a database newer than the code
-    (`newer_than_code` in `db/migrate.ts`), so a rollback across a schema change must restore the pre-migration
-    backup before starting the old exe (2b's `meta` table is the first such change).
-    Plan: `docs/plans/2026-11-12-wp6b-updater-apply.md`.
-  - [x] **[test-coverage, Med, Standard]** 7. Proof before friends: clean account, one Sandbox run, rollback through the
-    feed override, copy history into prod, one live match on prod, one VirusTotal scan (0/70).
-    Plan and results: `docs/plans/2026-11-12-wp7-proof-before-friends.md`. **The next release tag is v0.1.3**: a broken
-    0.1.2 was signed with the real key for the rollback test, so that version is burned.
 
-- [ ] **[feature, Med, Standard]** After the friends release map: set up new seasons automatically, and
+- [ ] **[feature, Med, Standard]** (public release map step 1) Set up new seasons automatically, and
   keep them editable. Source the user found: `ggseason.com/blog/rocket-league-all-seasons-dates/`, captured
   in `HARs/`, with a season table of number, name, start and end. Not trivial, because:
   - It would be this local-only app's first outbound request, which friends should be told about.
@@ -112,10 +92,19 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   release, once step 4's update path exists. Also: the seed has S23 starting 2026-06-09 and that page says June 10,
   so check which is right, since it decides which season a match on that day counts in.
 
-- [ ] **[ux, Low, Standard]** Toasts show "Windows PowerShell" as their app name, not Grindlog: they're sent
+- [ ] **[ux, Low, Standard]** (public release map step 2) Toasts show "Windows PowerShell" as their app name, not Grindlog: they're sent
   through PowerShell's AppUserModelID (seen in WP7 step 6's rollback toast). A friend may not connect it to
   Grindlog. Fix: send under Grindlog's own AppUserModelID (the Start-menu shortcut needs it set). Record:
   `docs/plans/2026-11-12-wp7-proof-before-friends.md` Results.
+
+- [ ] **[feature, Med, Standard]** (public release map step 4) Landing page on GitHub Pages: one static page,
+  download → releases/latest, What's new from the GitHub releases API with a plain-link fallback.
+- [ ] **[misc, Med, Standard]** (public release map step 5) Reddit post and GitHub issue templates: subreddit
+  self-promotion rules first, then the pitch, GIF/screens and FAQ.
+- [ ] **[feature, Low, Substantial]** (public release map step 7) Account profiles: a header dropdown of all
+  accounts or one. Waits on whether anyone plays on alts.
+- [ ] **[misc, Low, TBD]** (public release map step 9) Code signing, once there are public downloads (SignPath wants
+  a track record; Azure's option is US/Canada only).
 
 ## Watch list
 - [ ] **[bug (latent), Low, Standard]** Trigger: a friend shares a PC with another Windows user who also runs
@@ -167,7 +156,7 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   card's fix inserts a wrong exporter key the Documents ini lacks (after the section's last setting), or appends the
   whole section. No game-written Documents ini has been seen without them, so the insert is fitted to an assumption.
   Check that the game read the inserted line, and fit `fixStatsIni` to that file.
-- [ ] **[bug (latent), Low, Standard]** Trigger: the first Steam user. Nothing confirms the Documents ini path for Steam;
+- [ ] **[bug (latent), Low, Standard]** (public release map step 3) Trigger: the first Steam user. Nothing confirms the Documents ini path for Steam;
   Epic is the only install locator. `user_missing` flags a wrong path, so fit it to that user's log.
 - [ ] **[bug (latent), Low, Standard]** Trigger: `send_rate_off` returns after a game patch on a machine that had it on.
   The Documents ini's `[IniVersion]` matches the default ini's timestamp, so a patch might regenerate it (not seen). The
@@ -290,10 +279,6 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   `retention/kept_whole` with reason `open` → let recompute close it (as `restart`) or add a
   manual close. Record: Review log
   round 2 in `docs/plans/2026-10-20-wp4a-match-records.md`.
-- [x] **[bug (latent), Low, Trivial]** Windows antivirus may hold a fresh backup `.partial` and
-  fail its rename (EPERM/EBUSY), aborting a pre-migration startup. Fixed in WP6a: `renameRetry`
-  (`src/server/fs-retry.ts`, logs `fs/rename_retried`). Record: Review log round 3 #8 in
-  `docs/plans/2026-10-16-wp2-storage.md`.
 - [ ] **[bug (latent), Low, Standard]** Trigger: a match whose clock stepped back (it fails the car_ms range). The woodwork window compares `ev.ts - lastWoodworkTs` unclamped, so crossbar hits after the step go uncounted until the clock catches up. Record: Review log round 11, BB7, in `docs/plans/2026-10-20-wp4b-match-extras.md`.
 - [ ] **[feature, Low, Standard]** Trigger: a `goals_placed` flag (a goal whose scorer didn't
   resolve gets no goal-map point; none seen in 214 goals). Look at that match's real event order,

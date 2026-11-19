@@ -9,6 +9,7 @@ docs and an update path. Polish comes after their feedback, not before.
 - Friend feedback, not guesses, should drive polish and the guided tour. That's why they come after
   shipping.
 - Take the first step still open. When one finishes, update its status here.
+- Next: the public release map, `docs/plans/2026-11-18-public-release-map.md` (agreed 2026-11-18).
 
 ## Steps
 | # | Step | Status | Plan or next action |
@@ -20,7 +21,7 @@ docs and an update path. Polish comes after their feedback, not before.
 | 5 | Docs | Done (2026-11-12) | README, LICENSE (MIT), CHANGELOG, CONTRIBUTING and THIRD_PARTY_NOTICES at the repo root; the exes and installer carry the copyright. |
 | → | **Ship to friends** | Done (2026-11-18) | Friends have the link; one saw the unsigned-installer SmartScreen warning, as did a manual 0.1.4 install on the own PC (expected: every unsigned version starts with no reputation; auto-updates don't show it). |
 | ↳ | History | 0.1.5 published (2026-11-18) | 0.1.3 (`3ca96d7`, 2026-11-13): own install updated itself 0.1.1 → 0.1.3, and an open dashboard tab reloaded on its own with no Ctrl+F5. 0.1.4 (`75a58d3`) adds Check now (`e512dfc`); 0.1.5 (`3650f96`) changes nothing, to test it. On the own install (0.1.4 installed by hand), Check now was answered 1.1–1.5 s after the click: `up_to_date` with 0.1.5 a draft, then, once it was published, 0.1.5 downloaded (36 MB, 3.9 s), verified, installed and passed its health check (`lastApply` 0.1.4 → 0.1.5 updated). |
-| 6 | Post-feedback UI polish | Open | `/prototype`, after feedback. |
+| 6 | Post-feedback UI polish | Folded into the public map, step 8 | Contribution stats and icons done here; the rest moved to `docs/plans/2026-11-18-public-release-map.md` step 8. |
 
 ### 3. Task Manager names
 - The processes showed as "Bun" because the exes carried Bun's version info. `compileArgs` in
