@@ -27,12 +27,15 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   logs no 2xx request lines), `static.ts` built web app (every file `Cache-Control: no-cache`); `remarks/`: the recap headline,
   `copy.ts` line pool, `triggers.ts` mood and quip triggers, `pick.ts` the pure picker, `store.ts`
   stored picks and history); `update/` (WP6a): `checker.ts` the supervisor's check loop (3 min, then 6 h
-  plus jitter; prod builds with a baked key only), `feed.ts` GitHub `releases/latest` or the
+  plus jitter; prod builds with a baked key only; `checkDue`'s 5 s poll of `request.json` runs a
+  dashboard-asked check at once), `feed.ts` GitHub `releases/latest` or the
   `GRINDLOG_UPDATE_FEED` override (http or a folder with `latest.json`) and the candidate pick, `download.ts`
   capped, timed downloads through `.partial`, `minisign.ts` the verifier (node:crypto, both algorithms),
   `state.ts` `<data>/update/state.json` (supervisor writes; the updater alone while `apply` is set),
-  `request.json` and `start-failure.json` (tracker writes), `view.ts` the tracker's `/api/update` view (with
-  `lastApply`) and writes, `fixtures/` real minisign-made signatures; WP6b: `files.ts` download paths and
+  `request.json` (`autoApply`, `install`, `checkRequestedAt`) and `start-failure.json` (tracker writes);
+  state.json's `checkedAt`/`finishedAt` are a check's start and end (a request is pending until a check
+  starts after it; the manual-check cooldown counts from the end), `view.ts` the tracker's `/api/update`
+  view (with `lastApply`) and writes, `fixtures/` real minisign-made signatures; WP6b: `files.ts` download paths and
   `checkInstaller`, `apply-end.ts` `endApply` (how an apply ends, for both sides), `gate.ts` the supervisor's
   30 s apply gate, its startup `resumeApply` and per-tick `settleInterrupted` of an interrupted apply and
   `startApplyGate`, `apply.ts` `runUpdate` (stop, install, health check, rollback), `updater.ts` the

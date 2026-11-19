@@ -635,7 +635,7 @@ describe("update", () => {
   };
 
   test("reads as not checked before the supervisor's first check", async () => {
-    expect(await get(updateResponse, "/api/update")).toEqual({ enabled: true, version: "0.1.0", status: "not_checked", available: null, skipped: null, autoApply: true, installRequested: false, checkedAt: null, lastApply: null });
+    expect(await get(updateResponse, "/api/update")).toEqual({ enabled: true, version: "0.1.0", status: "not_checked", available: null, skipped: null, autoApply: true, installRequested: false, checkedAt: null, lastApply: null, checking: false, checkAllowedAt: null });
   });
 
   test("a ready update can be asked for, and then reads as requested", async () => {
@@ -669,6 +669,29 @@ describe("update", () => {
     expect((await post("/api/update/install?version=0.2.0&x=1")).status).toBe(400);
     expect((await post("/api/update/auto-apply?on=no")).status).toBe(400);
     expect(await get(updateResponse, "/api/update")).toMatchObject({ autoApply: true, installRequested: false });
+  });
+
+  test("a check can be asked for, and then reads as checking", async () => {
+    const res = await post("/api/update/check");
+    expect(res.status).toBe(200);
+    expect(updateResponse.parse(await res.json())).toMatchObject({ checking: true });
+    expect(logger.lines.find((l) => l.cat === "update")?.fields).toEqual({ kind: "check" });
+  });
+
+  test("asking within a minute of the last check ending is 429", async () => {
+    writeState(join(dir, "update"), memoryLogger(), { checkedAt: new Date(Date.now() - 5000).toISOString(), finishedAt: new Date().toISOString() });
+    const res = await post("/api/update/check");
+    expect(res.status).toBe(429);
+    expect(await res.json()).toEqual({ error: "too_soon" });
+  });
+
+  test("a check request that can't be written is 500; no header is 403; a param is 400", async () => {
+    expect((await post("/api/update/check", {})).status).toBe(403);
+    expect((await post("/api/update/check?x=1")).status).toBe(400);
+    mkdirSync(join(dir, "update", "request.json"), { recursive: true });
+    const res = await post("/api/update/check");
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({ error: "write_failed" });
   });
 
   test("a corrupt state file reads as not checked", async () => {

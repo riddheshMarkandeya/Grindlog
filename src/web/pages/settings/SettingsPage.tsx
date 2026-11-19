@@ -8,12 +8,13 @@ import { groupFilter, THEMES, type Settings, type SettingsPatch } from "../../..
 import { cx } from "../../components/cx";
 import { EmptyState } from "../../components/EmptyState";
 import { useIndicator } from "../../components/useIndicator";
+import { useNow } from "../../components/useNow";
 import { filterLabel } from "../../logic/filter-options";
-import { SPEED_LABEL } from "../../logic/format";
+import { clockOrDay, SPEED_LABEL } from "../../logic/format";
 import { parseWindow } from "../../logic/settings";
 import type { UpdateResponse } from "../../../shared/schemas/responses";
 import { lastApplyLink, lastApplyText } from "../../../shared/update-text";
-import { useAutostart, useInstallUpdate, useSetAutoApply, useSetAutostart, useSettingsQuery, useUpdate } from "../../queries";
+import { useAutostart, useCheckForUpdates, useInstallUpdate, useSetAutoApply, useSetAutostart, useSettings, useSettingsQuery, useUpdate } from "../../queries";
 import { ApiError } from "../../api";
 import { SaveStatus, type SaveState } from "../../components/SaveStatus";
 import { codeOf, Section, SECTIONS, TableState, useSave } from "./parts";
@@ -244,6 +245,54 @@ function statusSentence(u: UpdateResponse): string {
   }
 }
 
+/** True until `at` (ISO) passes, then false; false for null or garbled. A time already past ends at once. */
+function useUntil(at: string | null): boolean {
+  const [passed, setPassed] = useState<string | null>(null);
+  useEffect(() => {
+    if (at === null) return;
+    const timer = setTimeout(() => { setPassed(at); }, Math.max(0, Date.parse(at) - Date.now()));
+    return () => { clearTimeout(timer); };
+  }, [at]);
+  return at !== null && passed !== at && !Number.isNaN(Date.parse(at));
+}
+
+/**
+ * Asks the supervisor for a check now, rather than waiting hours for the next one. Its own row, so it shows beside
+ * a ready update too (a newer one may be out). aria-disabled, not disabled: a disabled button drops focus.
+ */
+function CheckRow({ u }: { u: UpdateResponse }) {
+  const check = useCheckForUpdates();
+  const { clock } = useSettings();
+  const now = useNow();
+  const cooling = useUntil(u.checkAllowedAt);
+  // The last check when "Check now" was pressed: a failure's message lasts until a check runs after it.
+  const [askedSince, setAskedSince] = useState<string | null>(null);
+  const checking = u.checking || check.isPending;
+  const blocked = checking || cooling;
+  const failed = check.isError && askedSince === u.checkedAt;
+  const tooSoon = failed && check.error instanceof ApiError && check.error.status === 429;
+  let note: string | null = null;
+  if (!checking && (cooling || tooSoon)) note = "Checked moments ago. Try again in a minute.";
+  else if (!checking && failed) note = "Couldn't start a check.";
+  const ask = () => {
+    if (blocked) return;
+    setAskedSince(u.checkedAt);
+    check.mutate(undefined, { onError: (error) => { console.warn("[grindlog] update/check_failed", { code: codeOf(error) }); } });
+  };
+  return (
+    <div className={styles.row}>
+      <div className={styles.text}>
+        <div className={styles.label}>Check for updates</div>
+        <div className={styles.help}>{u.checkedAt === null ? "Not checked yet." : `Last checked ${clockOrDay(Date.parse(u.checkedAt), now, clock)}.`}</div>
+        <div className={styles.help} role="status">{note}</div>
+      </div>
+      <div className={styles.control}>
+        <button type="button" className="button" aria-disabled={blocked} aria-busy={checking} onClick={ask}>{checking ? "Checking…" : "Check now"}</button>
+      </div>
+    </div>
+  );
+}
+
 /**
  * The supervisor checks and downloads; this shows what it found and records the friend's choices, which
  * it acts on. Install only asks: the update runs once Rocket League is closed.
@@ -306,6 +355,7 @@ function UpdatesSection() {
           </div>
         )}
       </div>
+      {u.enabled && <CheckRow u={u} />}
       {u.enabled && (
         <RowFrame label="Install updates automatically" help="A ready update installs when Rocket League is closed." labelId={labelId} m={autoApply} save={saveAutoApply}>
           <Switch labelId={labelId} checked={u.autoApply} onToggle={saveAutoApply} />

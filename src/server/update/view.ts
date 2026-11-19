@@ -5,7 +5,7 @@ import { isNewer, releasePage } from "../../shared/release";
 import type { UpdateResponse } from "../../shared/schemas/responses";
 import type { Logger } from "../log";
 import type { InstallerCheck } from "./files";
-import { readRequest, readState, writeRequest, type LastApply } from "./state";
+import { checkAllowedAt, checkPending, readRequest, readState, writeRequest, type LastApply } from "./state";
 
 type InstallerCheckFailure = Extract<InstallerCheck, { ok: false }>["reason"];
 
@@ -45,9 +45,10 @@ export function createUpdates({ dir, logger, running, enabled, now = Date.now }:
 
   function view(): UpdateView {
     // A build that never updates has no choice to show, so autoApply is just the schema's filler.
-    if (!enabled || running === null) return { enabled: false, version: running, status: "disabled", available: null, skipped: null, autoApply: true, installRequested: false, checkedAt: null, lastApply: null };
+    if (!enabled || running === null) return { enabled: false, version: running, status: "disabled", available: null, skipped: null, autoApply: true, installRequested: false, checkedAt: null, lastApply: null, checking: false, checkAllowedAt: null };
     const request = readRequest(dir, logger);
     const state = readState(dir, logger);
+    const nowMs = now();
     const available = state.available !== undefined && newer(state.available.version) ? { version: state.available.version, page: releasePage(state.available.version) } : null;
     const skipped = state.skipped
       .filter((s) => SIGNATURE_REASONS.has(s.reason))
@@ -57,7 +58,7 @@ export function createUpdates({ dir, logger, running, enabled, now = Date.now }:
     else if (skipped !== null) status = "skipped";
     else if (state.checkedAt === undefined) status = "not_checked";
     else status = state.lastOutcome === "error" ? "error" : "up_to_date";
-    return { enabled: true, version: running, status, available, skipped, autoApply: request.autoApply, installRequested: available !== null && request.install === available.version, checkedAt: state.checkedAt ?? null, lastApply: lastApplyView(state.lastApply, running) };
+    return { enabled: true, version: running, status, available, skipped, autoApply: request.autoApply, installRequested: available !== null && request.install === available.version, checkedAt: state.checkedAt ?? null, lastApply: lastApplyView(state.lastApply, running), checking: checkPending(request, state, nowMs), checkAllowedAt: checkAllowedAt(state, nowMs) };
   }
 
   function lastApplyView(last: LastApply | undefined, version: string): UpdateResponse["lastApply"] {
@@ -75,6 +76,22 @@ export function createUpdates({ dir, logger, running, enabled, now = Date.now }:
       if (view().available?.version !== version) return "conflict";
       if (!writeRequest(dir, logger, { install: version })) return "failed";
       logger.info("update", "request", { kind: "install", version });
+      return "ok";
+    },
+    /** Asks the supervisor for a check now; it picks the request up within seconds. Asking while one is pending is a no-op. */
+    requestCheck(): "ok" | "too_soon" | "disabled" | "failed" {
+      const refuse = (reason: "too_soon" | "disabled") => {
+        logger.info("update", "check_refused", { reason });
+        return reason;
+      };
+      if (!enabled || running === null) return refuse("disabled");
+      const nowMs = now();
+      const request = readRequest(dir, logger);
+      const state = readState(dir, logger);
+      if (checkPending(request, state, nowMs)) return "ok";
+      if (checkAllowedAt(state, nowMs) !== null) return refuse("too_soon");
+      if (!writeRequest(dir, logger, { checkRequestedAt: new Date(nowMs).toISOString() })) return "failed";
+      logger.info("update", "request", { kind: "check" });
       return "ok";
     },
     setAutoApply(on: boolean): boolean {

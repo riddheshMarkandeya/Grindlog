@@ -321,9 +321,28 @@ export function useSetAutostart() {
 
 const UPDATE_QUERY_KEY = ["update"] as const;
 
-/** The supervisor's latest update check, re-read every 30 s while a page shows it (a check can land any time); that refetch is also the retry. */
+/**
+ * The supervisor's latest update check, re-read every 30 s while a page shows it (a check can land any time), and
+ * every 3 s while an asked-for check is pending, so its result shows soon after; that refetch is also the retry.
+ */
 export function useUpdate() {
-  return useQuery({ queryKey: UPDATE_QUERY_KEY, queryFn: () => getJson("/api/update", updateResponse), retry: false, refetchInterval: 30_000 });
+  return useQuery({ queryKey: UPDATE_QUERY_KEY, queryFn: () => getJson("/api/update", updateResponse), retry: false, refetchInterval: (query) => (query.state.data?.checking ? 3_000 : 30_000) });
+}
+
+/**
+ * "Check now": asks the supervisor for a check; a 429 means the last one ended under a minute ago. A refusal
+ * refetches the view, since it means the cached one is behind (a check finished since, with its cooldown).
+ */
+export function useCheckForUpdates() {
+  const queryClient = useQueryClient();
+  return useWholeWrite(UPDATE_QUERY_KEY, async () => {
+    try {
+      return await postJson("/api/update/check", WRITE, updateResponse);
+    } catch (err) {
+      void queryClient.invalidateQueries({ queryKey: UPDATE_QUERY_KEY });
+      throw err;
+    }
+  });
 }
 
 /** "Install updates automatically"; the answer is the whole update view. */

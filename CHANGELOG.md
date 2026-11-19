@@ -12,6 +12,8 @@ All notable changes to Grindlog are listed here. The format is based on
   teammates and opponents split into defence, midfield and attack thirds.
 - The match page shows each player's touches by third under the scoreboard (not on Hoops, Dropshot or Knockout).
 - Goal map hovers name the scorer and the assister.
+- Settings → Updates has a "Check now" button that checks for an update (and downloads it) straight away
+  instead of waiting for the next check, which runs every ~6 hours. It also says when it last checked.
 
 ### Changed
 - Friends' Contribution panel (renamed from "Who carries") gains Shots and Touches rows and a hover with each

@@ -9,7 +9,7 @@ import { feedSource, fetchLatest, pickCandidate, type FeedSource, type Pick } fr
 import { startApplyGate, type ApplyGateOptions } from "./gate";
 import { checkInstaller, clearDownloads, downloadDir, haveInstallerFiles, installerFiles } from "./files";
 import { disabledReason } from "../../shared/update-key";
-import { readState, writeState, type UpdateState } from "./state";
+import { checkPending, readRequest, readState, writeState, type UpdateState } from "./state";
 
 export type CheckOutcome = "up_to_date" | "downloaded" | "skipped" | "skipped_before" | "error" | "apply_in_progress";
 
@@ -32,7 +32,8 @@ const SIGNATURE_MAX_BYTES = 4096;
 /** One check. Never throws for a feed, network or signature problem: those are outcomes. */
 export async function runCheck(d: CheckDeps): Promise<CheckOutcome> {
   const started = performance.now();
-  const now = (d.now ?? (() => new Date()))().toISOString();
+  const clock = d.now ?? (() => new Date());
+  const now = clock().toISOString();
   const state = readState(d.dir, d.logger);
   // While an apply is set the updater is state.json's only writer, and a check's write could undo its own.
   if (state.apply) {
@@ -54,7 +55,8 @@ export async function runCheck(d: CheckDeps): Promise<CheckOutcome> {
 
   const record = (outcome: Exclude<CheckOutcome, "apply_in_progress">, changes: Partial<UpdateState>, fields: Record<string, unknown> = {}): CheckOutcome => {
     const lastOutcome = outcome === "skipped_before" ? "skipped" : outcome;
-    writeState(d.dir, d.logger, { checkedAt: now, lastOutcome, lastError: undefined, skipped, ...(dropAvailable ? { available: undefined } : {}), ...changes });
+    const finishedAt = clock().toISOString();
+    writeState(d.dir, d.logger, { checkedAt: now, finishedAt, lastOutcome, lastError: undefined, skipped, ...(dropAvailable ? { available: undefined } : {}), ...changes });
     d.logger.info("update", "check_result", { outcome, ms: Math.round(performance.now() - started), ...fields });
     return outcome;
   };
@@ -131,6 +133,9 @@ export async function runCheck(d: CheckDeps): Promise<CheckOutcome> {
 export interface ScheduleDeps {
   logger: Logger;
   check: () => Promise<CheckOutcome>;
+  /** Polled every `pollMs` between checks: true runs a check now, in place of the scheduled one. */
+  due?: () => boolean;
+  pollMs?: number;
   firstDelayMs?: number;
   intervalMs?: number;
   jitterMs?: number;
@@ -143,29 +148,77 @@ const FIRST_DELAY_MS = 3 * 60_000;
 const INTERVAL_MS = 6 * 60 * 60_000;
 const JITTER_MS = 30 * 60_000;
 
-/** Runs `check` after a short delay, then about every 6 hours, each one after the last finished. */
-export function startUpdateChecks({ logger, check, firstDelayMs = FIRST_DELAY_MS, intervalMs = INTERVAL_MS, jitterMs = JITTER_MS, random = Math.random, setTimeout: set = setTimeout, clearTimeout: clear = clearTimeout }: ScheduleDeps): { stop: () => void } {
+const POLL_MS = 5_000;
+
+/**
+ * Runs `check` after a short delay, then about every 6 hours, each one after the last finished. With `due`, a
+ * check asked for between them runs at the next poll, and the next scheduled one counts from it.
+ */
+export function startUpdateChecks({ logger, check, due, pollMs = POLL_MS, firstDelayMs = FIRST_DELAY_MS, intervalMs = INTERVAL_MS, jitterMs = JITTER_MS, random = Math.random, setTimeout: set = setTimeout, clearTimeout: clear = clearTimeout }: ScheduleDeps): { stop: () => void } {
   let timer: unknown;
+  let pollTimer: unknown;
   let stopped = false;
+  // Set before the first await, so a poll and the scheduled timer firing in one tick can't both start a check.
+  let running = false;
   const schedule = (ms: number) => {
     timer = set(() => { void run(); }, ms);
   };
   const run = async () => {
+    running = true;
     try {
       await check();
     } catch (err) {
       // Deliberately broad: the supervisor running this keeps recording alive, and no updater bug may
       // take it down. The next check runs as usual.
       logger.error("update", "check_crashed", { err });
+    } finally {
+      running = false;
     }
     if (!stopped) schedule(intervalMs + Math.round(random() * jitterMs));
   };
+  const poll = () => {
+    if (!running) {
+      let now = false;
+      try {
+        now = due?.() ?? false;
+      } catch (err) {
+        // Deliberately broad, as for the checks: a throw here must not end the polling.
+        logger.error("update", "due_crashed", { err });
+      }
+      if (now) {
+        clear(timer as never);
+        void run();
+      }
+    }
+    if (!stopped) pollTimer = set(poll, pollMs);
+  };
   schedule(firstDelayMs);
+  if (due) pollTimer = set(poll, pollMs);
   return {
     stop: () => {
       stopped = true;
       clear(timer as never);
+      clear(pollTimer as never);
     },
+  };
+}
+
+/**
+ * Whether the dashboard has asked for a check that hasn't run. A request it already answered stays answered even
+ * when that check wrote nothing (an apply in progress), so it can't fire every poll.
+ */
+export function checkDue(dir: string, logger: Logger, now: () => number = Date.now): () => boolean {
+  let answered: string | undefined;
+  return () => {
+    const request = readRequest(dir, logger);
+    const at = request.checkRequestedAt;
+    // The common case, no request or one already answered, skips reading state.json.
+    if (at === undefined || at === answered) return false;
+    const nowMs = now();
+    if (!checkPending(request, readState(dir, logger), nowMs)) return false;
+    answered = at;
+    logger.info("update", "check_requested", { requestedAt: at, waitedMs: nowMs - Date.parse(at) });
+    return true;
   };
 }
 
@@ -205,7 +258,7 @@ export function startSupervisorUpdates({ logger, channel, version, key, dir, env
     return run;
   };
   const gate = apply ? startApplyGate({ ...apply, logger, version, dir, env, serial }) : null;
-  const checks = startUpdateChecks({ logger, firstDelayMs, check: () => serial(() => runCheck({ dir, running: version, publicKey: key, source, logger })) });
+  const checks = startUpdateChecks({ logger, firstDelayMs, due: checkDue(dir, logger), check: () => serial(() => runCheck({ dir, running: version, publicKey: key, source, logger })) });
   return {
     stop: () => {
       checks.stop();

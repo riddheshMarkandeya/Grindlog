@@ -39,3 +39,8 @@ export const STATS_INI = "TAStatsAPI.ini";
 export const USER_INI_HINT = `Documents\\My Games\\Rocket League\\TAGame\\Config\\${STATS_INI}`;
 /** The send rate the setup suggests and writes; any value above 0 works. */
 export const SUGGESTED_RATE = 30;
+
+/** After a check ends, how long before the dashboard can ask for another (GitHub rate-limits anonymous calls). */
+export const UPDATE_CHECK_COOLDOWN_MS = 60_000;
+/** How long an asked-for check counts as pending: long enough for a slow installer download, short enough that a request nothing answers can't leave "Checking…" up for good. */
+export const UPDATE_CHECK_PENDING_MS = 10 * 60_000;

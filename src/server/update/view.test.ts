@@ -22,11 +22,11 @@ const PAGE = "https://github.com/riddheshMarkandeya/Grindlog/releases/tag/v0.2.0
 describe("view", () => {
   test("a dev build is disabled, whatever the files say", () => {
     writeState(dir, memoryLogger(), { checkedAt: "t", lastOutcome: "downloaded", available: AVAILABLE });
-    expect(updates(null, false).view()).toEqual({ enabled: false, version: null, status: "disabled", available: null, skipped: null, autoApply: true, installRequested: false, checkedAt: null, lastApply: null });
+    expect(updates(null, false).view()).toEqual({ enabled: false, version: null, status: "disabled", available: null, skipped: null, autoApply: true, installRequested: false, checkedAt: null, lastApply: null, checking: false, checkAllowedAt: null });
   });
 
   test("before the first check it's not checked, with auto-apply on by default", () => {
-    expect(updates().view()).toEqual({ enabled: true, version: "0.1.0", status: "not_checked", available: null, skipped: null, autoApply: true, installRequested: false, checkedAt: null, lastApply: null });
+    expect(updates().view()).toEqual({ enabled: true, version: "0.1.0", status: "not_checked", available: null, skipped: null, autoApply: true, installRequested: false, checkedAt: null, lastApply: null, checking: false, checkAllowedAt: null });
   });
 
   test("up to date after a check", () => {
@@ -136,5 +136,56 @@ describe("view's lastApply", () => {
     expect(updates().view()).toMatchObject({ status: "skipped", skipped: "0.1.5" });
     writeState(dir, memoryLogger(), { skipped: [{ version: "0.2.0", reason: "installer_failed" }] });
     expect(updates().view()).toMatchObject({ status: "up_to_date", skipped: null });
+  });
+});
+
+describe("asking for a check", () => {
+  // NOW is 2026-11-12T12:00:00.000Z.
+  const logged = () => {
+    const logger = memoryLogger();
+    return { logger, u: createUpdates({ dir, logger, running: "0.1.0", enabled: true, now: () => NOW }) };
+  };
+
+  test("writes when it was asked, and the view reads it as checking", () => {
+    const { logger, u } = logged();
+    expect(u.requestCheck()).toBe("ok");
+    expect(readRequest(dir, memoryLogger()).checkRequestedAt).toBe("2026-11-12T12:00:00.000Z");
+    expect(logger.lines.find((l) => l.event === "request")?.fields).toEqual({ kind: "check" });
+    expect(u.view()).toMatchObject({ checking: true, checkAllowedAt: null });
+  });
+
+  test("a check that started after the request ends checking, and the cooldown counts from its end", () => {
+    const { u } = logged();
+    writeRequest(dir, memoryLogger(), { checkRequestedAt: "2026-11-12T11:59:30.000Z" });
+    writeState(dir, memoryLogger(), { checkedAt: "2026-11-12T11:59:35.000Z", finishedAt: "2026-11-12T11:59:40.000Z", lastOutcome: "up_to_date" });
+    expect(u.view()).toMatchObject({ checking: false, checkAllowedAt: "2026-11-12T12:00:40.000Z" });
+  });
+
+  test("while one is pending, asking again is fine and writes nothing", () => {
+    const { logger, u } = logged();
+    writeRequest(dir, memoryLogger(), { checkRequestedAt: "2026-11-12T11:59:30.000Z" });
+    expect(u.requestCheck()).toBe("ok");
+    expect(readRequest(dir, memoryLogger()).checkRequestedAt).toBe("2026-11-12T11:59:30.000Z");
+    expect(logger.lines).toEqual([]);
+  });
+
+  test("within a minute of the last check ending it's too soon", () => {
+    const { logger, u } = logged();
+    writeState(dir, memoryLogger(), { checkedAt: "2026-11-12T11:59:20.000Z", finishedAt: "2026-11-12T11:59:30.000Z" });
+    expect(u.requestCheck()).toBe("too_soon");
+    expect(readRequest(dir, memoryLogger()).checkRequestedAt).toBeUndefined();
+    expect(logger.lines.find((l) => l.event === "check_refused")?.fields).toEqual({ reason: "too_soon" });
+  });
+
+  test("a build that doesn't update refuses", () => {
+    const logger = memoryLogger();
+    expect(createUpdates({ dir, logger, running: null, enabled: false, now: () => NOW }).requestCheck()).toBe("disabled");
+    expect(logger.lines.find((l) => l.event === "check_refused")?.fields).toEqual({ reason: "disabled" });
+  });
+
+  test("a request file that can't be written fails", () => {
+    // A directory where the request file goes makes the rename fail.
+    mkdirSync(join(dir, REQUEST_FILE));
+    expect(logged().u.requestCheck()).toBe("failed");
   });
 });

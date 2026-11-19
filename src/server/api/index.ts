@@ -3,7 +3,7 @@
 import type { Server } from "bun";
 import type { z } from "zod";
 import { REQUEST_HEADER, TRAY_HEADER } from "../../shared/constants";
-import { autoApplyParams, autostartParams, filterOnly, monthsParams, periodParams, playedDaysParams, sessionsParams, statsSetupParams, trayParams, updateInstallParams, type TrayAck } from "../../shared/schemas/params";
+import { autoApplyParams, autostartParams, filterOnly, monthsParams, periodParams, playedDaysParams, sessionsParams, statsSetupParams, trayParams, updateCheckParams, updateInstallParams, type TrayAck } from "../../shared/schemas/params";
 import {
   autostartResponse,
   breakResponse,
@@ -68,7 +68,7 @@ export interface ApiOptions {
   /** The setup card's one-click fix of the game's Stats API settings. */
   statsSetup: { fix: (portConsent: boolean) => Promise<FixResult> };
   /** The update view and the user's update choices, which the supervisor acts on. */
-  updates: Pick<Updates, "view" | "install" | "setAutoApply">;
+  updates: Pick<Updates, "view" | "install" | "requestCheck" | "setAutoApply">;
 }
 
 interface Ctx {
@@ -287,6 +287,14 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
     { method: "POST", path: "/api/update/install", handler: ({ query }) => updateInstalled(updates.install(parse(updateInstallParams, query).version)) },
     {
       method: "POST",
+      path: "/api/update/check",
+      handler: ({ query }) => {
+        parse(updateCheckParams, query);
+        return updateChecked(updates.requestCheck());
+      },
+    },
+    {
+      method: "POST",
       path: "/api/update/auto-apply",
       handler: ({ query }) => (updates.setAutoApply(parse(autoApplyParams, query).on) ? ok(updateResponse, updates.view()) : Response.json({ error: "write_failed" }, { status: 500 })),
     },
@@ -304,6 +312,16 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
   function updateInstalled(result: ReturnType<Updates["install"]>): Response {
     if (result === "ok") return ok(updateResponse, updates.view());
     return result === "conflict" ? Response.json({ error: "not_available" }, { status: 409 }) : Response.json({ error: "write_failed" }, { status: 500 });
+  }
+
+  /** 429 within a minute of the last check ending, 409 for a build that doesn't update, 500 when the request file failed. */
+  function updateChecked(result: ReturnType<Updates["requestCheck"]>): Response {
+    switch (result) {
+      case "ok": return ok(updateResponse, updates.view());
+      case "too_soon": return Response.json({ error: "too_soon" }, { status: 429 });
+      case "disabled": return Response.json({ error: "disabled" }, { status: 409 });
+      case "failed": return Response.json({ error: "write_failed" }, { status: 500 });
+    }
   }
 
   function trayHandler(view: NonNullable<ApiOptions["tray"]>): RouteHandler {

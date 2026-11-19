@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { memoryLogger } from "../testing";
-import { readRequest, readStartFailure, readState, REQUEST_FILE, START_FAILURE_FILE, STATE_FILE, writeRequest, writeStartFailure, writeState } from "./state";
+import { checkAllowedAt, checkPending, readRequest, readStartFailure, readState, REQUEST_FILE, START_FAILURE_FILE, STATE_FILE, writeRequest, writeStartFailure, writeState } from "./state";
 
 let dir: string;
 beforeEach(() => {
@@ -151,5 +151,62 @@ describe("request.json", () => {
     writeRequest(dir, logger, { install: "0.2.0" });
     expect(readRequest(dir, logger)).toEqual({ v: 1, autoApply: false, install: "0.2.0" });
     expect(raw(REQUEST_FILE)).toEqual({ v: 1, autoApply: false, install: "0.2.0" });
+  });
+});
+
+describe("checkPending", () => {
+  const NOW = Date.parse("2026-11-18T12:00:00.000Z");
+  const req = (checkRequestedAt?: string) => ({ v: 1 as const, autoApply: true, ...(checkRequestedAt === undefined ? {} : { checkRequestedAt }) });
+  const st = (checkedAt?: string) => ({ v: 1 as const, skipped: [], ...(checkedAt === undefined ? {} : { checkedAt }) });
+
+  test("no request: not pending", () => {
+    expect(checkPending(req(), st("2026-11-18T11:00:00.000Z"), NOW)).toBe(false);
+  });
+  test("a request newer than the last check is pending", () => {
+    expect(checkPending(req("2026-11-18T11:59:50.000Z"), st("2026-11-18T11:00:00.000Z"), NOW)).toBe(true);
+  });
+  test("a request before never-checked is pending", () => {
+    expect(checkPending(req("2026-11-18T11:59:50.000Z"), st(), NOW)).toBe(true);
+  });
+  test("a request during an apply isn't pending: no check runs to answer it", () => {
+    const applying = { ...st("2026-11-18T11:00:00.000Z"), apply: { from: "1.0.0", to: "1.1.0", startedAt: "2026-11-18T11:59:00.000Z", phase: "waiting" } };
+    expect(checkPending(req("2026-11-18T11:59:50.000Z"), applying, NOW)).toBe(false);
+  });
+  test("a check started after the request answers it", () => {
+    expect(checkPending(req("2026-11-18T11:59:50.000Z"), st("2026-11-18T11:59:52.000Z"), NOW)).toBe(false);
+  });
+  test("a check started at the same instant answers it", () => {
+    expect(checkPending(req("2026-11-18T11:59:50.000Z"), st("2026-11-18T11:59:50.000Z"), NOW)).toBe(false);
+  });
+  test("a request 10 minutes old has expired", () => {
+    expect(checkPending(req("2026-11-18T11:50:00.000Z"), st(), NOW)).toBe(false);
+    expect(checkPending(req("2026-11-18T11:50:00.001Z"), st(), NOW)).toBe(true);
+  });
+  test("a request in the future (clock moved back) isn't pending", () => {
+    expect(checkPending(req("2026-11-18T13:00:00.000Z"), st(), NOW)).toBe(false);
+  });
+  test("a garbled request isn't pending", () => {
+    expect(checkPending(req("soon"), st(), NOW)).toBe(false);
+  });
+});
+
+describe("checkAllowedAt", () => {
+  const NOW = Date.parse("2026-11-18T12:00:00.000Z");
+  const st = (finishedAt?: string) => ({ v: 1 as const, skipped: [], ...(finishedAt === undefined ? {} : { finishedAt }) });
+
+  test("never finished a check: no cooldown", () => {
+    expect(checkAllowedAt(st(), NOW)).toBeNull();
+  });
+  test("finished 20 s ago: allowed 60 s after it finished", () => {
+    expect(checkAllowedAt(st("2026-11-18T11:59:40.000Z"), NOW)).toBe("2026-11-18T12:00:40.000Z");
+  });
+  test("finished a minute ago: no cooldown", () => {
+    expect(checkAllowedAt(st("2026-11-18T11:59:00.000Z"), NOW)).toBeNull();
+  });
+  test("finished in the future (clock moved back): no cooldown", () => {
+    expect(checkAllowedAt(st("2026-11-18T12:05:00.000Z"), NOW)).toBeNull();
+  });
+  test("garbled: no cooldown", () => {
+    expect(checkAllowedAt(st("later"), NOW)).toBeNull();
   });
 });

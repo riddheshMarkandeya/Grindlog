@@ -24,6 +24,13 @@ export function durationText(ms: number): string {
 export const clock = (ms: number, hours: Units["clock"], locale?: string) =>
   new Date(ms).toLocaleTimeString(locale, { timeStyle: "short", hourCycle: hours === "24h" ? "h23" : "h12" });
 
+/** The clock time when `ms` falls on today (local), else the short date before it. */
+export function clockOrDay(ms: number, nowMs: number, hours: Units["clock"], locale?: string): string {
+  const time = clock(ms, hours, locale);
+  if (new Date(ms).toDateString() === new Date(nowMs).toDateString()) return time;
+  return `${new Date(ms).toLocaleDateString(locale, { day: "numeric", month: "short" })}, ${time}`;
+}
+
 export const timeRange = (start: number, end: number, hours: Units["clock"], locale?: string): string => `${clock(start, hours, locale)} – ${clock(end, hours, locale)}`;
 
 const MPH_PER_KMH = 0.621371;

@@ -5,6 +5,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
+import { UPDATE_CHECK_COOLDOWN_MS, UPDATE_CHECK_PENDING_MS } from "../../shared/constants";
 import { isReleaseVersion } from "../../shared/release";
 import { renameRetry } from "../fs-retry";
 import type { Logger } from "../log";
@@ -20,7 +21,10 @@ export const START_FAILURE_FILE = "start-failure.json";
 const version = z.string().refine(isReleaseVersion, "not a release version");
 const stateSchema = z.looseObject({
   v: z.literal(1),
+  /** When the last check started; a check asked for before this is answered. */
   checkedAt: z.string().optional(),
+  /** When the last check ended, which the manual-check cooldown counts from. */
+  finishedAt: z.string().optional(),
   lastOutcome: z.enum(["up_to_date", "downloaded", "skipped", "error"]).optional(),
   lastError: z.string().optional(),
   etag: z.string().optional(),
@@ -60,6 +64,8 @@ const requestSchema = z.looseObject({
   v: z.literal(1),
   autoApply: z.boolean(),
   install: version.optional(),
+  /** When the dashboard asked for a check now. */
+  checkRequestedAt: z.string().optional(),
 });
 export type UpdateRequest = z.infer<typeof requestSchema>;
 
@@ -125,4 +131,25 @@ export function readStartFailure(dir: string, apply: Pick<ApplyRecord, "to" | "s
   const failure = readJson<StartFailure | undefined>(join(dir, START_FAILURE_FILE), startFailureSchema, undefined, logger);
   if (failure?.version !== apply.to || failure.at < apply.startedAt) return undefined;
   return failure;
+}
+
+/**
+ * Whether an asked-for check hasn't started yet. Both stamps come from toISOString (UTC, fixed width), so string
+ * order is time order. A request older than the pending window, from the future (clock moved back) or garbled
+ * isn't pending, so nothing can leave it stuck. Nor is one during an apply: no check runs then, and none would
+ * record that it was answered.
+ */
+export function checkPending(request: UpdateRequest, state: UpdateState, nowMs: number): boolean {
+  const at = request.checkRequestedAt;
+  if (at === undefined || state.apply !== undefined || at <= (state.checkedAt ?? "")) return false;
+  const age = nowMs - Date.parse(at);
+  return age >= 0 && age < UPDATE_CHECK_PENDING_MS;
+}
+
+/** When the dashboard may ask for another check, or null when it may now. A future or garbled finish allows it. */
+export function checkAllowedAt(state: UpdateState, nowMs: number): string | null {
+  if (state.finishedAt === undefined) return null;
+  const finished = Date.parse(state.finishedAt);
+  const age = nowMs - finished;
+  return age >= 0 && age < UPDATE_CHECK_COOLDOWN_MS ? new Date(finished + UPDATE_CHECK_COOLDOWN_MS).toISOString() : null;
 }

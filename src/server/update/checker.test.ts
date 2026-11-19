@@ -3,9 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { memoryLogger } from "../testing";
-import { runCheck, startSupervisorUpdates, startUpdateChecks, type CheckDeps } from "./checker";
+import { checkDue, runCheck, startSupervisorUpdates, startUpdateChecks, type CheckDeps } from "./checker";
 import { disabledReason } from "../../shared/update-key";
-import { readState, writeState } from "./state";
+import { readState, writeRequest, writeState } from "./state";
 
 // Real minisign fixtures: minisign's own 0.12 asset, its signature, and the key from its README. Its
 // trusted comment is minisign's default (timestamp/file), so a run on it exercises the comment check;
@@ -121,6 +121,14 @@ describe("runCheck on a release signed to the contract (CLI-made fixtures, versi
 });
 
 describe("runCheck", () => {
+  test("records when the check ended beside when it started", async () => {
+    const gh = fakeGitHub({ tag: "v0.1.0" });
+    const times = ["2026-11-12T10:00:00.000Z", "2026-11-12T10:00:04.000Z"];
+    let i = 0;
+    await runCheck(deps(gh.fetch, { now: () => new Date(times[Math.min(i++, 1)] ?? "") }));
+    expect(readState(dir, memoryLogger())).toMatchObject({ checkedAt: "2026-11-12T10:00:00.000Z", finishedAt: "2026-11-12T10:00:04.000Z" });
+  });
+
   test("nothing newer: up to date, with the ETag kept for next time", async () => {
     const gh = fakeGitHub({ tag: "v0.1.0" });
     expect(await runCheck(deps(gh.fetch))).toBe("up_to_date");
@@ -326,6 +334,95 @@ describe("startUpdateChecks", () => {
     await timers.advance(10);
     expect(calls).toBe(2);
     expect(logger.events().filter((e) => e === "update/check_crashed")).toHaveLength(2);
+  });
+  test("a check asked for runs at the next poll, and the next scheduled one counts from it", async () => {
+    const timers = fakeTimers();
+    const runs: number[] = [];
+    let t = 0;
+    let asked = false;
+    const handle = startUpdateChecks({
+      logger: memoryLogger(),
+      check: () => { runs.push(t); return Promise.resolve("up_to_date"); },
+      due: () => { if (!asked) return false; asked = false; return true; },
+      pollMs: 100,
+      firstDelayMs: 1000,
+      intervalMs: 10_000,
+      jitterMs: 0,
+      random: () => 0,
+      ...timers,
+    });
+    asked = true;
+    t = 100; await timers.advance(100);
+    expect(runs).toEqual([100]);
+    t = 1000; await timers.advance(900);
+    expect(runs).toEqual([100]);
+    t = 10_100; await timers.advance(9100);
+    expect(runs).toEqual([100, 10_100]);
+    handle.stop();
+    expect(timers.pending()).toBe(0);
+  });
+
+  test("a check asked for while one runs waits for it to end, then runs", async () => {
+    const timers = fakeTimers();
+    let calls = 0;
+    let finish: () => void = () => undefined;
+    let dueCalls = 0;
+    startUpdateChecks({
+      logger: memoryLogger(),
+      check: () => { calls++; return calls === 1 ? new Promise((r) => { finish = () => { r("up_to_date"); }; }) : Promise.resolve("up_to_date"); },
+      due: () => { dueCalls++; return true; },
+      pollMs: 100,
+      firstDelayMs: 50,
+      intervalMs: 10_000,
+      jitterMs: 0,
+      random: () => 0,
+      ...timers,
+    });
+    await timers.advance(50);
+    await timers.advance(300);
+    expect(calls).toBe(1);
+    expect(dueCalls).toBe(0);
+    finish();
+    await new Promise((r) => setImmediate(r));
+    await timers.advance(100);
+    expect(calls).toBe(2);
+  });
+
+  test("a due() that throws is logged and polling goes on", async () => {
+    const timers = fakeTimers();
+    const logger = memoryLogger();
+    let polls = 0;
+    startUpdateChecks({ logger, check: () => Promise.resolve("up_to_date"), due: () => { polls++; throw new Error("boom"); }, pollMs: 100, firstDelayMs: 10_000, intervalMs: 10_000, jitterMs: 0, random: () => 0, ...timers });
+    await timers.advance(300);
+    expect(polls).toBe(3);
+    expect(logger.events().filter((e) => e === "update/due_crashed")).toHaveLength(3);
+  });
+});
+
+describe("checkDue", () => {
+  const NOW = Date.parse("2026-11-18T12:00:00.000Z");
+
+  test("nothing asked: not due", () => {
+    expect(checkDue(dir, memoryLogger(), () => NOW)()).toBe(false);
+  });
+
+  test("a new request is due once, and logged with how long it waited", () => {
+    const logger = memoryLogger();
+    writeRequest(dir, logger, { checkRequestedAt: "2026-11-18T11:59:57.000Z" });
+    const due = checkDue(dir, logger, () => NOW);
+    expect(due()).toBe(true);
+    expect(logger.lines.find((l) => l.event === "check_requested")?.fields).toEqual({ requestedAt: "2026-11-18T11:59:57.000Z", waitedMs: 3000 });
+    // No checkedAt written (an apply was in progress): the same request doesn't fire again.
+    expect(due()).toBe(false);
+    writeRequest(dir, logger, { checkRequestedAt: "2026-11-18T11:59:59.000Z" });
+    expect(due()).toBe(true);
+  });
+
+  test("a check that started after the request answers it", () => {
+    const logger = memoryLogger();
+    writeRequest(dir, logger, { checkRequestedAt: "2026-11-18T11:59:57.000Z" });
+    writeState(dir, logger, { checkedAt: "2026-11-18T11:59:58.000Z" });
+    expect(checkDue(dir, logger, () => NOW)()).toBe(false);
   });
 });
 

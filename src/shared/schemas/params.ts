@@ -83,6 +83,8 @@ export const autostartParams = z.object({ on: boolParam }).strict();
 export const updateInstallParams = z.object({ version: z.string().min(1) }).strict();
 /** `POST /api/update/auto-apply?on=true|false` */
 export const autoApplyParams = z.object({ on: boolParam }).strict();
+/** `POST /api/update/check`: no params. */
+export const updateCheckParams = z.object({}).strict();
 
 /** `POST /api/stats-setup/fix?port=1`: `port=1` is consent to move a custom WebPort to the tracker's. */
 export const statsSetupParams = z.object({ port: z.literal("1").optional() }).strict();

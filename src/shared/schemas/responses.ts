@@ -404,6 +404,10 @@ export const updateResponse = z.object({
    * for a week on the old one, "unhealthy" for a week on the new one; otherwise null.
    */
   lastApply: z.object({ outcome: z.enum(["updated", "rolled_back", "rollback_failed", "unhealthy"]), from: z.string(), to: z.string(), reason: z.string().nullable(), at: z.string(), page: z.string() }).nullable(),
+  /** A check was asked for and hasn't started yet. */
+  checking: z.boolean(),
+  /** When another check can be asked for (a minute after the last one ended), or null when it can now. */
+  checkAllowedAt: z.string().nullable(),
 });
 export type UpdateResponse = z.infer<typeof updateResponse>;
 
