@@ -83,11 +83,6 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
     host `shutdown_rejected`): a page looping header-less requests writes one each and can rotate match diagnostics
     out of the logs. Deferred from 3b's review (`docs/reviews/2026-11-10-wp3b-tray-view.md`).
 
-- [ ] **[ux, Low, Standard]** (public release map step 2) Toasts show "Windows PowerShell" as their app name, not Grindlog: they're sent
-  through PowerShell's AppUserModelID (seen in WP7 step 6's rollback toast). A friend may not connect it to
-  Grindlog. Fix: send under Grindlog's own AppUserModelID (the Start-menu shortcut needs it set). Record:
-  `docs/plans/2026-11-12-wp7-proof-before-friends.md` Results.
-
 - [ ] **[feature, Med, Standard]** (public release map step 4) Landing page on GitHub Pages: one static page,
   download → releases/latest, What's new from the GitHub releases API with a plain-link fallback.
 - [ ] **[misc, Med, Standard]** (public release map step 5) Reddit post and GitHub issue templates: subreddit

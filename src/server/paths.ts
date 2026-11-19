@@ -30,6 +30,13 @@ export function identity(channel: Channel = CHANNEL): Identity {
     : { dataDirName: "GrindlogDev", port: 49102, exe: "grindlog-dev.exe", trayExe: "grindlog-dev-tray.exe", task: "GrindlogDev", shortcut: "Grindlog Dev.lnk" };
 }
 
+/**
+ * The prod install's AppUserModelID, set on its Start menu shortcut so toasts sent through PowerShell show
+ * under Grindlog's name and icon. Never change it once shipped: Windows keys each app's notification
+ * settings on it. Dev has none because its shortcut is written by WScript.Shell, which can't set one.
+ */
+export const PROD_APP_USER_MODEL_ID = "Grindlog.Grindlog";
+
 /** Where the tracker keeps its logs and databases. GRINDLOG_DATA_DIR overrides it (tests, dev). */
 export function dataDir(env: Env = process.env, channel: Channel = CHANNEL): string {
   if (env.GRINDLOG_DATA_DIR) return env.GRINDLOG_DATA_DIR;

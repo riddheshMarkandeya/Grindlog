@@ -58,7 +58,8 @@ Source: "{srcexe}"; DestDir: "{localappdata}\{#DataDirName}\update\previous"; De
 Source: "{#SourceDir}\task.xml"; Flags: dontcopy
 
 [Icons]
-Name: "{userprograms}\{#ShortcutName}"; Filename: "{app}\{#ExeName}"; Parameters: "--open"; WorkingDir: "{app}"
+; The app ID registers Grindlog's name and icon for the toasts the app sends under it through PowerShell.
+Name: "{userprograms}\{#ShortcutName}"; Filename: "{app}\{#ExeName}"; Parameters: "--open"; WorkingDir: "{app}"; AppUserModelID: "{#AppUserModelID}"
 
 [Run]
 ; Starts the app if it isn't running and opens the dashboard. Skipped when silent: the updater restarts it.

@@ -1,9 +1,11 @@
 // Routes the app's toasts: through the tray while it's polling, so they show under the app's own name and
-// a click opens the dashboard, else through PowerShell's app ID, which is always registered.
+// a click opens the dashboard, else through PowerShell, under Grindlog's app ID in prod and PowerShell's in dev.
 import { randomBytes } from "node:crypto";
+import { CHANNEL, type Channel } from "../shared/channel";
 import type { TrayAck } from "../shared/schemas/params";
 import type { TrayNotice } from "../shared/schemas/responses";
 import type { Logger } from "./log";
+import { PROD_APP_USER_MODEL_ID } from "./paths";
 import { runPowerShell } from "./powershell";
 
 export interface Toast {
@@ -12,7 +14,7 @@ export interface Toast {
 }
 
 const TOAST_TIMEOUT_MS = 10_000;
-// PowerShell's own AppUserModelID: a toast needs a registered app, and this one always is.
+// PowerShell's own AppUserModelID, always registered. Dev uses it, since its shortcut registers no ID of its own.
 const POWERSHELL_APP_ID = String.raw`{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe`;
 const psQuote = (s: string) => `'${s.replace(/'/g, "''")}'`;
 
@@ -22,8 +24,13 @@ export interface PowerShellToast extends Toast {
   url?: string;
 }
 
-/** The PowerShell that shows `toast`. Every string goes in single-quoted, so nothing in it is evaluated. */
-export function toastScript({ title, body, url }: PowerShellToast): string {
+/** The app ID a PowerShell toast goes out under, which sets the name and icon on its header. */
+export function toastAppId(channel: Channel = CHANNEL): string {
+  return channel === "prod" ? PROD_APP_USER_MODEL_ID : POWERSHELL_APP_ID;
+}
+
+/** The PowerShell that shows `toast` under `appId`. Every string goes in single-quoted, so nothing in it is evaluated. */
+export function toastScript({ title, body, url }: PowerShellToast, appId: string): string {
   return [
     "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null",
     "$t = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)",
@@ -33,22 +40,23 @@ export function toastScript({ title, body, url }: PowerShellToast): string {
     ...(url === undefined
       ? []
       : [`$t.DocumentElement.SetAttribute('activationType', 'protocol')`, `$t.DocumentElement.SetAttribute('launch', ${psQuote(url)})`]),
-    `[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier(${psQuote(POWERSHELL_APP_ID)}).Show([Windows.UI.Notifications.ToastNotification]::new($t))`,
+    `[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier(${psQuote(appId)}).Show([Windows.UI.Notifications.ToastNotification]::new($t))`,
   ].join("\n");
 }
 
 /** Shows a Windows toast through PowerShell. Best-effort: never throws, logs toast/shown or toast/failed. */
 export async function showToast(logger: Logger, toast: PowerShellToast): Promise<void> {
   const { title, body, url } = toast;
-  const script = toastScript(toast);
+  const appId = toastAppId();
+  const script = toastScript(toast, appId);
   try {
     const { code, stderr, timedOut } = await runPowerShell(script, TOAST_TIMEOUT_MS);
-    if (code === 0) logger.info("toast", "shown", { title, body, url });
-    else logger.warn("toast", "failed", { code, timedOut, stderr: stderr.slice(0, 500) });
+    if (code === 0) logger.info("toast", "shown", { title, body, url, appId });
+    else logger.warn("toast", "failed", { appId, code, timedOut, stderr: stderr.slice(0, 500) });
   } catch (err) {
     // Broad on purpose: a toast is a nicety, and whatever stops PowerShell from starting must not
     // reach the recorder.
-    logger.warn("toast", "failed", { err });
+    logger.warn("toast", "failed", { appId, err });
   }
 }
 

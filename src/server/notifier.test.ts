@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { createNotifier, toastScript } from "./notifier";
+import { createNotifier, toastAppId, toastScript } from "./notifier";
 import { memoryLogger } from "./testing";
 
 const first = { title: "Grindlog", body: "first" };
@@ -92,14 +92,28 @@ describe("createNotifier", () => {
 });
 
 describe("toastScript", () => {
+  test("the toast goes out under the given app ID, quoted for PowerShell", () => {
+    expect(toastScript({ title: "t", body: "b" }, "Grindlog.Grindlog")).toContain(`CreateToastNotifier('Grindlog.Grindlog').Show(`);
+  });
+
   test("a url becomes the toast's protocol launch, quoted for PowerShell", () => {
-    const script = toastScript({ title: "Grindlog couldn't restart", body: "Reinstall it", url: "https://example.com/it's" });
+    const script = toastScript({ title: "Grindlog couldn't restart", body: "Reinstall it", url: "https://example.com/it's" }, "Grindlog.Grindlog");
     expect(script).toContain(`$t.DocumentElement.SetAttribute('activationType', 'protocol')`);
     expect(script).toContain(`$t.DocumentElement.SetAttribute('launch', 'https://example.com/it''s')`);
     expect(script).toContain(`CreateTextNode('Grindlog couldn''t restart')`);
   });
 
   test("without a url the toast has no launch", () => {
-    expect(toastScript({ title: "t", body: "b" })).not.toContain("launch");
+    expect(toastScript({ title: "t", body: "b" }, "Grindlog.Grindlog")).not.toContain("launch");
+  });
+});
+
+describe("toastAppId", () => {
+  test("prod toasts go out under Grindlog's own ID, which its Start menu shortcut registers", () => {
+    expect(toastAppId("prod")).toBe("Grindlog.Grindlog");
+  });
+
+  test("dev toasts go out under PowerShell's ID, since the dev shortcut registers none", () => {
+    expect(toastAppId("dev")).toBe(String.raw`{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe`);
   });
 });

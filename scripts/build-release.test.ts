@@ -44,7 +44,7 @@ describe("taskTemplate", () => {
 describe("isccArgs", () => {
   const args = isccArgs({ version: { full: "0.2.0-rc.1", numeric: "0.2.0", prerelease: true }, sourceDir: String.raw`C:\r\release\app`, outDir: String.raw`C:\r\release`, iss: String.raw`C:\r\installer\grindlog.iss`, id: identity("prod") });
 
-  test("defines the versions, the staged files' folder, the prod identity with the shortcut's stem, and the copyright", () => {
+  test("defines the versions, the staged files' folder, the prod identity with the shortcut's stem and its app ID, and the copyright", () => {
     expect(args).toEqual([
       "/Qp",
       "/DAppVersion=0.2.0-rc.1",
@@ -55,6 +55,7 @@ describe("isccArgs", () => {
       "/DDataDirName=Grindlog",
       "/DTaskName=Grindlog",
       "/DShortcutName=Grindlog",
+      "/DAppUserModelID=Grindlog.Grindlog",
       "/DAppCopyright=Copyright (c) 2026 Riddhesh Markandeya",
       String.raw`/OC:\r\release`,
       String.raw`C:\r\installer\grindlog.iss`,

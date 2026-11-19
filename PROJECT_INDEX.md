@@ -12,7 +12,8 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   recording tracker), `control.ts` probing, listing, ending and starting this install's processes
   (shared with `stop.ts` and `autostart.ts`), `runtime-info.ts` version, channel, Windows and Bun for
   `started` lines, `game-watch.ts` game detection and the "Stats API off" toast, `notifier.ts` routes toasts through the
-  tray (acked queue, 10 s PowerShell fallback) or PowerShell, `tray-view.ts` the pure tray view for `/api/tray` (update lines included), `fs-retry.ts` `renameRetry` (EPERM/EBUSY/EACCES, for antivirus holds), `exit-codes.ts`, `log.ts`
+  tray (acked queue, 10 s PowerShell fallback) or PowerShell (under Grindlog's own app ID `Grindlog.Grindlog` in prod, set on the
+  installer's Start menu shortcut; PowerShell's in dev), `tray-view.ts` the pure tray view for `/api/tray` (update lines included), `fs-retry.ts` `renameRetry` (EPERM/EBUSY/EACCES, for antivirus holds), `exit-codes.ts`, `log.ts`
   logger, `paths.ts` per-channel `identity()` (data dir, port, exe, task, shortcut) and paths from it, `storage.ts` opens both DBs, `maintenance.ts` schedules retention and backups, `seasons.ts` the seasons table's writes (with the season-file
   `sync`: an edited row stops following the file, a deleted one goes on `seasons_dismissed`), `seasons-file.ts` parses
   and fetches the repo-root `seasons.json` (`SEASONS_FILE_URL`) daily, 60 s after start (`GRINDLOG_SEASONS_FEED`: `off`, an

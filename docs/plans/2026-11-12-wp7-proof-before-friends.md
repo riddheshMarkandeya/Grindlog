@@ -259,6 +259,18 @@ Committed `7a075d6`. Review: code-review low, security; 1 round, clean.
   back to 0.1.1." Dashboard works, 1-2 match there. **Counts unchanged**: matches 1, players 6, goals 3, events 724.
 - Found: the toast's header reads **"Windows PowerShell"**, not Grindlog (it's sent through PowerShell's app
   identity). Works, but confusing for a friend → BACKLOG.
+  - Fixed 2026-11-18 (public release map step 2): prod sends PowerShell toasts under `Grindlog.Grindlog`, which the
+    installer sets on the Start menu shortcut (`[Icons]` `AppUserModelID:`). Dev keeps PowerShell's ID.
+    - Probe first: a toast under `Grindlog.Grindlog` with no shortcut registering it still appeared (exit 0), so a
+      missing shortcut doesn't drop toasts and there's no shortcut-exists fallback.
+    - Local `build-release` 0.1.5 installed silently over prod: the shortcut's `System.AppUserModel.ID` is
+      `Grindlog.Grindlog` at once, but `Get-StartApps` showed the old auto-generated ID until about 5 s later (the
+      indexing race, no handling).
+    - The generated script, without and with a url, showed a Grindlog header and icon. Both toasts were listed in
+      Action Center, and clicking the url toast opened it.
+    - Real fallback: prod `grindlog.exe` with no tray, and a stand-in `RocketLeague.exe`. After 80 s the app logged
+      `notice/powershell` (`lastPollAgoMs null`), then `toast/shown appId Grindlog.Grindlog` for "Grindlog isn't
+      getting data", and the toast read Grindlog.
 - Cleanup: both variables deleted, sign-in → `checks_started` source http, `firstDelayMs 180000` (03:47:01), check
   `up_to_date latest 0.1.1`. **Deleted `C:\GrindlogFeed` and `release\Grindlog-Setup-0.1.2.exe*`.** Test-User's
   `update\download` copy goes with the uninstall-Yes below. **0.1.2 is burned: the next real release is 0.1.3.**

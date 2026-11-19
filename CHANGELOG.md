@@ -11,6 +11,8 @@ All notable changes to Grindlog are listed here. The format is based on
   you edit or delete stay as you left them. Switch it off in Settings → Seasons.
 
 ### Fixed
+- Notifications sent while the tray isn't running, and the updater's own, now show as Grindlog with its icon, not
+  as "Windows PowerShell".
 - Season 23 starts on June 10, not June 9 (unless you changed it yourself).
 
 ## [0.1.5] - 2026-11-18

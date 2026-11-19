@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os";
 import { join, win32 } from "node:path";
 import { version as packageVersion } from "../package.json";
-import { identity, type Identity } from "../src/server/paths";
+import { identity, type Identity, PROD_APP_USER_MODEL_ID } from "../src/server/paths";
 import { publicKeyLine } from "../src/server/update/minisign";
 import { appName } from "../src/shared/channel";
 import { installerName, parseReleaseVersion, type ReleaseVersion } from "../src/shared/release";
@@ -64,6 +64,7 @@ export function isccArgs({ version, sourceDir, outDir, iss, id }: { version: Rel
     `/DTaskName=${id.task}`,
     // Inno adds the .lnk itself.
     `/DShortcutName=${id.shortcut.replace(/\.lnk$/, "")}`,
+    `/DAppUserModelID=${PROD_APP_USER_MODEL_ID}`,
     `/DAppCopyright=${COPYRIGHT}`,
     `/O${outDir}`,
     iss,
