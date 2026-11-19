@@ -4,8 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- Scripts and styles from this site only, so HTML injected from release notes can't run anything.
-     Images also from GitHub's hosts, for pictures in release notes. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https://github.com https://*.githubusercontent.com; connect-src https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+     Images also from GitHub's hosts, for pictures in release notes. Connections to this site too, so
+     Lighthouse's in-page robots.txt check isn't blocked. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https://github.com https://*.githubusercontent.com; connect-src 'self' https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Grindlog: free Rocket League stats tracker for your PC</title>
 <meta name="description" content="Track every Rocket League match with the game's official Stats API. Session recaps, goal maps, trends and stats with your friends, saved on your own Windows PC. Free and open source.">
 <link rel="canonical" href="https://riddheshmarkandeya.github.io/Grindlog/">
