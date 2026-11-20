@@ -4,7 +4,7 @@
 // --update-key bakes in another public key, for a local rehearsal signed with a test key.
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, win32 } from "node:path";
+import { basename, join, win32 } from "node:path";
 import { version as packageVersion } from "../package.json";
 import { identity, type Identity, PROD_APP_USER_MODEL_ID } from "../src/server/paths";
 import { publicKeyLine } from "../src/server/update/minisign";
@@ -12,6 +12,7 @@ import { appName } from "../src/shared/channel";
 import { installerName, parseReleaseVersion, type ReleaseVersion } from "../src/shared/release";
 import { taskXml } from "./autostart";
 import { compileArgs, COPYRIGHT } from "./build-exe";
+import { exeIconIssue, fixExeIcon } from "./exe-icon";
 import { freePort } from "../src/server/testing";
 import { buildTray } from "./build-tray";
 import { ensureRcedit, rceditArgs } from "./rcedit";
@@ -229,6 +230,9 @@ async function main(): Promise<void> {
   const exe = join(APP, id.exe);
   run([process.execPath, ...compileArgs({ entry: ENTRY, outfile: exe, description: appName("prod"), icon: EXE_ICON, version: version.full, defines: { GRINDLOG_CHANNEL: "prod", GRINDLOG_VERSION: version.full, GRINDLOG_UPDATE_KEY: updateKey } })]);
 
+  step("Icon");
+  console.log(await fixExeIcon(exe, EXE_ICON));
+
   step("Tray");
   // Unlike the dev install, a release without its tray is a broken release, so its failure isn't caught.
   buildTray({ out: join(APP, id.trayExe), channel: "prod", version: version.numeric });
@@ -248,6 +252,10 @@ async function main(): Promise<void> {
     if (copyright !== COPYRIGHT) throw new StepFailed(`LegalCopyright of ${file} is "${copyright}", expected "${COPYRIGHT}".`);
     console.log(`LegalCopyright of ${file}: ${copyright}.`);
   }
+  // rcedit rewrites every resource, so the icon fix is checked again after it.
+  const iconIssue = await exeIconIssue(exe, EXE_ICON);
+  if (iconIssue !== null) throw new StepFailed(`The exe's icon after rcedit: ${iconIssue}.`);
+  console.log(`Icon: the first icon group is ${basename(EXE_ICON)}'s frames.`);
 
   step("Task definition");
   writeFileSync(join(APP, "task.xml"), taskTemplate());

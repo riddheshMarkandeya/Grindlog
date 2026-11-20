@@ -114,8 +114,14 @@ describe.skipIf(csc === null)("the tray exe", () => {
     expect(String(out.lines[0]?.windowsBuild)).toMatch(/^\d+(\.\d+)?$/);
     expect(typeof out.lines[0]?.dotnetRelease).toBe("number");
     // Port 1 refuses (a poll_failed, if it fails inside the second), but no red inside the 15 s startup grace.
-    expect(out.lines.map((l) => l.event).filter((e) => e !== "poll_failed")).toEqual(["started", "view", "stdin_closed"]);
-    expect(out.lines[1]).toMatchObject({ icon: "ready", status: "Starting…" });
+    expect(out.lines.map((l) => l.event).filter((e) => e !== "poll_failed")).toEqual(["started", "icons_loaded", "view", "stdin_closed"]);
+    // The small icon size at the primary monitor's scale: 16 px at 96 dpi (100 %), 20 at 120, 24 at 144.
+    const loaded = out.lines[1];
+    expect(loaded).toMatchObject({ reason: "start", source: "monitor" });
+    const dpi = Number(loaded?.dpi);
+    expect(dpi).toBeGreaterThanOrEqual(96);
+    expect(loaded?.px).toBe(Math.round((16 * dpi) / 96));
+    expect(out.lines[2]).toMatchObject({ icon: "ready", status: "Starting…" });
   }, 15_000);
 
   test("takes an https release URL prefix, and exits 2 (bad args) for any other", async () => {

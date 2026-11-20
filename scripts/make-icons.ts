@@ -21,8 +21,8 @@ const PROD_LINE = "#d95926";
 const TILE = "#161618";
 const TRAY_CHANNELS = { prod: PROD_LINE, dev: "#14b8a6" } as const;
 const TRAY_DOTS = { ready: null, active: "#3fb950", attention: "#f0a020", stopped: "#e5484d" } as const;
-/** The 16 and 32 px frames at 100/125/150 %; up to 24 is drawn from the 16 px master. */
-const TRAY_SIZES = [16, 20, 24, 32, 40, 48];
+/** The small icon size (16 px at 100 %) at every display scale from 100 to 300 %; up to 24 is drawn from the 16 px master. */
+const TRAY_SIZES = [16, 20, 24, 28, 32, 36, 40, 48];
 const SMALL_MAX = 24;
 // On the 16 grid: a dot over the bottom-right corner, ringed in the tile colour so it parts from the bars.
 const DOT = { c: 12, r: 3.5, ring: 1 };
@@ -49,8 +49,8 @@ export function traySvg(svg: string, grid: 16 | 64, { line, dot }: { line: strin
 /** A master SVG in the dev channel's colour with no state dot: the dev favicon and header logo. */
 export const devSvg = (svg: string): string => traySvg(svg, 16, { line: TRAY_CHANNELS.dev, dot: null });
 
-const ICO_HEADER_BYTES = 6;
-const ICO_ENTRY_BYTES = 16;
+export const ICO_HEADER_BYTES = 6;
+export const ICO_ENTRY_BYTES = 16;
 
 /** An ICO whose images are PNGs: a header, one directory entry per image, then the images. */
 export function packIco(pngs: { size: number; data: Uint8Array }[]): Uint8Array {

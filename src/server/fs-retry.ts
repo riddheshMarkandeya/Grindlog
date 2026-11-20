@@ -3,7 +3,7 @@ import type { Logger } from "./log";
 
 // Antivirus and indexers briefly open a freshly written file; a rename then fails with one of these
 // until they let go.
-const LOCKED = new Set(["EPERM", "EBUSY", "EACCES"]);
+export const LOCKED = new Set(["EPERM", "EBUSY", "EACCES"]);
 const RETRY_MS = 100;
 
 export interface RenameRetryOptions {

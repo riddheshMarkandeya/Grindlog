@@ -12,6 +12,7 @@ using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Web.Script.Serialization;
@@ -79,6 +80,55 @@ namespace Grindlog.Tray
                 else sb.Append(c);
             }
             sb.Append('"');
+        }
+    }
+
+    /// <summary>The small icon size to load; Dpi is null when the monitor couldn't be read.</summary>
+    struct IconSize
+    {
+        public int Px;
+        public int? Dpi;
+        public bool FromMonitor;
+    }
+
+    /// <summary>
+    /// The small icon size at the primary monitor's current scale. SystemInformation.SmallIconSize
+    /// is the system DPI, fixed when the process starts, and the tray starts at sign-in, so it would
+    /// keep the size of the scale back then and leave Explorer to stretch it.
+    /// </summary>
+    static class SmallIcon
+    {
+        [StructLayout(LayoutKind.Sequential)]
+        struct Point
+        {
+            public int X;
+            public int Y;
+        }
+
+        const uint MonitorDefaultToPrimary = 1;
+        const int EffectiveDpi = 0;
+        const int SmIconWidth = 49;
+
+        [DllImport("user32.dll")]
+        static extern IntPtr MonitorFromPoint(Point pt, uint flags);
+
+        [DllImport("shcore.dll")]
+        static extern int GetDpiForMonitor(IntPtr monitor, int dpiType, out uint dpiX, out uint dpiY);
+
+        [DllImport("user32.dll")]
+        static extern int GetSystemMetricsForDpi(int index, uint dpi);
+
+        public static IconSize Current()
+        {
+            // (0, 0) is always on the primary monitor, whose taskbar holds the notification area.
+            IntPtr monitor = MonitorFromPoint(new Point(), MonitorDefaultToPrimary);
+            uint dpiX, dpiY;
+            if (GetDpiForMonitor(monitor, EffectiveDpi, out dpiX, out dpiY) == 0)
+            {
+                int px = GetSystemMetricsForDpi(SmIconWidth, dpiX);
+                if (px > 0) return new IconSize { Px = px, Dpi = (int)dpiX, FromMonitor = true };
+            }
+            return new IconSize { Px = SystemInformation.SmallIconSize.Width, Dpi = null, FromMonitor = false };
         }
     }
 
@@ -232,7 +282,11 @@ namespace Grindlog.Tray
         readonly Options options;
         readonly NotifyIcon icon;
         readonly ContextMenuStrip menu;
-        readonly Dictionary<string, System.Drawing.Icon> icons = new Dictionary<string, System.Drawing.Icon>();
+        // UI thread only: replaced whole when the display scale changes.
+        Dictionary<string, System.Drawing.Icon> icons = new Dictionary<string, System.Drawing.Icon>();
+        int iconPx;
+        // Whether the last monitor DPI reading failed, so the failure and the recovery are logged once each.
+        bool dpiUnavailable;
         // A handle on the UI thread, so the stdin watcher and the poller can marshal onto it.
         readonly Control invoker;
         readonly Stopwatch sinceStart = Stopwatch.StartNew();
@@ -266,7 +320,7 @@ namespace Grindlog.Tray
             invoker.CreateControl();
             IntPtr unused = invoker.Handle;
 
-            foreach (string state in new[] { "ready", "active", "attention", "stopped" }) icons[state] = LoadIcon(state);
+            LoadIcons(SmallIcon.Current(), "start");
 
             menu = new ContextMenuStrip();
             menu.Items.Add(new ToolStripSeparator());
@@ -342,13 +396,24 @@ namespace Grindlog.Tray
             return true;
         }
 
-        static System.Drawing.Icon LoadIcon(string state)
+        /// <summary>Loads every state's icon at the given size, re-sets the one shown, and frees the old ones.</summary>
+        void LoadIcons(IconSize size, string reason)
         {
-            using (Stream s = Assembly.GetExecutingAssembly().GetManifestResourceStream("Grindlog.tray." + state + ".ico"))
+            var loaded = new Dictionary<string, System.Drawing.Icon>();
+            foreach (string state in new[] { "ready", "active", "attention", "stopped" })
             {
-                // SmallIconSize follows the display scale because the manifest marks the exe DPI-aware.
-                return new System.Drawing.Icon(s, SystemInformation.SmallIconSize);
+                using (Stream s = Assembly.GetExecutingAssembly().GetManifestResourceStream("Grindlog.tray." + state + ".ico"))
+                {
+                    loaded[state] = new System.Drawing.Icon(s, size.Px, size.Px);
+                }
             }
+            Dictionary<string, System.Drawing.Icon> old = icons;
+            icons = loaded;
+            iconPx = size.Px;
+            // Null at start, before the NotifyIcon exists and anything is shown.
+            if (icon != null && shownIcon != null) icon.Icon = icons[shownIcon];
+            foreach (System.Drawing.Icon i in old.Values) i.Dispose();
+            Log.Write("icons_loaded", "px", size.Px, "dpi", size.Dpi, "source", size.FromMonitor ? "monitor" : "fallback", "reason", reason);
         }
 
         void PollLoop()
@@ -447,6 +512,18 @@ namespace Grindlog.Tray
 
         void Apply(PollResult r)
         {
+            // Ahead of the early returns, so a scale change reaches the icon while the tracker is down too.
+            // Only a real reading reloads: a failed one keeps the icons loaded, rather than flipping them
+            // to the fallback (the scale at sign-in) and back on every poll.
+            IconSize size = SmallIcon.Current();
+            bool dpiFailed = !size.FromMonitor;
+            if (dpiFailed != dpiUnavailable)
+            {
+                dpiUnavailable = dpiFailed;
+                Log.Write(dpiFailed ? "dpi_unavailable" : "dpi_available");
+            }
+            if (!dpiFailed && size.Px != iconPx) LoadIcons(size, "scale_changed");
+
             if (r.Kind == PollKind.Failed)
             {
                 failStreak++;

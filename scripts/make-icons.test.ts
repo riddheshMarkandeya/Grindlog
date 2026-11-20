@@ -56,8 +56,8 @@ describe("traySet", () => {
     expect(by("dev-stopped.ico")).toMatchObject({ dot: "#e5484d" });
   });
 
-  test("each icon holds the tray sizes at 100/125/150 % for the 16 and 32 px frames", () => {
-    for (const icon of traySet()) expect(icon.sizes).toEqual([16, 20, 24, 32, 40, 48]);
+  test("each icon holds the tray's small icon size at every display scale from 100 to 300 %", () => {
+    for (const icon of traySet()) expect(icon.sizes).toEqual([16, 20, 24, 28, 32, 36, 40, 48]);
   });
 });
 

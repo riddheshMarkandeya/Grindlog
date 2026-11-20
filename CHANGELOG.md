@@ -6,6 +6,8 @@ All notable changes to Grindlog are listed here. The format is based on
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-11-19
+
 ### Added
 - New seasons arrive on their own: once a day Grindlog fetches the season list from its GitHub repository. Seasons
   you edit or delete stay as you left them. Switch it off in Settings → Seasons.
@@ -14,6 +16,8 @@ All notable changes to Grindlog are listed here. The format is based on
 - Notifications sent while the tray isn't running, and the updater's own, now show as Grindlog with its icon, not
   as "Windows PowerShell".
 - Season 23 starts on June 10, not June 9 (unless you changed it yourself).
+- Grindlog's icon is sharp in Start, search and Explorer; it was a 16 px image scaled up. The tray icon stays sharp
+  when you change the display scale.
 
 ## [0.1.5] - 2026-11-18
 
@@ -75,7 +79,8 @@ The first release.
 - Update checks against GitHub releases, with signed downloads, installs only while the game is closed, and an
   automatic rollback if a new version doesn't start.
 
-[Unreleased]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.6...HEAD
+[0.1.6]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.1...v0.1.3

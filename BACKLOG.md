@@ -89,8 +89,21 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   accounts or one. Waits on whether anyone plays on alts.
 - [ ] **[misc, Low, TBD]** (public release map step 9) Code signing, once there are public downloads (SignPath wants
   a track record; Azure's option is US/Canada only).
+- [ ] **[test-coverage, Med, Standard]** `tray.test.ts` "goes red within ~5 s of the tracker stopping" is flaky under
+  the full suite: on 2026-11-19, 3 of 10 local `bun run test` runs took 7.6–8.3 s against its 6.5 s bound. It was
+  already there before the 0.1.6 icon change (1 of 5 at `9a0fccf`), though that change's `bun build --compile` test
+  (`scripts/exe-icon.test.ts`) adds load and may make it more frequent. Alone it passes every time. The nominal path is
+  already up to ~5.5 s (the next poll up to 2 s away, then two failed polls of up to 1.5 s each with a 0.5 s retry
+  between), so a loaded machine overruns. CI runs `bun run check` on a release tag, so a failure there is re-run
+  first. Leads: time it from the first `poll_failed` instead of the server stop, which takes the poll phase out; or
+  keep the compile test from running beside the tray tests.
 
 ## Watch list
+- [ ] **[refactor, Low, Trivial]** Trigger: after a Bun upgrade, `build-release`'s Icon step prints "already right"
+  (Bun fixed oven-sh/bun issue 32428, "only the first icon in the .ico is embedded"), or it fails with a resource
+  layout `scripts/exe-icon.ts` doesn't know. On "already right", delete the repoint (`fixExeIcon` and its two
+  callers) and keep the read-back after rcedit as the check. On a new layout, fit the repoint to it. Record:
+  `docs/plans/2026-11-19-sharp-icons.md`.
 - [ ] **[bug (latent), Low, Standard]** Trigger: a friend shares a PC with another Windows user who also runs
   Grindlog. Only one user per PC works: the port (49100) is machine-wide, and so is the logon task name
   (`\Grindlog`). Seen on 2026-11-13 installing on Test-User while the main account ran prod: the tracker and tray

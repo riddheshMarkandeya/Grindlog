@@ -67,7 +67,7 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   `--rise`; the reduced-motion block zeroes the spatial ones, and a test bans raw durations elsewhere),
   `global.css` the shared `.button`; `pages/trends/chart-motion.ts` the charts' draw-once and tween;
   `pages/` placeholders until WP6+),
-  `src/tray/` (`Tray.cs` the C# 5 tray exe: polls `/api/tray` every 2 s, icon states, menu, balloons; `tray.manifest`
+  `src/tray/` (`Tray.cs` the C# 5 tray exe: polls `/api/tray` every 2 s, icon states (reloaded when the primary monitor's scale changes), menu, balloons; `tray.manifest`
   DPI awareness; `icons/<channel>-<state>.ico` from `bun run icons`; built by `scripts/build-tray.ts`; live
   `tray.test.ts`),
   `src/shared/` (`channel.ts` the baked dev/prod channel and `APP_NAME`, `version.ts` the baked
@@ -82,8 +82,12 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   (`bun run icons`, output committed; on dev builds `vite.config.ts` adds the dev favicon and aliases
   `@channel/logo.svg` to the teal logo, and the dev exes embed the teal icon); `build-tray.ts` compiles the tray with `csc.exe`;
   `build-exe.ts` the shared `bun build --compile` args and `COPYRIGHT` (exes, tray, installer; LICENSE repeats it);
+  `exe-icon.ts` points a compiled exe's first icon group at the .ico's full set (Bun leaves a 16 px one first;
+  the release build and install-autostart run it, and a later Bun that gets it right prints "already right");
+  `steps.ts` the release scripts' step runner, `StepFailed` and `retryWhileLocked` (antivirus holds on a fresh exe);
   `build-release.ts` (`bun run build-release [--tag vX.Y.Z]`:
-  prod web, exe and tray staged in `release/app`, `rcedit.ts` sets `InternalName`, a smoke run of the exe, then
+  prod web, exe (its icon fixed) and tray staged in `release/app`, `rcedit.ts` sets `InternalName`, a smoke run of the
+  exe with the icon read back, then
   `installer/grindlog.iss` through ISCC into `release/`); `sign-release.ts` (`bun run sign-release vX.Y.Z`: minisign
   a CI draft and upload the `.minisig`); `.github/workflows/release.yml` builds a draft on a `v*` tag; how to
   release: `docs/releasing.md`;
@@ -169,6 +173,10 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   Task Scheduler doesn't restart a crashed task.
 
 ## Plans
+- `docs/plans/2026-11-19-sharp-icons.md`: public release step 5 (0.1.6), sharp exe and tray icons: Bun's stray icon
+  group repointed in place, the tray reloads its icons when the scale changes; measurements, results and review log.
+- `docs/reviews/2026-11-19-sharp-icons.md`: step 5 sharp icons review summary (3 rounds, nothing deferred); manual
+  checks.
 - `docs/plans/2026-11-18-public-release-map.md`: the public release map (order agreed 2026-11-18); take the first open step.
 - `docs/plans/2026-11-18-season-file.md`: public release step 1, seasons from `seasons.json` in the repo: migration,
   sync rules, daily fetch, the Settings switch; review log.

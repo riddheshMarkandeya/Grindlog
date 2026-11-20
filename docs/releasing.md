@@ -26,7 +26,8 @@ because the signing key never leaves it.
    marked prerelease automatically). In `CHANGELOG.md`, move the Unreleased entries under a new
    `## [X.Y.Z] - YYYY-MM-DD` heading and update the compare links at the bottom.
 2. Optional local check: `bun run build-release`. It builds `release/Grindlog-Setup-<version>.exe` and
-   smoke-runs the exe (version, prod channel, dashboard served, `InternalName`, and `LegalCopyright` on both exes).
+   smoke-runs the exe (version, prod channel, dashboard served, `InternalName`, `LegalCopyright` on both exes, and
+   the exe's icon).
 3. Commit, then `git tag vX.Y.Z` (it must be `v` + the package.json version, or CI fails) and push the
    commit and the tag.
 4. Wait for the `release` workflow (Actions tab). It runs `check`, `e2e` and `build-release --tag`, then

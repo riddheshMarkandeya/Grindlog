@@ -1,5 +1,6 @@
-// The step runner the release scripts share: each step prints its name, and any failure is a
+// The step runner the release and install scripts share: each step prints its name, and any failure is a
 // StepFailed that names what failed and quotes the tool's output, which the script prints and exits 1 on.
+import { LOCKED } from "../src/server/fs-retry";
 
 export class StepFailed extends Error {}
 
@@ -29,6 +30,28 @@ export function run(cmd: string[], opts: { cwd?: string; env?: Env } = {}): stri
 export function runInteractive(cmd: string[]): void {
   const res = spawn(cmd, () => Bun.spawnSync(cmd, { stdin: "inherit", stdout: "inherit", stderr: "inherit" }));
   if (res.exitCode !== 0) throw new StepFailed(`${cmd.slice(0, 2).join(" ")} failed (exit ${String(res.exitCode)}).`);
+}
+
+/**
+ * Runs `fn`, retrying for up to 10 s while antivirus or an indexer still holds a freshly written exe;
+ * then rethrows the last error. Any other error is rethrown at once. `what` names the action in the
+ * line printed after a retry.
+ */
+export async function retryWhileLocked<T>(what: string, fn: () => T): Promise<T> {
+  const deadline = Date.now() + 10_000;
+  let lastCode = "";
+  for (let tries = 1; ; tries++) {
+    try {
+      const result = fn();
+      // Only after a retry, so the output shows how often a held exe really happens.
+      if (tries > 1) console.log(`${what}: it was held (${lastCode}); done after ${String(tries)} tries.`);
+      return result;
+    } catch (err) {
+      lastCode = (err as NodeJS.ErrnoException).code ?? "";
+      if (!LOCKED.has(lastCode) || Date.now() > deadline) throw err;
+      await Bun.sleep(250);
+    }
+  }
 }
 
 /** One field of an exe's version resource, trimmed: Windows pads the strings. */

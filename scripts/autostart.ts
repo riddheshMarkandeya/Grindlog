@@ -16,6 +16,8 @@ import { runPowerShell, type CommandResult } from "../src/server/powershell";
 import { parseTaskState } from "../src/server/logon-task";
 import { compileArgs } from "./build-exe";
 import { buildTray, exeIcon, TrayBuildFailed } from "./build-tray";
+import { fixExeIcon } from "./exe-icon";
+import { retryWhileLocked, StepFailed } from "./steps";
 import { stopTracker } from "./stop";
 
 const ID = identity();
@@ -45,8 +47,6 @@ export function taskXml({ userId, exe, args, workDir }: { userId: string; exe: s
 </Task>
 `;
 }
-
-class StepFailed extends Error {}
 
 function run(cmd: string[], cwd?: string): string {
   const res = Bun.spawnSync(cmd, { cwd, stdout: "pipe", stderr: "pipe" });
@@ -108,17 +108,12 @@ async function stopInstalled(bin: string): Promise<void> {
 
 /** Moves `from` over `to`, retrying while antivirus still holds the fresh exe. */
 async function replace(from: string, to: string): Promise<void> {
-  const deadline = Date.now() + 10_000;
-  for (;;) {
-    try {
+  try {
+    await retryWhileLocked(`Replacing ${to}`, () => {
       renameSync(from, to);
-      return;
-    } catch (err) {
-      const code = (err as NodeJS.ErrnoException).code;
-      const locked = code === "EPERM" || code === "EBUSY" || code === "EACCES";
-      if (!locked || Date.now() > deadline) throw new StepFailed(`Could not replace ${to}: ${(err as Error).message}. Run bun run install-autostart again.`);
-      await Bun.sleep(250);
-    }
+    });
+  } catch (err) {
+    throw new StepFailed(`Could not replace ${to}: ${(err as Error).message}. Run bun run install-autostart again.`);
   }
 }
 
@@ -280,6 +275,13 @@ async function install(): Promise<void> {
   try {
     console.log(`Building ${exe}`);
     run([process.execPath, ...compileArgs({ entry: ENTRY, outfile: fresh, description: APP_NAME, icon: EXE_ICON, version: appVersion })]);
+    try {
+      console.log(`Icon: ${await fixExeIcon(fresh, EXE_ICON)}`);
+    } catch (err) {
+      if (!(err instanceof StepFailed)) throw err;
+      // Like a failed tray build: recording matters more, and the fix only ever touches one entry of the icon directory.
+      console.warn(`Warning: the exe's icon was not fixed, so Start and search show it blurry. ${err.message}`);
+    }
     console.log(`Building ${trayExe}`);
     try {
       buildTray({ out: trayFresh, channel: CHANNEL, version: appVersion });
