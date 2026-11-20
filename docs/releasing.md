@@ -14,8 +14,9 @@ because the signing key never leaves it.
    key means every friend reinstalls by hand once, since the updater only trusts this public key.
 5. Commit `minisign.pub` at the repo root. `build-release` bakes its key line into the exe and refuses to build
    without it (`--update-key <path>` points a rehearsal build at another key), and its smoke run checks
-   `/api/update` says `enabled: true`. Update checks are the app's only outbound requests: the supervisor asks
-   GitHub's `releases/latest` 3 min after start and every ~6 h, and the Settings page's Updates section says so.
+   `/api/update` says `enabled: true`. The app goes online only to GitHub: the supervisor asks `releases/latest`
+   3 min after start and every ~6 h, and the tracker fetches the repo's `seasons.json` once a day (switchable
+   in Settings → Seasons). The Settings page's Updates section says both.
 6. For local builds, Inno Setup 6: `winget install JRSoftware.InnoSetup`. `build-release` finds it under
    Program Files or `%LOCALAPPDATA%\Programs`, or set `ISCC` to `ISCC.exe`'s path.
 
