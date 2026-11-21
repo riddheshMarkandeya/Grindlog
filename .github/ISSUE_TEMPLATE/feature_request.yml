@@ -1,0 +1,11 @@
+name: Idea or request
+description: Something you'd like Grindlog to show or do.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+      description: What you want to see, and what you'd use it for.
+    validations:
+      required: true

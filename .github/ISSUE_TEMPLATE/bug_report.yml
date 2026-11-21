@@ -1,0 +1,42 @@
+name: Bug report
+description: Something in Grindlog doesn't work or looks wrong.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what you saw instead. A screenshot helps.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Grindlog version
+      description: Settings → Updates shows it, for example "Grindlog 0.1.6 is up to date".
+      placeholder: "0.1.6"
+    validations:
+      required: true
+  - type: dropdown
+    id: store
+    attributes:
+      label: Where do you play Rocket League?
+      options:
+        - Steam
+        - Epic Games
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: "Windows 11 24H2"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Right-click the tray icon → **Open logs folder**, then drag `tracker.log` and `supervisor.log` in here
+        (for an update problem, add `updater.log` and `launcher.log`).
+        Logs can contain your Windows user name (in file paths) and the player names from your matches.
+        Look them over before attaching, or leave this empty and say so; we'll find another way.
