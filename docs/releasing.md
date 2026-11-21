@@ -34,7 +34,8 @@ because the signing key never leaves it.
    leaves a draft release holding the installer.
 5. `bun run sign-release vX.Y.Z`. It checks that the draft holds the installer and that its version
    matches, signs it (minisign asks for the password), verifies the signature against `minisign.pub`,
-   prints the trusted comment and uploads the `.minisig`.
+   prints the trusted comment and uploads the `.minisig`. Run it in your own terminal: minisign reads the
+   password from a console, so it fails (`get_password()`) under Claude Code's `!`.
 6. On GitHub, paste that version's `CHANGELOG.md` section as the release notes, add the warning below under it,
    and publish the draft. The warning stays in every release until the installer is code-signed and installs show
    neither prompt.
