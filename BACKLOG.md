@@ -5,7 +5,7 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
 
 - [ ] **[misc, Med, Trivial]** v1 roadmap (`docs/plans/2026-10-16-v1-roadmap.md`): every work package
   is deployed (WP9, the last, on 2026-11-02). Open items from the work packages:
-  - **[design, Low, Trivial]** (public release map step 8) Add back the themes midnight, dusk, steel and daylight (values in the
+  - **[design, Low, Trivial]** (from public release map step 8) Add back the themes midnight, dusk, steel and daylight (values in the
     `prototype/settings-layout` tokens; each needs a `tokens.css` block, and the token test covers
     it). Daylight has the real cost: every chart gets checked in light mode, and so does the WP6c
     share card's corner glow (built for dark themes). Record:
@@ -47,26 +47,27 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   GitHub fetch. Extract a shared `startPeriodicJob` and a streamed `fetchText({maxBytes, signal})`, which would
   also give the season fetch a real byte cap where today it checks Content-Length and then the text length.
   Record: Review log in `docs/plans/2026-11-18-season-file.md`.
-- [ ] **[design, Low, Standard]** (public release map step 8) Controls drift: about six button styles, two segmented controls
+- [ ] **[design, Low, Standard]** (from public release map step 8) Controls drift: about six button styles, two segmented controls
   (Trends `.xmode` buttons, Settings `.seg` radios, plus Friends' own `.seg`), two `.link` rules,
   and Trends `.picks button` against the match page's `.chip`. One shared set, as the display-drift
   work did for panels and tables. On the way, `PeriodControls.tsx:45` uses `styles.controls`,
-  which no CSS defines. Record: `docs/plans/2026-11-03-display-drift.md`.
-- [ ] **[design, Low, Standard]** (public release map step 8) Trends data line: the line, dots and sparklines use `--accent`,
+  which no CSS defines. Recurring (user, 2026-11-22): after a UI change, re-check the current controls for new drift
+  rather than treating this as done once. Record: `docs/plans/2026-11-03-display-drift.md`.
+- [ ] **[design, Low, Standard]** (from public release map step 8) Trends data line: the line, dots and sparklines use `--accent`,
   which the colour rule in `src/web/styles/tokens.css` now keeps for selection and focus; on oled
   the accent is white, the same as the text. Choose a data colour (a new token, checked on every
   theme). Record: `docs/plans/2026-11-03-display-drift.md`.
-- [ ] **[feature, Low, Standard]** (public release map step 8) Settings › Appearance: choose the colour pair for sides (blue /
+- [ ] **[feature, Low, Standard]** (from public release map step 8) Settings › Appearance: choose the colour pair for sides (blue /
   orange) and for results (green / red), each on its own and apart from the theme (user,
   2026-10-28). Also helps red-green colour blindness. The pairs are already tokens
   (`--blue`/`--orange`, `--win`/`--loss` in `src/web/styles/tokens.css`), so it's a setting that
   overrides them on `<html>`, plus a check that each pair stays readable on every theme. Unblocked
   (2026-11-04): each token now has one meaning, written at the top of `tokens.css`, and
   `--up`/`--down` are mixed from `--win`/`--loss`, so overriding the result pair moves both.
-- [ ] **[idea, Low, TBD]** (public release map step 8) Playful UI touches: the flat peeling corner (variant L on the
+- [ ] **[idea, Low, TBD]** (from public release map step 8) Playful UI touches: the flat peeling corner (variant L on the
   `prototype/recap-stood-out` branch, never merge) was liked as a stood-out mark (user, 2026-11-04).
   Look at where flat-but-fun details fit the dashboard. Trigger: a UI polish pass.
-- [ ] **[idea, Low, TBD]** (public release map step 8) A dashboard "What changed" card after an update, instead of the tray opening the GitHub
+- [ ] **[idea, Low, TBD]** (from public release map step 8) A dashboard "What changed" card after an update, instead of the tray opening the GitHub
   release page (user, 2026-11-09). Needs markdown rendering for the release body, an update-state field and a way to
   dismiss it. Trigger: friend feedback asks for it. Context: "Release workflow" in
   `docs/plans/2026-11-06-distribution-map.md`.
@@ -83,10 +84,10 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
     host `shutdown_rejected`): a page looping header-less requests writes one each and can rotate match diagnostics
     out of the logs. Deferred from 3b's review (`docs/reviews/2026-11-10-wp3b-tray-view.md`).
 
-- [ ] **[misc, Med, Standard]** (public release map step 5) Reddit post and GitHub issue templates: subreddit
-  self-promotion rules first, then the pitch, GIF/screens and FAQ.
-- [ ] **[misc, Low, TBD]** (public release map step 9) Code signing, once there are public downloads (SignPath wants
-  a track record; Azure's option is US/Canada only).
+- [ ] **[misc, Low, TBD]** (from public release map step 9, deferred 2026-11-22) Code signing, once there are public
+  downloads (SignPath wants a track record; Azure's option is US/Canada only). The Reddit post (2026-11-20) drew 0
+  comments and v0.1.6 had 4 installer downloads on 2026-11-22. Trigger: around 2026-12-22, check the release
+  download counts (`gh api repos/riddheshMarkandeya/Grindlog/releases`); start only if they've picked up.
 - [ ] **[test-coverage, Low, Standard]** `season-file.spec.ts` "a season in the file shows up in Settings" timed out
   (S25 not listed within 15 s) once in a full `bun run e2e` on 2026-11-22; it passed 4 of 4 runs alone. Watch for a
   repeat before looking at the first sync's timing under load.

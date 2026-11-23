@@ -8,6 +8,7 @@ installs are checked, there is a landing page to link to, and the post answers t
 - Follows the friends release map (`docs/plans/2026-11-05-friends-release-map.md`). The order was agreed with the
   user on 2026-11-18.
 - Take the first step still open. When one finishes, update its status here.
+- 2026-11-22: no step is open; 8 and 9 moved to BACKLOG. New work comes from BACKLOG until a new map is agreed.
 - FAQ line for SmartScreen: "Windows warns on the first install only, because the app isn't code-signed."
 - Account profiles wait on whether anyone actually plays on alts; that's why they come after the release.
 
@@ -21,5 +22,5 @@ installs are checked, there is a landing page to link to, and the post answers t
 | 5 | Public release | Done: v0.1.6 published 2026-11-21 (9b39b59), signed | Ships steps 1–2 (seasons from the repo, the Grindlog toast name), and the sharp exe and tray icons (added 2026-11-19; plan: `docs/plans/2026-11-19-sharp-icons.md`). Moved ahead of the Reddit post on 2026-11-19 so the post links a release that has them. |
 | 6 | Reddit post | Done 2026-11-20: posted on r/RocketLeague; GitHub issue templates added (3a35ae6) | `/research` the subreddit's self-promotion rules, then draft: pitch, GIF/screens, FAQ (official Stats API with no injection or memory reading, data stays local, Windows only, SmartScreen, where to report bugs) plus GitHub issue templates. |
 | 7 | Account profiles | Done 2026-11-22; ships with the next release | Header dropdown: all accounts, or one confirmed id. Plan: `docs/plans/2026-11-22-account-profiles.md`. |
-| 8 | Controls drift and the rest of the polish | Open | Folded in from the friends map's step 6: controls drift, themes, colour pairs, the "What changed" card, a guided tour if needed (BACKLOG items). |
-| 9 | Code signing | Open | Once there are public downloads: SignPath wants a track record, and Azure's option is US/Canada only. |
+| 8 | Controls drift and the rest of the polish | Deferred 2026-11-22 to BACKLOG (user): controls drift is a recurring check of the current UI, not a one-off step | The "(from public release map step 8)" BACKLOG items: controls drift, the Trends data colour, themes, colour pairs, playful touches, the "What changed" card. |
+| 9 | Code signing | Deferred 2026-11-22 to BACKLOG (user): the Reddit post drew no traction (0 comments; v0.1.6 had 4 installer downloads on 2026-11-22), so there is no track record for SignPath yet | Around 2026-12-22, check the release download counts; start only if public downloads have picked up. Azure's option is US/Canada only. |
