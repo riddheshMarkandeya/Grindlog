@@ -23,10 +23,11 @@ interface PickRow {
   picked_at: number;
 }
 
-/** The pick's key: the playlist filter's value alone for anyone, so picks stored before friends still match. */
-function keyOf(filter: PlaylistFilter, teammate: TeammateFilter): string {
+/** A pick per filter, teammate and account; all accounts adds nothing, so picks stored before accounts still match. */
+function keyOf(filter: PlaylistFilter, teammate: TeammateFilter, account: string | null): string {
   const t = teammateValue(teammate);
-  return t === null ? filterValue(filter) : `${filterValue(filter)}|${t === "solo" ? "solo" : `with:${t}`}`;
+  const base = t === null ? filterValue(filter) : `${filterValue(filter)}|${t === "solo" ? "solo" : `with:${t}`}`;
+  return account === null ? base : `${base}|acct:${account}`;
 }
 
 const textOf = (lines: readonly { id: string; text: string }[], id: string) => lines.find((l) => l.id === id)?.text ?? "";
@@ -46,7 +47,7 @@ export function createRemarks({ tracker, pages, logger, now = Date.now, rng = Ma
   function remarks(key: string, filter: PlaylistFilter, teammate: TeammateFilter, reroll: boolean): Remarks | null {
     const detail = pages.sessionDetail(key, filter, teammate);
     if (!detail?.matches.length) return null;
-    const f = keyOf(filter, teammate);
+    const f = keyOf(filter, teammate, pages.account());
     const mood = moodOf(detail.aggregate, detail.baseline);
     const fired = triggersFor({ ...detail, teammate });
     return tracker.transaction(() => {

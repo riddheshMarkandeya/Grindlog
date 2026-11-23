@@ -29,6 +29,7 @@ import {
   suggestionsResponse,
   trayResponse,
   updateResponse,
+  type IdRow,
   type Status,
   type TrayResponse,
 } from "../../shared/schemas/responses";
@@ -36,13 +37,13 @@ import { settingsPatch, settingsSchema } from "../../shared/schemas/settings";
 import { friendIdParams, friendNicknameParams, idStatusParams, pairParams, seasonIdParams, seasonInput } from "../../shared/schemas/tables";
 import type { Db } from "../db/sqlite";
 import { createFriends, type FriendWrite } from "../friends";
-import { createIds } from "../ids";
+import { createIds, type Ids } from "../ids";
 import type { Logger } from "../log";
 import { LogonTaskError, type LogonTask } from "../logon-task";
 import type { QueryReader } from "../query/read";
 import { createRemarks } from "../remarks/store";
 import { createSeasons, type SeasonWrite } from "../seasons";
-import { createSettings } from "../settings";
+import { createSettings, type SettingsStore } from "../settings";
 import type { FixResult } from "../stats-setup";
 import type { Updates } from "../update/view";
 import { createEventHub, type EventHubOptions } from "./events";
@@ -69,6 +70,9 @@ export interface ApiOptions {
   statsSetup: { fix: (portConsent: boolean) => Promise<FixResult> };
   /** The update view and the user's update choices, which the supervisor acts on. */
   updates: Pick<Updates, "view" | "install" | "requestCheck" | "setAutoApply">;
+  /** The stores the reader's account comes from, so their once-per-run log lines are kept once; fresh ones by default. */
+  settings?: SettingsStore;
+  ids?: Ids;
 }
 
 interface Ctx {
@@ -115,13 +119,18 @@ function friendWritten(write: FriendWrite, answer: () => Response): Response {
   return write.error === "not_found" ? notFound() : Response.json({ error: "conflict" }, { status: 409 });
 }
 
-export function createApi({ tracker, reader, status, staticDir, logger, now = Date.now, events: eventOptions, logonTask, tray, statsSetup, updates }: ApiOptions) {
+export function createApi({ tracker, reader, status, staticDir, logger, now = Date.now, events: eventOptions, logonTask, tray, statsSetup, updates, ...stores }: ApiOptions) {
   const pages = createPages({ reader, logger, now });
   const hub = createEventHub({ status, logger, ...eventOptions });
   const remarks = createRemarks({ tracker, pages, logger, now });
-  const settings = createSettings({ tracker, logger });
-  const ids = createIds({ tracker, logger });
+  const settings = stores.settings ?? createSettings({ tracker, logger });
+  const ids = stores.ids ?? createIds({ tracker, logger });
   const seasons = createSeasons({ tracker, reader, logger });
+  /** Your ids named as in their latest match (players rename), else as my_ids first saw them. */
+  const latestNames = (list: IdRow[]): IdRow[] => {
+    const names = reader.readLastNames(list.map((i) => i.primaryId));
+    return list.map((i) => ({ ...i, name: names.get(i.primaryId) ?? i.name }));
+  };
   const friends = createFriends({ tracker, logger, now });
   const cards = () => ok(friendsResponse, pages.friends());
 
@@ -231,14 +240,14 @@ export function createApi({ tracker, reader, status, staticDir, logger, now = Da
       handler: ({ query, params }) => seasonWritten(seasons.edit(parse(seasonIdParams, params).id, parse(seasonInput, query))),
     },
     { method: "POST", path: "/api/seasons/:id/delete", handler: ({ params }) => seasonWritten(seasons.remove(parse(seasonIdParams, params).id)) },
-    { method: "GET", path: "/api/ids", handler: () => ok(idsResponse, { ids: ids.list() }) },
+    { method: "GET", path: "/api/ids", handler: () => ok(idsResponse, { ids: latestNames(ids.list()) }) },
     {
       method: "POST",
       path: "/api/ids",
       handler: ({ query }) => {
         const p = parse(idStatusParams, query);
         const list = ids.setStatus(p.id, p.status);
-        return orNotFound(idsResponse, list && { ids: list });
+        return orNotFound(idsResponse, list && { ids: latestNames(list) });
       },
     },
     { method: "GET", path: "/api/friends", handler: cards },

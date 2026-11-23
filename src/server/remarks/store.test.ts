@@ -52,8 +52,8 @@ function setup() {
     writer.save(record(guid, at, { statfeed, players }, { endedAt: at + 5 * MIN, winnerTeamNum: won ? 0 : 1 }));
   };
   const logger = memoryLogger();
-  const remarks = (now: number, rng = cycling()) => {
-    const reader = createQueryReader({ tracker: storage.tracker, logger: memoryLogger() });
+  const remarks = (now: number, rng = cycling(), account: () => string | null = () => null) => {
+    const reader = createQueryReader({ tracker: storage.tracker, logger: memoryLogger(), account });
     return createRemarks({ tracker: storage.tracker, pages: createPages({ reader, logger, now: () => now }), logger, now: () => now, rng });
   };
   const logged = (event: string) => logger.lines.filter((l) => l.event === event).map((l) => l.fields);
@@ -93,6 +93,17 @@ describe("remarks store", () => {
     expect(r.get("M0", "everything", "solo")).not.toBeNull();
     expect(r.get("M0", "ranked", { friends: ["Epic|sam|0"] })).toBeNull();
     expect(picked().map((f) => f.filter)).toEqual(["everything|solo"]);
+  });
+
+  test("a picked account keys its own pick, after the filters; all accounts keeps the old key", () => {
+    const { play, remarks, picked } = setup();
+    for (let i = 0; i < 4; i++) play(`M${String(i)}`, slot(i));
+    storage.tracker.run("INSERT INTO remark_picks (session_key, filter, mood_band, mood_line, quip_trigger, quip_line, picked_at) VALUES ('M0', 'everything', 'great', 'great-1', NULL, NULL, ?)", T0 + DAY);
+    const mine = remarks(T0 + DAY, cycling(), () => ME);
+    expect(mine.get("M0", "everything")).not.toBeNull();
+    expect(mine.get("M0", "everything", "solo")).not.toBeNull();
+    expect(remarks(T0 + DAY).get("M0", "everything")?.mood.band).toBe("great"); // the stored pick: no new one is logged
+    expect(picked().map((f) => f.filter)).toEqual([`everything|acct:${ME}`, `everything|solo|acct:${ME}`]);
   });
 
   test("a soloqueue night fires its quip once you've played 4 with no friend on your team", () => {

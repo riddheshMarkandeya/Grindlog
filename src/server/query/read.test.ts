@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { openStorage, type Storage } from "../storage";
 import { ALT, goal, ME, memoryLogger, player, record, THEM } from "../testing";
+import { createIds } from "../ids";
 import { createRecordWriter } from "../records/save";
 import { createQueryReader } from "./read";
 
@@ -18,10 +19,10 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-function setup() {
+function setup(account?: () => string | null) {
   const logger = memoryLogger();
   const writer = createRecordWriter({ tracker: storage.tracker, logger: memoryLogger(), now: () => 1 });
-  const reader = createQueryReader({ tracker: storage.tracker, logger });
+  const reader = createQueryReader({ tracker: storage.tracker, logger, ...(account && { account }) });
   const addId = (id: string, status: "confirmed" | "pending" | "rejected") =>
     storage.tracker.run("INSERT OR REPLACE INTO my_ids (primary_id, name, status, added_at) VALUES (?, ?, ?, 1)", id, id, status);
   const lines = (event: string) => logger.lines.filter((l) => l.cat === "query" && l.event === event);
@@ -422,5 +423,71 @@ describe("friends on your team", () => {
       { id: SAM, nickname: "Sammy", name: "Sammy" },
       { id: THEM, nickname: null, name: "Them" },
     ]);
+  });
+});
+
+describe("a picked account", () => {
+  const SAM = "Epic|sam|0";
+  const BOB = "Epic|bob|0";
+  /** G1 is ME's (SAM with you), G2 ALT's (SAM and BOB with you), G3 spectated, G4 both ids (camera ME). */
+  function seed(account?: () => string | null) {
+    const s = setup(account);
+    s.addId(ME, "confirmed");
+    s.addId(ALT, "confirmed");
+    storage.tracker.run("INSERT INTO friends (primary_id, nickname, added_at) VALUES (?, NULL, 1)", SAM);
+    s.writer.save(record("G1", 1000, { players: [player(ME, 0), player(SAM, 0), player(THEM, 1)] }));
+    s.writer.save(record("G2", 2000, { players: [player(ALT, 0), player(SAM, 0), player(BOB, 0), player(THEM, 1)] }, { mvpKey: ALT }));
+    s.writer.save(record("G3", 3000, { players: [player(SAM, 0), player(THEM, 1)] }));
+    s.writer.save(record("G4", 4000, { players: [player(ME, 0), player(ALT, 1), player(THEM, 1)] }, { cameraPrimaryId: ME }));
+    return s;
+  }
+
+  test("all accounts: every match, the spectated one too, and the query lines say no account", () => {
+    const { reader, lines } = seed();
+    expect(reader.readResults().map((m) => [m.guid, m.played, m.friends])).toEqual([
+      ["G1", true, [SAM]],
+      ["G2", true, [SAM]],
+      ["G3", false, []],
+      ["G4", true, []],
+    ]);
+    expect(reader.account()).toBeNull();
+    expect(lines("read").find((l) => l.fields.fn === "readResults")?.fields.account).toBe(false);
+  });
+
+  test("ALT picked: only ALT's matches, with friends and teammates from those alone, and ALT is you beside ME", () => {
+    const { reader, lines } = seed(() => ALT);
+    expect(reader.readResults().map((m) => [m.guid, m.result, m.friends])).toEqual([
+      ["G2", "win", [SAM]],
+      ["G4", "loss", []], // ALT on team 1, though the camera was ME's
+    ]);
+    expect(reader.readMyMatches().map((m) => [m.guid, m.me?.playerKey])).toEqual([
+      ["G2", ALT],
+      ["G4", ALT],
+    ]);
+    expect(reader.readMyMatches({ from: 3000 }).map((m) => m.guid)).toEqual(["G4"]);
+    expect(reader.readTeammates().map((t) => [t.guid, t.primaryId])).toEqual([
+      ["G2", BOB],
+      ["G2", SAM],
+      ["G4", THEM],
+    ]);
+    expect(reader.readLobbies([SAM]).map((m) => [m.guid, m.result, m.friends.length])).toEqual([
+      ["G2", "win", 1],
+      ["G4", "loss", 0],
+    ]);
+    expect(reader.account()).toBe(ALT);
+    expect(lines("read").find((l) => l.fields.fn === "readResults")?.fields.account).toBe(true);
+  });
+
+  test("ALT picked: a match ALT didn't play still opens by guid; in a both-ids match ALT is you there too", () => {
+    const { reader } = seed(() => ALT);
+    expect(reader.readMatch("G1")?.match.guid).toBe("G1");
+    expect(reader.readMatch("G4")?.players.find((p) => p.isMe)?.playerKey).toBe(ALT);
+  });
+
+  test("a picked id that's since rejected falls back to all accounts", () => {
+    const { reader, addId } = seed(() => createIds({ tracker: storage.tracker, logger: memoryLogger() }).effectiveAccount(ALT));
+    expect(reader.readResults()).toHaveLength(2);
+    addId(ALT, "rejected");
+    expect(reader.readResults().map((m) => m.guid)).toEqual(["G1", "G2", "G3", "G4"]);
   });
 });

@@ -1,27 +1,25 @@
 // The my_ids rows as the Settings page shows them, and the answer to "is this you?". Readers count
 // every id that isn't rejected as you at query time, so a status change re-labels every match.
+import { resolveAccount } from "../shared/accounts";
 import { platformOf } from "../shared/platforms";
 import type { IdRow } from "../shared/schemas/responses";
 import type { IdAnswer } from "../shared/schemas/tables";
 import type { Db } from "./db/sqlite";
-import type { Logger } from "./log";
+import { createOnce, type Logger } from "./log";
 
 const C = "ids";
 
 type Stored = Omit<IdRow, "platform">;
 
 export function createIds({ tracker, logger }: { tracker: Db; logger: Logger }) {
-  // The list is read on every refetch, so each unknown prefix is warned about once per run.
-  const warned = new Set<string>();
+  // The list is read on every refetch and the account on every query, so each line is logged once per run.
+  const once = createOnce();
 
   function list(): IdRow[] {
     const rows = tracker.all<Stored>("SELECT primary_id AS primaryId, name, status FROM my_ids ORDER BY added_at, primary_id");
     return rows.map((r) => {
       const platform = platformOf(r.primaryId);
-      if (!platform.known && !warned.has(platform.name)) {
-        warned.add(platform.name);
-        logger.warn(C, "unknown_platform", { prefix: platform.name });
-      }
+      if (!platform.known) once(`platform:${platform.name}`, () => { logger.warn(C, "unknown_platform", { prefix: platform.name }); });
       return { ...r, platform: platform.name };
     });
   }
@@ -38,5 +36,14 @@ export function createIds({ tracker, logger }: { tracker: Db; logger: Logger }) 
     return list();
   }
 
-  return { list, setStatus };
+  /** The id the dashboard is scoped to, or null for every account (also when `saved` can't be used). */
+  function effectiveAccount(saved: string): string | null {
+    const { account, fallback } = resolveAccount(tracker.all<Pick<IdRow, "primaryId" | "status">>("SELECT primary_id AS primaryId, status FROM my_ids"), saved);
+    if (fallback !== null) once(`fallback:${saved}|${fallback}`, () => { logger.info(C, "account_fallback", { saved, reason: fallback }); });
+    return account;
+  }
+
+  return { list, setStatus, effectiveAccount };
 }
+
+export type Ids = ReturnType<typeof createIds>;

@@ -41,13 +41,15 @@ describe("settings store", () => {
     expect(s.save({ speed: "mph" })).toEqual({ ...DEFAULT_SETTINGS, theme: "oled", speed: "mph" });
   });
 
-  test("a bad JSON value, a value the schema refuses and an unknown key fall back to the defaults and are logged", () => {
+  test("a bad JSON value, a value the schema refuses and an unknown key fall back to the defaults and are logged once per run", () => {
     const put = (key: string, value: string) => storage.tracker.run("INSERT INTO settings (key, value) VALUES (?, ?)", key, value);
     put("theme", "{not json");
     put("rollingWindow", "500");
     put("colour", '"red"');
     put("speed", '"mph"');
-    expect(settings().get()).toEqual({ ...DEFAULT_SETTINGS, speed: "mph" });
+    const s = settings();
+    s.get();
+    expect(s.get()).toEqual({ ...DEFAULT_SETTINGS, speed: "mph" });
     expect(logger.lines.filter((l) => l.event === "bad_stored").map((l) => [l.level, l.fields.key, l.fields.reason])).toEqual([
       ["warn", "colour", "unknown_key"],
       ["warn", "rollingWindow", "rejected"],

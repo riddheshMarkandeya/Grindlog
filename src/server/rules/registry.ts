@@ -77,6 +77,7 @@ const PLAN_WP5AA = "docs/plans/2026-10-21-wp5a-a-query-logic.md";
 const PLAN_WP6AA = "docs/plans/2026-10-26-wp6a-a-recap-navigation.md";
 const PLAN_WP6AC = "docs/plans/2026-10-27-wp6a-c-matches-and-match-page.md";
 const PLAN_CONTRIBUTION = "docs/plans/2026-11-16-contribution-stats.md";
+const PLAN_ACCOUNTS = "docs/plans/2026-11-22-account-profiles.md";
 
 const p = (column: string) => `match_players.${column}`;
 const m = (column: string) => `matches.${column}`;
@@ -460,12 +461,12 @@ export const RULES: readonly Rule[] = [
   {
     id: "your_row",
     area: "identity",
-    rule: "You, in a match, are the player whose PrimaryId is in my_ids and not rejected (a pending guess counts); none is a spectated match, with no result and not in your stats. Two of your ids in one match: the camera's is you, else the lowest key, logged once per match.",
+    rule: "You, in a match, are the player whose PrimaryId is in my_ids and not rejected (a pending guess counts); none is a spectated match, with no result and not in your stats. Two of your ids in one match: the account picked in the header is you, else the camera's, else the lowest key, logged once per match. With an account picked, only matches that id played count.",
     checks: [],
-    evidence: "Found at read time, so confirming or rejecting an id re-labels every match. Two ids in one lobby has never been seen; it is logged (query/two_yous) to fit the rule when it happens.",
-    version: 1,
+    evidence: "Found at read time, so confirming or rejecting an id, or picking an account, re-labels every match. Two ids in one lobby has never been seen; it is logged (query/two_yous) to fit the rule when it happens.",
+    version: 2,
     applied: "read",
-    refs: [PLAN_WP4A, PLAN_WP5AA],
+    refs: [PLAN_WP4A, PLAN_WP5AA, PLAN_ACCOUNTS],
   },
   // attribution
   {

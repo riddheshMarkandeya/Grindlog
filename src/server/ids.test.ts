@@ -73,3 +73,30 @@ describe("ids store", () => {
     expect(reader.readResults()[0]).toMatchObject({ played: false, result: null });
   });
 });
+
+describe("effectiveAccount", () => {
+  test("a confirmed id beside another is the account; all is null; neither logs", () => {
+    addId(ME, "me", "confirmed", 1);
+    addId(ALT, "alt", "confirmed", 2);
+    expect(ids().effectiveAccount(ALT)).toBe(ALT);
+    expect(ids().effectiveAccount("all")).toBeNull();
+    expect(logger.lines).toEqual([]);
+  });
+
+  test("a fallback is null and logged once per saved value and reason, however often it's read", () => {
+    addId(ME, "me", "confirmed", 1);
+    addId(ALT, "alt", "rejected", 2);
+    const store = ids();
+    expect(store.effectiveAccount(ALT)).toBeNull();
+    expect(store.effectiveAccount(ALT)).toBeNull();
+    expect(store.effectiveAccount(ME)).toBeNull();
+    store.setStatus(ALT, "confirmed");
+    store.setStatus(ME, "rejected");
+    expect(store.effectiveAccount(ALT)).toBeNull();
+    expect(logger.lines.filter((l) => l.event === "account_fallback").map((l) => [l.level, l.fields])).toEqual([
+      ["info", { saved: ALT, reason: "not_confirmed" }],
+      ["info", { saved: ME, reason: "too_few" }],
+      ["info", { saved: ALT, reason: "too_few" }],
+    ]);
+  });
+});

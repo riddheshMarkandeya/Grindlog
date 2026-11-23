@@ -1,14 +1,14 @@
 import { describe, expect, test } from "vitest";
-import { DEFAULT_SETTINGS, SETTINGS_SECTIONS, settingsPatch, settingsSchema, windowParam } from "./settings";
+import { DEFAULT_SETTINGS, HEADER_SETTINGS, SETTINGS_SECTIONS, settingsPatch, settingsSchema, windowParam } from "./settings";
 
 describe("settings", () => {
-  test("the defaults are a valid settings object, and every key is in one section", () => {
+  test("the defaults are a valid settings object, and every key is in one section or the header", () => {
     expect(settingsSchema.parse(DEFAULT_SETTINGS)).toEqual(DEFAULT_SETTINGS);
-    const keys = Object.values(SETTINGS_SECTIONS).flat().sort();
+    const keys = [...Object.values(SETTINGS_SECTIONS).flat(), ...HEADER_SETTINGS].sort();
     expect(keys).toEqual(Object.keys(DEFAULT_SETTINGS).sort());
   });
 
-  test("the defaults: carbon, 24h, km/h, recap, everything / ranked, 20, remarks and mood on, seasons automatic", () => {
+  test("the defaults: carbon, 24h, km/h, recap, everything / ranked, 20, remarks and mood on, seasons automatic, all accounts", () => {
     expect(DEFAULT_SETTINGS).toEqual({
       theme: "carbon",
       clock: "24h",
@@ -20,11 +20,17 @@ describe("settings", () => {
       remarks: true,
       moodLine: true,
       autoSeasons: true,
+      account: "all",
     });
   });
 });
 
 describe("settingsPatch", () => {
+  test("an account id keeps its | as sent; an empty account is refused", () => {
+    expect(settingsPatch.parse({ account: "Steam|765|0" })).toEqual({ account: "Steam|765|0" });
+    expect(settingsPatch.safeParse({ account: "" }).success).toBe(false);
+  });
+
   test("a one-key patch parses to exactly that key: the others are not filled with defaults", () => {
     expect(settingsPatch.parse({ speed: "mph" })).toEqual({ speed: "mph" });
   });

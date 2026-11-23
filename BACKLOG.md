@@ -85,10 +85,11 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
 
 - [ ] **[misc, Med, Standard]** (public release map step 5) Reddit post and GitHub issue templates: subreddit
   self-promotion rules first, then the pitch, GIF/screens and FAQ.
-- [ ] **[feature, Low, Substantial]** (public release map step 7) Account profiles: a header dropdown of all
-  accounts or one. Waits on whether anyone plays on alts.
 - [ ] **[misc, Low, TBD]** (public release map step 9) Code signing, once there are public downloads (SignPath wants
   a track record; Azure's option is US/Canada only).
+- [ ] **[test-coverage, Low, Standard]** `season-file.spec.ts` "a season in the file shows up in Settings" timed out
+  (S25 not listed within 15 s) once in a full `bun run e2e` on 2026-11-22; it passed 4 of 4 runs alone. Watch for a
+  repeat before looking at the first sync's timing under load.
 - [ ] **[test-coverage, Med, Standard]** `tray.test.ts` "goes red within ~5 s of the tracker stopping" is flaky under
   the full suite: on 2026-11-19, 3 of 10 local `bun run test` runs took 7.6–8.3 s against its 6.5 s bound. It was
   already there before the 0.1.6 icon change (1 of 5 at `9a0fccf`), though that change's `bun build --compile` test
@@ -99,6 +100,11 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   keep the compile test from running beside the tray tests.
 
 ## Watch list
+- [ ] **[bug, Low, Standard]** Trigger: a user reports the header picker disagreeing with the page, or runs two
+  dashboard tabs. An account picked in one tab leaves the other tab's picker on the old value, while that tab's
+  pages follow the new account at their next refetch. A reload corrects it. Fix with a hub event on a settings
+  save that invalidates `settings` plus `staleAfterTables`. Record: Review log round 1 in
+  `docs/plans/2026-11-22-account-profiles.md`.
 - [ ] **[refactor, Low, Trivial]** Trigger: after a Bun upgrade, `build-release`'s Icon step prints "already right"
   (Bun fixed oven-sh/bun issue 32428, "only the first icon in the .ico is embedded"), or it fails with a resource
   layout `scripts/exe-icon.ts` doesn't know. On "already right", delete the repoint (`fixExeIcon` and its two

@@ -1,5 +1,5 @@
 // The e2e stack, run under Bun by the Playwright fixture (seeding needs bun:sqlite): a temp data dir
-// seeded per the mode in argv (`rich`, the default, `empty`, `few`, `share`, `tables`, `guess` or `friends`), the repo's web build copied to the
+// seeded per the mode in argv (`rich`, the default, `empty`, `few`, `share`, `tables`, `guess`, `friends` or `accounts`), the repo's web build copied to the
 // installed path, a gated replay of the completed fixture, and the real tracker. Protocol: prints
 // `ready {"url","dataDir"}` on stdout; the stdin line `go` releases the replay; the stdin line
 // `restart <version>` stops the tracker and starts it again on the same port and data as that
@@ -24,7 +24,7 @@ import { logsDir } from "../../src/server/paths";
 import type { MatchRecord } from "../../src/server/records/record";
 import { createRecordWriter } from "../../src/server/records/save";
 import { openStorage } from "../../src/server/storage";
-import { freePort, goal, ME, player, readFixture, record, THEM } from "../../src/server/testing";
+import { ALT, freePort, goal, ME, player, readFixture, record, THEM } from "../../src/server/testing";
 import { dayStart, dayOf } from "../../src/shared/periods";
 import type { Seed } from "./fixtures";
 import { STATS_CONFIG_SUBDIR } from "./stats-config-dir";
@@ -94,6 +94,8 @@ const HAT_TRICK: Parameters<typeof record>[2] = {
  * `tables`: `rich`, plus a pending guess per You test that answers one and a rejected id, none of
  * them a player in any match (TABLE_IDS).
  * `guess`: `rich`, plus GUESS_IDS: two pending guesses for the recap's "Is this you?" card.
+ * `accounts`: `rich`, plus ALT confirmed, named ALT_NAME in its 3 matches (e2e-alt-0 to 2), its only
+ * session, last month on the 20th; ME isn't in them.
  * `empty`: no matches at all.
  * `friends`: last month, a 22-match session (e2e-fr-00) with FRIEND, nicknamed FRIEND_NICK, on
  * your team in its first four (a loss, two wins, a loss) and on the other team in the fifth, its
@@ -177,6 +179,12 @@ function seed(dir: string, mode: Seed): void {
     writer.save(match("e2e-first-d", day(1, 12), 8 * HOUR + 30 * MIN, true, { playlistId: 11, mvpSource: "inferred" }));
     writer.save(match("e2e-second", day(1, 12), 12 * HOUR, false, { playlistId: 2 }));
     writer.save(record("e2e-seed-won", now - 10 * MIN, {}, { endedAt: now - 5 * MIN }));
+    if (mode === "accounts") {
+      storage.tracker.run("INSERT INTO my_ids (primary_id, name, status, added_at) VALUES (?, ?, 'confirmed', ?)", ALT, ALT_NAME, now + 1);
+      for (let i = 0; i < 3; i++) {
+        writer.save(match(`e2e-alt-${String(i)}`, day(1, 20), 10 * HOUR + i * 10 * MIN, i !== 1, { mvpKey: null }, { players: [player(ALT, 0, { name: ALT_NAME }), player(THEM, 1)], statfeed: [], goals: [] }));
+      }
+    }
   } finally {
     storage.close();
   }
@@ -188,6 +196,9 @@ const TABLE_IDS = [
   ["XboxOne|e2e-guess-retry|0", "GuessRetry", "pending"],
   ["PS4|e2e-not-me|0", "NotMe", "rejected"],
 ] as const;
+
+/** ALT's in-game name in the `accounts` seed; the spec names it too. */
+const ALT_NAME = "AltAccount";
 
 /** The recap card's e2e guesses, asked in this order: the spec answers the first and dismisses the second. */
 const GUESS_IDS = [
@@ -250,6 +261,7 @@ const SEED_DATA: Partial<Record<string, Seed>> = {
   guess: "guess",
   friends: "friends",
   "friends-page": "friends",
+  accounts: "accounts",
   setup: "empty",
 };
 

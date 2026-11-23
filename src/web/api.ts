@@ -14,6 +14,9 @@ export class ApiError extends Error {
   }
 }
 
+/** A failed write's code for its log line. */
+export const codeOf = (e: unknown) => (e instanceof ApiError ? e.code : String(e));
+
 export interface ApiDeps {
   fetchFn: (input: string, init?: RequestInit) => Promise<Response>;
   warn: (message: string, detail?: unknown) => void;

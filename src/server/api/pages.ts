@@ -313,6 +313,8 @@ export function createPages({ reader, logger, now }: { reader: QueryReader; logg
   }
 
   return {
+    /** The account the reader is scoped to, or null for every account. */
+    account: reader.account,
     sessionList,
     friendSuggestions,
     friends,

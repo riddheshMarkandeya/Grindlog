@@ -26,7 +26,8 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   which old UpdateStates retention deletes); `records/`: `record.ts` summary → rows, `save.ts` writer,
   `recompute.ts`, `rules-diff.ts`); `rules/`: `registry.ts` every stat rule with its version,
   `definitions.ts` renders the doc; `query/`: `read.ts` match records for pages with "you"
-  joined, `sessions.ts` session cutting, `aggregate.ts` stats and the 30-day baseline; `api/`: the
+  joined (its `account` option narrows every match read to one id's matches; `ids.ts` `effectiveAccount` gives it
+  from the `account` setting), `sessions.ts` session cutting, `aggregate.ts` stats and the 30-day baseline; `api/`: the
   dashboard API mounted on the host: `index.ts` routes and writes, `pages.ts` composes each page,
   `events.ts` SSE (`status`, `match_ended`, `session_break`, `records_recomputed`), `router.ts` (a `quiet` route
   logs no 2xx request lines), `static.ts` built web app (every file `Cache-Control: no-cache`); `remarks/`: the recap headline,
@@ -55,7 +56,7 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   tabs from a SharedWorker (`worker.ts`, in-page fallback in `client.ts`; it reads each status's `version`
   leniently first and posts it on its own), `live.ts` header state, `useLiveEvents.ts` refetch on events and
   one reload when the tracker's version changes (`logic/version-watch.ts`); `logic/` pure header logic; `components/` header and empty
-  state, `Icon.tsx` every dashboard icon by `IconKey` (`logic/icons.ts`; Lucide, Phosphor's ball, two drawn),
+  state, `AccountPicker.tsx` the header's account dropdown (2+ confirmed ids; `logic/accounts.ts`), `Icon.tsx` every dashboard icon by `IconKey` (`logic/icons.ts`; Lucide, Phosphor's ball, two drawn),
   `Contribution.tsx` the share bars (Friends and the recap), `TouchThirds.tsx` touches by third (`logic/thirds.ts`),
   `Bars.module.css` their shared styles and `BarPct.tsx` a segment's % label that hides where it can't fit,
   `ModeSwitch.tsx` the team size and Online/Private picker, `WlBar.tsx` a thin win/loss bar,
@@ -74,7 +75,8 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   `GRINDLOG_VERSION` (null in dev and source runs), `release.ts` release version parsing and compare, installer name, the
   minisign trusted comment and its parser, the update repo URLs, `update-key.ts` the baked `GRINDLOG_UPDATE_KEY`, `constants.ts`, `result.ts` your W/L, `lobby.ts` a match's lines and `Thirds`, `contribution.ts`
   the carry and per-session contribution (shares and touch thirds per mode), `playlists.ts` ID map, `goal-range.ts`
-  close/mid/long, `periods.ts` local days and periods, `playlist-filter.ts` filter groups, `schemas/` API params
+  close/mid/long, `periods.ts` local days and periods, `playlist-filter.ts` filter groups, `accounts.ts` which account the dashboard shows (server and picker share
+  it), `schemas/` API params
   and response shapes),
   `scripts/` (standalone `capture.ts`; `make-icons.ts` packs `src/web/assets/icon.svg` and
   `icon-small.svg` into `src/web/public/favicon.ico`, a teal dev copy (`src/web/assets/favicon-dev.ico`,
@@ -173,8 +175,12 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   Task Scheduler doesn't restart a crashed task.
 
 ## Plans
+- `docs/plans/2026-11-22-account-profiles.md`: public release step 7, the header's account picker: the `account`
+  setting scopes the reader's match set (not "you"), sessions per account; grill-me decisions and review log.
 - `docs/plans/2026-11-19-sharp-icons.md`: public release step 5 (0.1.6), sharp exe and tray icons: Bun's stray icon
   group repointed in place, the tray reloads its icons when the scale changes; measurements, results and review log.
+- `docs/reviews/2026-11-22-account-profiles.md`: step 7 account picker review summary (2 rounds, 1 deferred to
+  the Watch list).
 - `docs/reviews/2026-11-19-sharp-icons.md`: step 5 sharp icons review summary (3 rounds, nothing deferred); manual
   checks.
 - `docs/plans/2026-11-18-public-release-map.md`: the public release map (order agreed 2026-11-18); take the first open step.

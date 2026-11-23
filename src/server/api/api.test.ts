@@ -433,17 +433,21 @@ describe("stats setup", () => {
 describe("ids", () => {
   const answer = (query: string, headers: Record<string, string> = { [REQUEST_HEADER]: "1" }) => fetch(url(`/api/ids?${query}`), { method: "POST", headers });
 
-  test("GET lists them; a POST answers one and comes back with the list", async () => {
+  test("GET lists them, each named as in its latest match, else as first seen; a POST answers one and comes back with the list", async () => {
     storage.tracker.run("INSERT INTO my_ids (primary_id, name, status, added_at) VALUES ('Steam|alt|0', 'alt', 'pending', 2)");
+    createRecordWriter({ tracker: storage.tracker, logger: memoryLogger(), now: () => 1 }).save(record("C", T0 + 30 * MIN, { players: [player(ME, 0, { name: "Renamed" }), player(THEM, 1)] }, { endedAt: T0 + 35 * MIN }));
     expect(await get(idsResponse, "/api/ids")).toEqual({
       ids: [
-        { primaryId: ME, name: "me", platform: "Epic", status: "confirmed" },
+        { primaryId: ME, name: "Renamed", platform: "Epic", status: "confirmed" },
         { primaryId: "Steam|alt|0", name: "alt", platform: "Steam", status: "pending" },
       ],
     });
     const res = await answer(`id=${encodeURIComponent("Steam|alt|0")}&status=rejected`);
     expect(res.status).toBe(200);
-    expect(idsResponse.parse(await res.json()).ids[1]?.status).toBe("rejected");
+    expect(idsResponse.parse(await res.json()).ids.map((i) => [i.name, i.status])).toEqual([
+      ["Renamed", "confirmed"],
+      ["alt", "rejected"],
+    ]);
     expect((await get(idsResponse, "/api/ids")).ids[1]?.status).toBe("rejected");
   });
 

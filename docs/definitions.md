@@ -306,12 +306,12 @@ The camera's PrimaryId becomes a pending my_ids guess unless it is already in my
 - **Evidence**: 46 real matches gave exactly one pending guess, the user's.
 - **Decided in**: `docs/decisions/2026-10-20-match-records-per-player.md`, `docs/plans/2026-10-20-wp4a-match-records.md`
 
-### `your_row` · v1 · read
+### `your_row` · v2 · read
 
-You, in a match, are the player whose PrimaryId is in my_ids and not rejected (a pending guess counts); none is a spectated match, with no result and not in your stats. Two of your ids in one match: the camera's is you, else the lowest key, logged once per match.
+You, in a match, are the player whose PrimaryId is in my_ids and not rejected (a pending guess counts); none is a spectated match, with no result and not in your stats. Two of your ids in one match: the account picked in the header is you, else the camera's, else the lowest key, logged once per match. With an account picked, only matches that id played count.
 
-- **Evidence**: Found at read time, so confirming or rejecting an id re-labels every match. Two ids in one lobby has never been seen; it is logged (query/two_yous) to fit the rule when it happens.
-- **Decided in**: `docs/plans/2026-10-20-wp4a-match-records.md`, `docs/plans/2026-10-21-wp5a-a-query-logic.md`
+- **Evidence**: Found at read time, so confirming or rejecting an id, or picking an account, re-labels every match. Two ids in one lobby has never been seen; it is logged (query/two_yous) to fit the rule when it happens.
+- **Decided in**: `docs/plans/2026-10-20-wp4a-match-records.md`, `docs/plans/2026-10-21-wp5a-a-query-logic.md`, `docs/plans/2026-11-22-account-profiles.md`
 ## Attribution
 
 ### `live_play_window` · v1 · recorded

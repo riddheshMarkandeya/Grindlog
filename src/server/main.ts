@@ -8,6 +8,7 @@ import { createLogonTask } from "./logon-task";
 import { scheduleMaintenance, type Maintenance } from "./maintenance";
 import { createNotifier } from "./notifier";
 import { dashboardPort, dataDir, logonTaskName, staticDir, statsConfigDirOverride, updateDir } from "./paths";
+import { createIds } from "./ids";
 import { createQueryReader } from "./query/read";
 import { startStatsClient, statsApiUrl, type StatsClient } from "./recorder/client";
 import { createRecorder, type Recorder } from "./recorder/recorder";
@@ -181,13 +182,20 @@ function main(): void {
     };
   };
   const updates = createUpdates({ dir: updateDir(), logger: log, running: VERSION, enabled: disabledReason(CHANNEL, VERSION, UPDATE_KEY) === null });
-  const reader = createQueryReader({ tracker: storage.tracker, logger: log });
+  // Shared with the API, so their once-per-run log lines stay once. Their data is in tracker.db, and a
+  // transaction runs synchronously, so the season sync can't interleave with an edit from the Settings page.
+  const settings = createSettings({ tracker: storage.tracker, logger: log });
+  const ids = createIds({ tracker: storage.tracker, logger: log });
+  // Asked on every read, so a saved account or an id confirmed or rejected applies at the next refetch.
+  const reader = createQueryReader({ tracker: storage.tracker, logger: log, account: () => ids.effectiveAccount(settings.get().account) });
   const api = (parts.api = createApi({
     tracker: storage.tracker,
     reader,
     status,
     staticDir: staticDir(),
     logger: log,
+    settings,
+    ids,
     logonTask: createLogonTask({ task: logonTaskName(), logger: log }),
     tray: (ack) => trayView({ ...status(), recomputeFailed, update: updates.view() }, notifier.poll(ack)),
     statsSetup: {
@@ -208,9 +216,6 @@ function main(): void {
     },
     logger: log,
   });
-  // Its own stores over the same tracker.db as the API's: both are stateless, and a transaction
-  // runs synchronously, so a sync can't interleave with an edit from the Settings page.
-  const settings = createSettings({ tracker: storage.tracker, logger: log });
   const seasons = createSeasons({ tracker: storage.tracker, reader, logger: log });
   parts.seasonSync = startSeasonSync({
     source: seasonsSource(process.env),

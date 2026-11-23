@@ -3,6 +3,7 @@ import { NavLink, useLocation } from "react-router";
 import { CHANNEL } from "../../shared/channel";
 // The build picks the file by channel: teal on dev builds.
 import icon from "@channel/logo.svg";
+import { AccountPicker } from "./AccountPicker";
 import { cx } from "./cx";
 import styles from "./Header.module.css";
 import { useIndicator } from "./useIndicator";
@@ -26,6 +27,7 @@ export function Header() {
           {/* The developer's own install, which runs beside a friend's build on the same PC. */}
           {CHANNEL === "dev" && <span className={styles.channel}>Dev</span>}
         </span>
+        <AccountPicker />
         <nav ref={nav} className={cx(styles.topnav, "ind-x")} aria-label="Pages">
           <NavLink to="/recap" className={tab}><IconLabel k="recap">Recap</IconLabel></NavLink>
           <NavLink to="/trends" className={tab}><IconLabel k="trends">Trends</IconLabel></NavLink>

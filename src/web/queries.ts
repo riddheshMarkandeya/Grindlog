@@ -32,7 +32,7 @@ import {
 } from "../shared/schemas/responses";
 import { DEFAULT_SETTINGS, settingsSchema, type Settings, type SettingsPatch } from "../shared/schemas/settings";
 import type { IdAnswer, SeasonInput } from "../shared/schemas/tables";
-import { getJson, postJson } from "./api";
+import { codeOf, getJson, postJson } from "./api";
 import { namedPairs } from "./logic/friends";
 import { staleAfterTables, type CachedQuery } from "./logic/invalidation";
 import { patchQuery } from "./logic/settings";
@@ -57,11 +57,13 @@ export function useCurrentSession() {
   });
 }
 
+const LATEST_SESSION_KEY = ["sessions", "latest"] as const;
+
 /** The newest session under the filters, however old; null when there's none. */
 export function useLatestSession(filter: PlaylistFilter, teammate: TeammateFilter) {
   const f = filterValue(filter);
   return useQuery({
-    queryKey: ["sessions", "latest", f, withKey(teammate)],
+    queryKey: [...LATEST_SESSION_KEY, f, withKey(teammate)],
     queryFn: () => getJson(`/api/sessions/latest?filter=${f}${withQuery(teammate)}`, latestResponse),
   });
 }
@@ -302,6 +304,33 @@ export function useSettings(): Settings {
 /** Saves some settings; the answer is all of them, put straight into the cache. */
 export function useSaveSettings() {
   return useWholeWrite(SETTINGS_KEY, (patch: SettingsPatch) => postJson(`/api/settings?${patchQuery(patch)}`, WRITE, settingsSchema));
+}
+
+/**
+ * Saves the header's account. With quick picks only the last one's callbacks run, so once it settles
+ * the saved account is checked against `shown` (the one on screen before): if any pick saved, every
+ * page but the tables is stale. `leaveSession` runs first, with the cached latest session gone, so it
+ * can move off a session the other account may not have without /recap redirecting straight back.
+ */
+export function useSaveAccount(leaveSession: () => void) {
+  const m = useSaveSettings();
+  const queryClient = useQueryClient();
+  const save = (account: string, shown: string, settled: () => void) => {
+    m.mutate(
+      { account },
+      {
+        onError: (error) => { console.warn("[grindlog] settings/save_failed", { keys: ["account"], code: codeOf(error) }); },
+        onSettled: () => {
+          settled();
+          if (queryClient.getQueryData<Settings>(SETTINGS_KEY)?.account === shown) return;
+          queryClient.removeQueries({ queryKey: LATEST_SESSION_KEY });
+          leaveSession();
+          void queryClient.invalidateQueries({ predicate: staleAfterTables });
+        },
+      },
+    );
+  };
+  return { m, save };
 }
 
 const AUTOSTART_KEY = ["autostart"] as const;

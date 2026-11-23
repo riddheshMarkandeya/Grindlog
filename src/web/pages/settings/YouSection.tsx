@@ -8,7 +8,8 @@ import { ANSWER_TEXT } from "../../logic/guess";
 import { useIds, useSetIdStatus } from "../../queries";
 import { cx } from "../../components/cx";
 import { SaveStatus } from "../../components/SaveStatus";
-import { codeOf, Section, TableState } from "./parts";
+import { codeOf } from "../../api";
+import { Section, TableState } from "./parts";
 import styles from "./Settings.module.css";
 
 const STATUS: Record<IdRow["status"], string> = { pending: "Waiting for you", confirmed: "You", rejected: "Not you" };

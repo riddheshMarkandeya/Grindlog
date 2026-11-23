@@ -2,15 +2,13 @@
 // and a table's load state.
 import { useRef, type ReactNode } from "react";
 import type { SectionId, Settings, SettingsPatch } from "../../../shared/schemas/settings";
-import { ApiError } from "../../api";
+import { codeOf } from "../../api";
 import { cx } from "../../components/cx";
 import { SaveStatus } from "../../components/SaveStatus";
 import { Section as SharedSection } from "../../components/Section";
 import { atDefaults, sectionDefaults } from "../../logic/settings";
 import { useSaveSettings } from "../../queries";
 import styles from "./Settings.module.css";
-
-export const codeOf = (e: unknown) => (e instanceof ApiError ? e.code : String(e));
 
 /** One save's state for a row or a section: a fresh mutation each, so their ticks don't mix. */
 export function useSave(onSaved?: () => void) {

@@ -24,9 +24,10 @@ export interface Stack {
  * seed share a worker and stack, so a spec that writes takes a seed of its own ("friends-page" is
  * "friends" for the Friends page spec, and "update" is "rich" with the tracker started as a
  * release, since its spec restarts the tracker; "seasons" is "rich" with the season file synced from a fixture;
- * "screens" is the pseudonymised real data `bun run screens-data` wrote, for test/site).
+ * "screens" is the pseudonymised real data `bun run screens-data` wrote, for test/site; "accounts" is "rich"
+ * with a second confirmed id that played its own session).
  */
-export type Seed = "rich" | "empty" | "few" | "share" | "settings" | "tables" | "friends" | "friends-page" | "update" | "setup" | "guess" | "seasons" | "screens";
+export type Seed = "rich" | "empty" | "few" | "share" | "settings" | "tables" | "friends" | "friends-page" | "update" | "setup" | "guess" | "seasons" | "screens" | "accounts";
 
 export const test = base.extend<{ consoleErrors: string[] }, { stack: Stack; seed: Seed }>({
   seed: ["rich", { scope: "worker", option: true }],

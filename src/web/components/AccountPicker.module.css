@@ -1,0 +1,9 @@
+/* Shaped like the page filters' dropdowns, sized to sit beside the brand. */
+.picker { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+.picker select {
+  background: var(--surf2); border: 1px solid var(--line); border-radius: var(--r); color: var(--ink);
+  padding: 4px 8px; max-width: 220px; min-width: 0; cursor: pointer; font-size: 13px;
+  text-overflow: ellipsis;
+  transition: border-color var(--dur-1) var(--ease-standard);
+}
+.picker select:hover { border-color: var(--muted); }

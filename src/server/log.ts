@@ -65,6 +65,16 @@ function writeConsole(stream: NodeJS.WriteStream, text: string): void {
   }
 }
 
+/** Runs each key's report the first time only: for lines that would repeat on every read or frame. */
+export function createOnce(): (key: string, report: () => void) => void {
+  const reported = new Set<string>();
+  return (key, report) => {
+    if (reported.has(key)) return;
+    reported.add(key);
+    report();
+  };
+}
+
 /** Every log file rotates at 5 MiB and keeps 5 files: at most 25 MiB per process role on a friend's disk. */
 export const LOG_ROTATION = { maxBytes: 5 * 1024 * 1024, maxFiles: 5 };
 

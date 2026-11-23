@@ -37,6 +37,8 @@ test.afterEach(async ({ request, consoleErrors }) => {
   expect(consoleErrors.filter((e) => !MEANT.test(e))).toEqual([]);
 });
 
+// The seeded matches name you by your id (the test player default), and the You table shows your latest name.
+const ME_NAME = ME;
 const section = (page: Page, name: string) => page.getByRole("region", { name });
 const row = (page: Page, table: "You" | "Seasons", name: string) => section(page, table).getByRole("listitem").filter({ has: page.getByText(name, { exact: true }) });
 const chip = (page: Page) => page.getByText(/^This session: /);
@@ -59,7 +61,7 @@ test.describe("You", () => {
   test("“Not me” on your id empties the session's stats; “That's me” brings them back", async ({ page }) => {
     await page.goto("/settings");
     await expect(chip(page)).toHaveText("This session: 1–0");
-    const me = row(page, "You", "me");
+    const me = row(page, "You", ME_NAME);
     await me.getByRole("button", { name: "Not me" }).click();
     await expect(me.getByText("Not you", { exact: true })).toBeVisible();
     await expect(chip(page)).toHaveCount(0);
@@ -92,7 +94,7 @@ test.describe("You", () => {
     for (const r of yours) await answer(request, r.primaryId, "rejected");
     await page.goto("/settings");
     await expect(section(page, "You").getByText("No player is you yet. The tracker will ask after your next match.")).toBeVisible();
-    await expect(row(page, "You", "me")).toContainText("Not you");
+    await expect(row(page, "You", ME_NAME)).toContainText("Not you");
     for (const r of yours) if (r.status === "confirmed") await answer(request, r.primaryId, "confirmed");
   });
 });
@@ -213,7 +215,7 @@ test("passes axe in every theme, with a row in edit and an error showing; fits a
     await page.goto("/settings");
     await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
     await expect(row(page, "Seasons", "S22")).toBeVisible();
-    await expect(row(page, "You", "me")).toBeVisible();
+    await expect(row(page, "You", ME_NAME)).toBeVisible();
     await row(page, "Seasons", "S22").getByRole("button", { name: "Edit" }).click();
     await page.getByRole("form", { name: "Edit season" }).getByLabel("Name").fill("");
     await page.getByRole("form", { name: "Edit season" }).getByLabel("Name").press("Enter");

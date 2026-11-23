@@ -2,7 +2,7 @@
 // raw store. Each finished match is read back through dedup → summary → checks and handed to the
 // hook. One match is open at a time; the lifecycle decides which events belong to it.
 import type { Db } from "../db/sqlite";
-import type { Logger } from "../log";
+import { createOnce, type Logger } from "../log";
 import type { CheckFailure } from "./checks";
 import { parseFrame, type Data, type StatsEvent } from "./envelope";
 import { unknownFields } from "./known-fields";
@@ -52,13 +52,7 @@ export function createRecorder(opts: RecorderOptions) {
   /** Time of the last frame with a guid: the open match's last sign of life. */
   let lastActivity: number | null = null;
   /** Unknown names and fields, and bad-frame reasons, are logged once per run. */
-  const reported = new Set<string>();
-
-  const once = (key: string, report: () => void) => {
-    if (reported.has(key)) return;
-    reported.add(key);
-    report();
-  };
+  const once = createOnce();
 
   function open(guid: string, seq: number | null): Current {
     cur = { guid, seq, trim: newTrimState(), stored: 0, storeFailed: 0 };

@@ -6,13 +6,13 @@ import { useEffect, useId, useRef, useState, type ReactNode, type SyntheticEvent
 import { dayOf, type Season } from "../../../shared/periods";
 import { seasonConflict } from "../../../shared/schemas/responses";
 import { SEASON_NAME_MAX, seasonInput } from "../../../shared/schemas/tables";
-import { ApiError } from "../../api";
+import { ApiError, codeOf } from "../../api";
 import { useNow } from "../../components/useNow";
 import { dateLabel } from "../../logic/format";
 import { conflictError, seasonErrors, seasonRows, type SeasonDraft, type SeasonErrors, type SeasonRow } from "../../logic/seasons";
 import { useDeleteSeason, useSaveSeason, useSeasons } from "../../queries";
 import { SaveStatus } from "../../components/SaveStatus";
-import { codeOf, Section, TableState } from "./parts";
+import { Section, TableState } from "./parts";
 import styles from "./Settings.module.css";
 
 /** The row being edited: `id` null is a new one. `failed` is a save that got no answer, or not a clash. */

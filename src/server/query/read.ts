@@ -168,9 +168,14 @@ type PlayerDbRow = PlayerStats & ThirdsCols & {
   mine: number;
 };
 
-function where({ from, to, guids }: ReadRange): { sql: string; params: Param[] } {
+/** The match filter for a range; with an account, only the matches that id played. */
+function where({ from, to, guids }: ReadRange, account: string | null = null): { sql: string; params: Param[] } {
   const conds: string[] = [];
   const params: Param[] = [];
+  if (account !== null) {
+    conds.push("m.guid IN (SELECT match_guid FROM match_players WHERE primary_id = ?)");
+    params.push(account);
+  }
   if (from !== undefined) {
     conds.push("m.started_at >= ?");
     params.push(from);
@@ -258,30 +263,45 @@ function toMyMatch(
   };
 }
 
-export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Logger }) {
+/** A read's match filter, and the account it's scoped to (null for every account). */
+type Scope = ReturnType<typeof where> & { account: string | null };
+
+/**
+ * `account` is the id the dashboard is scoped to, or null for every account. It narrows the match set,
+ * not "you": your other ids still aren't friends or teammates, and a match by guid still opens.
+ */
+export function createQueryReader({ tracker, logger, account = () => null }: { tracker: Db; logger: Logger; account?: () => string | null }) {
   /** Matches already reported with two of your ids, so a page that re-reads doesn't repeat the warning. */
   const twoYousReported = new Set<string>();
   /** Matches already reported with a team switch around a friend, for the same reason. */
   const switchReported = new Set<string>();
 
-  function timed<T>(fn: string, read: () => T[]): T[] {
+  /** `scope` is set on reads of the match set, so the line says whether an account narrowed it. */
+  function timed<T>(fn: string, read: () => T[], scope?: Scope): T[] {
     const started = performance.now();
     const rows = read();
-    logger.info(C, "read", { fn, rows: rows.length, ms: Math.round(performance.now() - started) });
+    const scoped = scope === undefined ? {} : { account: scope.account !== null };
+    logger.info(C, "read", { fn, rows: rows.length, ms: Math.round(performance.now() - started), ...scoped });
     return rows;
+  }
+
+  /** The match filter for one read; `account()` is asked once, so every query of the read agrees. */
+  function scoped(range: ReadRange): Scope {
+    const picked = account();
+    return { ...where(range, picked), account: picked };
   }
 
   /**
    * You among a match's rows; null when none is yours (spectated). Two of your ids in one lobby has
-   * never been seen: the camera's player is the one you were watching as; without it, the lowest
-   * key, so the choice is at least stable.
+   * never been seen: the picked account is you; else the camera's player, the one you were watching
+   * as; without it, the lowest key, so the choice is at least stable.
    */
-  function pickMe<R extends Candidate>(match: PickMatch, rows: readonly R[]): (R & { player_key: string }) | null {
+  function pickMe<R extends Candidate>(match: PickMatch, rows: readonly R[], picked: string | null): (R & { player_key: string }) | null {
     const mine = rows.filter((r): r is R & { player_key: string } => r.player_key !== null);
     if (!isNonEmpty(mine)) return null;
     const [first] = mine;
     if (mine.length === 1) return first;
-    const chosen = mine.find((r) => r.primary_id === match.camera_primary_id) ?? first;
+    const chosen = mine.find((r) => r.primary_id === picked) ?? mine.find((r) => r.primary_id === match.camera_primary_id) ?? first;
     if (!twoYousReported.has(match.guid)) {
       twoYousReported.add(match.guid);
       logger.warn(C, "two_yous", { guid: match.guid, keys: mine.map((r) => r.player_key), chosen: chosen.player_key });
@@ -290,7 +310,7 @@ export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Lo
   }
 
   /** The other humans in the range's matches, by match; only your friends when `friendsOnly`. */
-  function othersIn(w: ReturnType<typeof where>, friendsOnly: boolean): Map<string, OtherRow[]> {
+  function othersIn(w: Scope, friendsOnly: boolean): Map<string, OtherRow[]> {
     const rows = tracker.all<OtherRow>(
       `SELECT p.match_guid, p.primary_id, p.name, p.teams_seen
        FROM match_players p ${friendsOnly ? "JOIN friends f ON f.primary_id = p.primary_id" : ""}
@@ -318,23 +338,25 @@ export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Lo
   }
 
   /** Per match, you (null when spectated) picked among the rows of your ids. */
-  function resultRows(): { m: ResultRow; me: ResultRow | null }[] {
+  function resultRows(w: Scope): { m: ResultRow; me: ResultRow | null }[] {
     const rows = tracker.all<ResultRow>(
       `SELECT m.guid, m.started_at, m.ended_at, m.playlist_id, m.end_kind, m.closed_via, m.winner_team_num, m.camera_primary_id,
          p.player_key, p.primary_id, p.team_num, p.teams_seen
        FROM matches m
        LEFT JOIN match_players p ON p.match_guid = m.guid AND p.primary_id IN (${MINE})
+       ${w.sql}
        ORDER BY m.started_at, m.guid, p.player_key`,
+      ...w.params,
     );
     return [...Map.groupBy(rows, (r) => r.guid).values()].map((group) => {
       const [m] = group as [ResultRow, ...ResultRow[]];
-      return { m, me: pickMe(m, group) };
+      return { m, me: pickMe(m, group, w.account) };
     });
   }
 
   function readMyMatches(range: ReadRange = {}): MyMatch[] {
+    const w = scoped(range);
     return timed("readMyMatches", () => {
-      const w = where(range);
       const rows = tracker.all<MatchRow>(
         `SELECT m.guid, m.started_at, m.ended_at, m.playlist_id, m.arena, m.end_kind, m.closed_via, m.overtime, m.score_team0,
            m.score_team1, m.winner_team_num, m.mvp_key, m.camera_primary_id, m.joined_in_progress,
@@ -366,20 +388,21 @@ export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Lo
       const friendsOf = othersIn(w, true);
       return [...Map.groupBy(rows, (r) => r.guid).values()].map((group) => {
         const [m] = group as [MatchRow, ...MatchRow[]];
-        const picked = pickMe(m, group);
+        const picked = pickMe(m, group, w.account);
         const me = picked === null ? null : toMyRow(picked);
         const mine = me === null ? "" : at(m.guid, me.playerKey);
         const friends = friendsWithYou(m.guid, picked, friendsOf.get(m.guid) ?? []);
         return toMyMatch(m, me, goalsOf.get(mine) ?? [], feedOf.get(mine) ?? [], friends);
       });
-    });
+    }, w);
   }
 
   /** Per match, whether you played and your result: the light index pages cut and count sessions from. */
   function readResults(): MatchResult[] {
+    const w = scoped({});
     return timed("readResults", () => {
-      const friendsOf = othersIn(where({}), true);
-      return resultRows().map(({ m, me }) => ({
+      const friendsOf = othersIn(w, true);
+      return resultRows(w).map(({ m, me }) => ({
         guid: m.guid,
         startedAt: m.started_at,
         endedAt: m.ended_at,
@@ -388,19 +411,20 @@ export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Lo
         result: myResult(m, me?.team_num ?? null),
         friends: friendsWithYou(m.guid, me, friendsOf.get(m.guid) ?? []),
       }));
-    });
+    }, w);
   }
 
   /** Every human on your team at any point who isn't you, per match, for friend suggestions. */
   function readTeammates(): Teammate[] {
+    const w = scoped({});
     return timed("readTeammates", () => {
-      const othersOf = othersIn(where({}), false);
-      return resultRows().flatMap(({ m, me }) =>
+      const othersOf = othersIn(w, false);
+      return resultRows(w).flatMap(({ m, me }) =>
         (othersOf.get(m.guid) ?? [])
           .filter((o) => wasOn(o.teams_seen, me?.team_num ?? null))
           .map((o) => ({ guid: m.guid, primaryId: o.primary_id, name: o.name })),
       );
-    });
+    }, w);
   }
 
   /**
@@ -410,8 +434,8 @@ export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Lo
    * every player row is read once: a personal history is small, and `timed` shows the cost if it grows.
    */
   function readLobbies(friendIds: readonly string[], range: Pick<ReadRange, "guids"> = {}): LobbyMatch[] {
+    const w = scoped(range);
     return timed("readLobbies", () => {
-      const w = where(range);
       const rows = tracker.all<LobbyRow>(
         `SELECT m.guid, m.started_at, m.ended_at, m.playlist_id, m.overtime, m.score_team0, m.score_team1, m.winner_team_num, m.end_kind,
            m.closed_via, m.mvp_key, m.camera_primary_id, p.player_key, p.primary_id, p.team_num, p.teams_seen, p.score, p.goals,
@@ -436,7 +460,7 @@ export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Lo
       const listed = new Set(friendIds);
       return [...Map.groupBy(rows, (r) => r.guid).values()].flatMap((group) => {
         const [m] = group as [LobbyRow, ...LobbyRow[]];
-        const me = pickMe(m, group);
+        const me = pickMe(m, group, w.account);
         if (me === null) return [];
         const team = me.team_num;
         const players = playersOf.get(m.guid) ?? [];
@@ -477,7 +501,7 @@ export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Lo
           friends,
         }];
       });
-    });
+    }, w);
   }
 
   /** Every friend by name: the nickname, else the name in their latest match. */
@@ -560,7 +584,7 @@ export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Lo
         guid,
       ),
     );
-    const me = pickMe(m, players.filter((p) => p.mine === 1));
+    const me = pickMe(m, players.filter((p) => p.mine === 1), account());
     return {
       match: {
         guid: m.guid,
@@ -606,6 +630,7 @@ export function createQueryReader({ tracker, logger }: { tracker: Db; logger: Lo
   }
 
   return {
+    account,
     readMyMatches,
     readResults,
     readTeammates,

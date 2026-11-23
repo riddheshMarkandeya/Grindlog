@@ -33,6 +33,12 @@ test("a dev build says so, in the header, logo, favicon and tab title, so it isn
   expect(svg).toContain(prod ? "#d95926" : "#14b8a6");
 });
 
+test("one confirmed id: no account picker in the header", async ({ page }) => {
+  await page.goto("/recap");
+  await expect(status(page, "connected")).toBeVisible();
+  await expect(page.getByRole("banner").getByRole("combobox")).toHaveCount(0);
+});
+
 test("before the match: redirect, live status, chip, navigation, deep link, not found", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/\/recap\/e2e-seed-won(\?filter=everything)?$/);
