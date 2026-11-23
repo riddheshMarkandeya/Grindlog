@@ -181,6 +181,8 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
 Newest first. Decisions, Plans and Research together hold at most 50 entries; decisions and research are
 never archived, so when the total passes 50, move the oldest plan entries (a plan with its review) to the top
 of Plans in [`PROJECT_INDEX_ARCHIVE.md`](PROJECT_INDEX_ARCHIVE.md).
+- `docs/plans/2026-11-23-analytics-map.md`: the analytics map (agreed 2026-11-23): close games, tilt, goal clock;
+  take the first open step.
 - `docs/plans/2026-11-22-account-profiles.md`: public release step 7, the header's account picker: the `account`
   setting scopes the reader's match set (not "you"), sessions per account; grill-me decisions and review log.
 - `docs/reviews/2026-11-22-account-profiles.md`: step 7 account picker review summary (2 rounds, 1 deferred to

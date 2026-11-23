@@ -100,8 +100,15 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   between), so a loaded machine overruns. CI runs `bun run check` on a release tag, so a failure there is re-run
   first. Leads: time it from the first `poll_failed` instead of the server stop, which takes the poll phase out; or
   keep the compile test from running beside the tray tests.
+- [ ] **[feature, Low, Standard]** (from the analytics map, deferred 2026-11-23) A concede heatmap over a whole
+  period on Trends, as a density view, since ~1,900 goals as dots would just be clutter. Lowest priority: the
+  recap's "Where the goals came from" already shows scored and conceded per session and match. Record:
+  `docs/plans/2026-11-23-analytics-map.md`.
 
 ## Watch list
+- [ ] **[feature, Low, Standard]** Trigger: the analytics map's Tilt section (step B) shows a real win % drop late
+  in sessions or after losses. Then add an in-session nudge (e.g. "3 losses in a row; your win rate here is X%").
+  Record: `docs/plans/2026-11-23-analytics-map.md`.
 - [ ] **[bug, Low, Standard]** Trigger: a user reports the header picker disagreeing with the page, or runs two
   dashboard tabs. An account picked in one tab leaves the other tab's picker on the old value, while that tab's
   pages follow the new account at their next refetch. A reload corrects it. Fix with a hub event on a settings

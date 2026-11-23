@@ -9,6 +9,7 @@ installs are checked, there is a landing page to link to, and the post answers t
   user on 2026-11-18.
 - Take the first step still open. When one finishes, update its status here.
 - 2026-11-22: no step is open; 8 and 9 moved to BACKLOG. New work comes from BACKLOG until a new map is agreed.
+- 2026-11-23: the analytics map (`docs/plans/2026-11-23-analytics-map.md`) was agreed and follows this one.
 - FAQ line for SmartScreen: "Windows warns on the first install only, because the app isn't code-signed."
 - Account profiles wait on whether anyone actually plays on alts; that's why they come after the release.
 
