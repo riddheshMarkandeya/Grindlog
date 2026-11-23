@@ -1,14 +1,14 @@
 // The header's account dropdown: all accounts, or one confirmed id. Only shown with 2 or more.
-import { useId, useState } from "react";
+import { useState } from "react";
 import { flushSync } from "react-dom";
 import { useNavigate } from "react-router";
 import { accountPicker } from "../logic/accounts";
 import { useIds, useSaveAccount, useSettingsQuery } from "../queries";
 import styles from "./AccountPicker.module.css";
 import { SaveStatus } from "./SaveStatus";
+import { Select } from "./Select";
 
 export function AccountPicker() {
-  const id = useId();
   const ids = useIds().data;
   // Not the defaulted settings: without the saved value the picker could say all over one account's data.
   const saved = useSettingsQuery().data?.account;
@@ -33,10 +33,7 @@ export function AccountPicker() {
   };
   return (
     <div className={styles.picker}>
-      <label htmlFor={id} className="visually-hidden">Account</label>
-      <select id={id} value={picked ?? picker.value} onChange={(e) => { save(e.target.value); }}>
-        {picker.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
+      <Select label={{ text: "Account", hidden: true }} value={picked ?? picker.value} groups={[{ label: null, options: picker.options }]} onChange={save} />
       {/* No tick: the pages refetching is the feedback. A failure says so, with a retry. */}
       <SaveStatus m={{ ...m, isSuccess: false }} retry={() => { if (m.variables?.account !== undefined) save(m.variables.account); }} />
     </div>

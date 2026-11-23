@@ -3,7 +3,7 @@
 import { playlistInfo, type PlaylistGroup } from "../../shared/playlists";
 import { filterValue, GROUPS, type PlaylistFilter } from "../../shared/playlist-filter";
 import { filterParam, teammateParam } from "../../shared/schemas/params";
-import { teammateValue, type TeammateFilter } from "../../shared/teammate-filter";
+import { pairKey, type TeammateFilter } from "../../shared/teammate-filter";
 
 export interface FilterOption {
   value: string;
@@ -48,15 +48,72 @@ export function recapReset(value: TeammateFilter, session: { friendsPresent: rea
   return typeof value === "object" && value.friends.length > 1 && session.summary === null ? "not_together" : null;
 }
 
+const ticked = (value: TeammateFilter): readonly string[] => (typeof value === "object" ? value.friends : []);
+
+/** The filter after ticking or unticking a friend in the With list: up to two friends, a pair in key order; the last untick is Anyone, a third tick changes nothing. */
+export function toggleFriend(value: TeammateFilter, id: string): TeammateFilter {
+  const t = ticked(value);
+  if (t.includes(id)) {
+    const rest = t.filter((x) => x !== id);
+    return rest.length === 0 ? "anyone" : { friends: rest };
+  }
+  const [only, second] = t;
+  if (only === undefined) return { friends: [id] };
+  return second === undefined ? { friends: pairKey(only, id) } : value;
+}
+
+/** Whether two friends were on your team together, as far as a page can tell. */
+export type Together = (a: string, b: string) => boolean;
+
+export interface FriendChoice {
+  id: string;
+  name: string;
+  disabled: boolean;
+  /** Why it's greyed, shown under the name; null when it can be ticked. */
+  reason: string | null;
+}
+
 /**
- * The dropdown's "A + B" entry when the filter names a pair (only a pair page links there), so the
- * select can show it; null otherwise, or when either isn't offered (the filter then resets).
+ * The friends in the With list, ticked or greyed. A third friend is greyed once two are ticked; with
+ * one ticked, a friend never on your team alongside them is. A ticked friend never is, so it can be
+ * unticked. Trends' pairs are thresholded, so its wording doesn't claim "never".
  */
-export function pairOption(value: TeammateFilter, friends: readonly { id: string; name: string }[]): FilterOption | null {
-  if (typeof value !== "object" || value.friends.length !== 2) return null;
-  const names = value.friends.map((id) => friends.find((f) => f.id === id)?.name);
-  if (names.some((n) => n === undefined)) return null;
-  return { value: teammateValue(value) ?? "", label: names.join(" + ") };
+export function friendChoices(value: TeammateFilter, friends: readonly { id: string; name: string }[], together: Together, page: "trends" | "recap"): FriendChoice[] {
+  const t = ticked(value);
+  const one = t.length === 1 ? t[0] : undefined;
+  const first = one === undefined ? null : { id: one, name: friends.find((f) => f.id === one)?.name ?? "them" };
+  return friends.map(({ id, name }) => {
+    const checked = t.includes(id);
+    let reason: string | null = null;
+    if (!checked && t.length >= 2) reason = "Two friends at most";
+    else if (!checked && first !== null && !together(first.id, id)) {
+      reason = page === "trends" ? `Not enough matches with ${first.name} on your team` : `Not on your team with ${first.name} this session`;
+    }
+    return { id, name, disabled: reason !== null, reason };
+  });
+}
+
+/** Trends: together when the Friends page lists the pair. While the pairs load (undefined), nobody is ruled out. */
+export function pairsTogether(named: readonly { pair: { ids: readonly string[] } }[] | undefined): Together {
+  if (named === undefined) return () => true;
+  // A pair's ids come in key order, so one string per pair.
+  const pairs = new Set(named.map((n) => n.pair.ids.join(",")));
+  return (a, b) => pairs.has(pairKey(a, b).join(","));
+}
+
+/** Recap: together when one of the shown matches had both on your team. While they're the previous
+ *  With's (undefined: placeholder data), nobody is ruled out. */
+export function togetherInMatches(matches: readonly { friends: readonly string[] }[] | undefined): Together {
+  if (matches === undefined) return () => true;
+  return (a, b) => matches.some((m) => m.friends.includes(a) && m.friends.includes(b));
+}
+
+/** The closed With button's text. A friend not offered is left out: the filter is about to reset to Anyone. */
+export function teammateLabel(value: TeammateFilter, friends: readonly { id: string; name: string }[]): string {
+  if (value === "anyone") return "Anyone";
+  if (value === "solo") return "Soloqueue";
+  const names = value.friends.flatMap((id) => friends.find((f) => f.id === id)?.name ?? []);
+  return names.length === 0 ? "Anyone" : names.join(" + ");
 }
 
 // Each group's playlists are listed singly under its "All" entry. Private is one entry (its ids are

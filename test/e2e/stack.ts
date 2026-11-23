@@ -106,6 +106,10 @@ const HAT_TRICK: Parameters<typeof record>[2] = {
  * second their MVP), so head-to-head is 7–6 over two pages. OPAL is a friend only ever on the other
  * team; KIM, LEE and MAX are teammates in 3 Casual Quads matches over 2 sessions, so all three are
  * suggested, and any two added are a pair.
+ * `trio`: the base matches, plus KIM, LEE and MAX as friends: KIM and LEE on your team together in
+ * e2e-trio-0 and 1 (last month on the 20th) and e2e-trio-2 (the 22nd), a pair by the Friends page's
+ * threshold; MAX on your team only in e2e-trio-max, after them in the 20th's session. 18 more
+ * matches with no friend (the 25th) take Trends past its 20.
  * `share`: the share card's worst case. The current session is 48 matches of mixed results, one
  * left early, under a 32-character name; your saves stand out against three days ago, and you
  * hit no woodwork but had aerial touches, so the 8th tile is the two-line "Aerial touches".
@@ -166,6 +170,23 @@ function seed(dir: string, mode: Seed): void {
       for (const [i, [d, at]] of ([[24, 0], [24, 10], [26, 0]] as const).entries()) writer.save(match(`e2e-pair-${String(i)}`, day(1, d), 10 * HOUR + at * MIN, true, { playlistId: 4 }, { players: pair }));
       storage.tracker.run("INSERT INTO friends (primary_id, nickname, added_at) VALUES (?, ?, ?)", FRIEND, FRIEND_NICK, now);
       storage.tracker.run("INSERT INTO friends (primary_id, nickname, added_at) VALUES (?, NULL, ?)", OPAL, now + 1);
+      return;
+    }
+    if (mode === "trio") {
+      // Kim and Lee together in 3 matches over 2 sessions (the Friends page's pair threshold, which
+      // Trends greys by); Max on your team only without them, in the first of those sessions.
+      const kim = player(KIM, 0, { name: "Kim" });
+      const lee = player(LEE, 0, { name: "Lee" });
+      const games: [string, string, number, ReturnType<typeof player>[]][] = [
+        ["e2e-trio-0", day(1, 20), 0, [kim, lee]],
+        ["e2e-trio-1", day(1, 20), 10, [kim, lee]],
+        ["e2e-trio-max", day(1, 20), 20, [player(MAX, 0, { name: "Max" })]],
+        ["e2e-trio-2", day(1, 22), 0, [kim, lee]],
+      ];
+      for (const [guid, d, at, friends] of games) writer.save(match(guid, d, 10 * HOUR + at * MIN, true, {}, { players: [player(ME, 0), ...friends, player(THEM, 1)] }));
+      // Past the Trends page's 20 matches (with the 4 above), with no friend.
+      for (let i = 0; i < 18; i++) writer.save(match(`e2e-trio-pad-${String(i).padStart(2, "0")}`, day(1, 25), 10 * HOUR + i * 6 * MIN, i % 2 === 0));
+      for (const [i, id] of [KIM, LEE, MAX].entries()) storage.tracker.run("INSERT INTO friends (primary_id, nickname, added_at) VALUES (?, NULL, ?)", id, now + i);
       return;
     }
     writer.save(match("e2e-old", day(2, 15), 14 * HOUR, true));
@@ -261,6 +282,7 @@ const SEED_DATA: Partial<Record<string, Seed>> = {
   guess: "guess",
   friends: "friends",
   "friends-page": "friends",
+  trio: "trio",
   accounts: "accounts",
   setup: "empty",
 };

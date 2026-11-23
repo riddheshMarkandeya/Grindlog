@@ -290,3 +290,12 @@ export function scoreboardTeams(players: readonly MatchPlayer[], myTeam: number 
   }));
   return teams.filter((t) => t.players.length > 0);
 }
+
+/**
+ * Whether Recap keeps showing the previous session detail while the next one loads: only when the With
+ * filter alone changed (same session, same playlist), so the open With list survives a tick. Keys are
+ * `["session", key, filter, with]`: With is last, and everything before it must match.
+ */
+export function keepDetailWhileWithChanges(prev: readonly unknown[] | undefined, next: readonly unknown[]): boolean {
+  return prev?.length === next.length && next.slice(0, -1).every((part, i) => part === prev[i]);
+}

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { AggregateWire, MatchDetail, MyMatchWire } from "../../shared/schemas/responses";
 import {
+  keepDetailWhileWithChanges,
   extrasCards,
   flagLines,
   flagShort,
@@ -341,5 +342,18 @@ describe("highlights", () => {
     ]);
     expect(highlights({})).toEqual([]);
     expect(highlights({ AerialGoal: 1 })).toEqual([{ event: "AerialGoal", label: "Aerial goal awards", count: 1 }]);
+  });
+});
+
+describe("keepDetailWhileWithChanges", () => {
+  // The session detail's query key: ["session", key, filter, with].
+  test("keeps the shown detail when only the With filter changed", () => {
+    expect(keepDetailWhileWithChanges(["session", "K1", "ranked", "anyone"], ["session", "K1", "ranked", "Epic|sam|0"])).toBe(true);
+  });
+
+  test("waits for the session when the session or the playlist changed, or nothing was shown", () => {
+    expect(keepDetailWhileWithChanges(["session", "K1", "ranked", "anyone"], ["session", "K2", "ranked", "Epic|sam|0"])).toBe(false);
+    expect(keepDetailWhileWithChanges(["session", "K1", "ranked", "anyone"], ["session", "K1", "casual", "anyone"])).toBe(false);
+    expect(keepDetailWhileWithChanges(undefined, ["session", "K1", "ranked", "anyone"])).toBe(false);
   });
 });

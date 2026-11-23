@@ -56,7 +56,10 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   tabs from a SharedWorker (`worker.ts`, in-page fallback in `client.ts`; it reads each status's `version`
   leniently first and posts it on its own), `live.ts` header state, `useLiveEvents.ts` refetch on events and
   one reload when the tracker's version changes (`logic/version-watch.ts`); `logic/` pure header logic; `components/` header and empty
-  state, `AccountPicker.tsx` the header's account dropdown (2+ confirmed ids; `logic/accounts.ts`), `Icon.tsx` every dashboard icon by `IconKey` (`logic/icons.ts`; Lucide, Phosphor's ball, two drawn),
+  state, `Select.tsx` every single-choice dropdown (React Aria Components' Select, themed in `Select.module.css`;
+  playlist, account and the Settings playlist pickers) and `TeammateFilter.tsx` the With list on the same classes (RAC
+  multi-select: up to two friends, greyed by `friendChoices` in `logic/filter-options.ts`),
+  `AccountPicker.tsx` the header's account dropdown (2+ confirmed ids; `logic/accounts.ts`), `Icon.tsx` every dashboard icon by `IconKey` (`logic/icons.ts`; Lucide, Phosphor's ball, two drawn),
   `Contribution.tsx` the share bars (Friends and the recap), `TouchThirds.tsx` touches by third (`logic/thirds.ts`),
   `Bars.module.css` their shared styles and `BarPct.tsx` a segment's % label that hides where it can't fit,
   `ModeSwitch.tsx` the team size and Online/Private picker, `WlBar.tsx` a thin win/loss bar,

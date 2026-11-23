@@ -52,7 +52,8 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   and Trends `.picks button` against the match page's `.chip`. One shared set, as the display-drift
   work did for panels and tables. On the way, `PeriodControls.tsx:45` uses `styles.controls`,
   which no CSS defines. Recurring (user, 2026-11-22): after a UI change, re-check the current controls for new drift
-  rather than treating this as done once. Record: `docs/plans/2026-11-03-display-drift.md`.
+  rather than treating this as done once. The four dropdowns are now one shared set (`components/Select.tsx`,
+  2026-11-22, `docs/plans/2026-11-22-dropdowns-and-trio.md`). Record: `docs/plans/2026-11-03-display-drift.md`.
 - [ ] **[design, Low, Standard]** (from public release map step 8) Trends data line: the line, dots and sparklines use `--accent`,
   which the colour rule in `src/web/styles/tokens.css` now keeps for selection and focus; on oled
   the accent is white, the same as the text. Choose a data colour (a new token, checked on every

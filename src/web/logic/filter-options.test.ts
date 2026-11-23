@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { filterValue } from "../../shared/playlist-filter";
-import { filterLabel, filterOptions, offeredFriends, pairOption, parseFilter, parseTeammate, recapReset, teammateMissing } from "./filter-options";
+import { filterLabel, filterOptions, offeredFriends, parseFilter, parseTeammate, friendChoices, pairsTogether, recapReset, teammateLabel, teammateMissing, toggleFriend, togetherInMatches } from "./filter-options";
 
 const flat = (groups: ReturnType<typeof filterOptions>) => groups.map((g) => [g.label, g.options.map((o) => `${o.value}=${o.label}`)]);
 
@@ -57,17 +57,95 @@ describe("teammate in the URL", () => {
   });
 });
 
-describe("pairOption", () => {
-  const friends = [{ id: "Epic|alex|0", name: "Alex" }, { id: "Epic|sam|0", name: "Sam" }];
-  test("only a two-friend value gets one, named A + B in the value's order", () => {
-    expect(pairOption({ friends: ["Epic|alex|0", "Epic|sam|0"] }, friends)).toEqual({ value: "Epic|alex|0,Epic|sam|0", label: "Alex + Sam" });
-    expect(pairOption({ friends: ["Epic|sam|0"] }, friends)).toBeNull();
-    expect(pairOption("solo", friends)).toBeNull();
-    expect(pairOption("anyone", friends)).toBeNull();
+describe("toggleFriend", () => {
+  const SAM = "Epic|sam|0", ALEX = "Epic|alex|0", KIM = "Epic|kim|0";
+  test("a tick from Anyone or Soloqueue starts a one-friend filter", () => {
+    expect(toggleFriend("anyone", SAM)).toEqual({ friends: [SAM] });
+    expect(toggleFriend("solo", SAM)).toEqual({ friends: [SAM] });
   });
 
-  test("none when either friend isn't offered: the filter resets to Anyone instead", () => {
-    expect(pairOption({ friends: ["Epic|alex|0", "Epic|kim|0"] }, friends)).toBeNull();
+  test("a second tick makes the pair, in key order whichever was ticked first", () => {
+    expect(toggleFriend({ friends: [SAM] }, ALEX)).toEqual({ friends: [ALEX, SAM] });
+    expect(toggleFriend({ friends: [ALEX] }, SAM)).toEqual({ friends: [ALEX, SAM] });
+  });
+
+  test("unticking leaves the other friend, and the last one goes back to Anyone", () => {
+    expect(toggleFriend({ friends: [ALEX, SAM] }, ALEX)).toEqual({ friends: [SAM] });
+    expect(toggleFriend({ friends: [SAM] }, SAM)).toBe("anyone");
+  });
+
+  test("a third tick is ignored", () => {
+    const pair = { friends: [ALEX, SAM] };
+    expect(toggleFriend(pair, KIM)).toBe(pair);
+  });
+});
+
+describe("friendChoices", () => {
+  const SAM = "Epic|sam|0", ALEX = "Epic|alex|0", KIM = "Epic|kim|0";
+  const friends = [{ id: SAM, name: "Sam" }, { id: ALEX, name: "Alex" }, { id: KIM, name: "Kim" }];
+  // Sam has played with Alex, never with Kim.
+  const together = (a: string, b: string) => [a, b].includes(SAM) && [a, b].includes(ALEX);
+  const row = (rows: ReturnType<typeof friendChoices>, id: string) => rows.find((r) => r.id === id);
+
+  test("nobody is greyed with no friend ticked", () => {
+    for (const v of ["anyone", "solo"] as const) {
+      expect(friendChoices(v, friends, together, "trends").map((r) => [r.name, r.disabled, r.reason])).toEqual([
+        ["Sam", false, null], ["Alex", false, null], ["Kim", false, null],
+      ]);
+    }
+  });
+
+  test("one friend ticked greys those never alongside them, worded per page", () => {
+    const trends = friendChoices({ friends: [SAM] }, friends, together, "trends");
+    expect(row(trends, SAM)).toMatchObject({ disabled: false, reason: null });
+    expect(row(trends, ALEX)).toMatchObject({ disabled: false, reason: null });
+    expect(row(trends, KIM)).toMatchObject({ disabled: true, reason: "Not enough matches with Sam on your team" });
+    expect(row(friendChoices({ friends: [SAM] }, friends, together, "recap"), KIM)?.reason).toBe("Not on your team with Sam this session");
+  });
+
+  test("two ticked grey every third friend, and a checked friend is never greyed", () => {
+    const rows = friendChoices({ friends: [ALEX, KIM] }, friends, () => false, "trends");
+    expect(row(rows, SAM)).toMatchObject({ disabled: true, reason: "Two friends at most" });
+    expect(row(rows, ALEX)).toMatchObject({ disabled: false, reason: null });
+    expect(row(rows, KIM)).toMatchObject({ disabled: false, reason: null });
+  });
+});
+
+describe("pairsTogether", () => {
+  const SAM = "Epic|sam|0", ALEX = "Epic|alex|0", KIM = "Epic|kim|0";
+  test("a listed pair is together either way round; an unlisted one isn't", () => {
+    const together = pairsTogether([{ pair: { ids: [ALEX, SAM] } }]);
+    expect(together(SAM, ALEX)).toBe(true);
+    expect(together(ALEX, SAM)).toBe(true);
+    expect(together(SAM, KIM)).toBe(false);
+  });
+
+  test("while the pairs load, nobody is ruled out", () => {
+    expect(pairsTogether(undefined)(SAM, KIM)).toBe(true);
+  });
+});
+
+describe("togetherInMatches", () => {
+  const SAM = "Epic|sam|0", ALEX = "Epic|alex|0", KIM = "Epic|kim|0";
+  test("while the shown matches are the previous filter's (undefined), nobody is ruled out", () => {
+    expect(togetherInMatches(undefined)("Epic|sam|0", "Epic|alex|0")).toBe(true);
+  });
+
+  test("together when one shown match had both on your team", () => {
+    const together = togetherInMatches([{ friends: [SAM] }, { friends: [SAM, ALEX] }, { friends: [KIM] }]);
+    expect(together(SAM, ALEX)).toBe(true);
+    expect(together(ALEX, SAM)).toBe(true);
+    expect(together(SAM, KIM)).toBe(false);
+  });
+});
+
+describe("teammateLabel", () => {
+  const friends = [{ id: "Epic|alex|0", name: "Alex" }, { id: "Epic|sam|0", name: "Sam" }];
+  test("names the filter as the closed With button shows it", () => {
+    expect(teammateLabel("anyone", friends)).toBe("Anyone");
+    expect(teammateLabel("solo", friends)).toBe("Soloqueue");
+    expect(teammateLabel({ friends: ["Epic|sam|0"] }, friends)).toBe("Sam");
+    expect(teammateLabel({ friends: ["Epic|alex|0", "Epic|sam|0"] }, friends)).toBe("Alex + Sam");
   });
 });
 

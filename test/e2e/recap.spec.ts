@@ -3,6 +3,7 @@
 // Runs before shell.spec.ts in the same worker, so the seed is as written (no replay yet).
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
+import { dropdown, pick } from "./dropdown";
 import { expect, test } from "./fixtures";
 import { indPos, topOf } from "./indicator";
 
@@ -323,8 +324,8 @@ test("the picker lists the open session's month, focused on its row; Escape, a s
 
 test("the playlist filter: in the URL, only what was played, and notes when nothing is under it", async ({ page }) => {
   await page.goto("/recap/e2e-first-a");
-  const select = page.getByLabel("Playlist");
-  await select.selectOption("11");
+  const select = dropdown(page, "Playlist");
+  await pick(page, "Playlist", "Ranked Doubles");
   await expect(page).toHaveURL(/\/recap\/e2e-first-a\?filter=11$/);
   await expect(bug(page, "2 wins, 2 losses")).toBeVisible();
   // A filter change hands focus back to the filter; Back to a cached entry leaves it there.

@@ -10,7 +10,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { PlaylistFilter } from "../../components/PlaylistFilter";
 import { TeammateFilter } from "../../components/TeammateFilter";
-import { parseFilter, parseTeammate, recapReset } from "../../logic/filter-options";
+import { parseFilter, parseTeammate, recapReset, togetherInMatches } from "../../logic/filter-options";
 import { recapPath, type RecapView } from "../../logic/recap";
 import { useLatestSession, useSessionDetail, useSettings } from "../../queries";
 import { redirect, Redirect } from "../../redirect";
@@ -113,21 +113,22 @@ export function RecapSession({ view }: { view: SessionView }) {
   const detail = useSessionDetail(session, filter, teammate);
   const page = useRef<HTMLDivElement>(null);
   const pickerButton = useRef<HTMLButtonElement>(null);
-  const filterSelect = useRef<HTMLSelectElement>(null);
-  const teammateSelect = useRef<HTMLSelectElement>(null);
+  const filterSelect = useRef<HTMLButtonElement>(null);
+  const teammateSelect = useRef<HTMLButtonElement>(null);
   const ready = detail.data !== undefined;
   const navigation = useNavigationType();
   const shownFilter = filterValue(filter);
   const shownWith = teammateValue(teammate) ?? "anyone";
   const seen = useRef<{ session: string; filter: string; with: string; view: SessionView; guid: string } | null>(null);
   const here: RecapView = useMemo(() => (view === "match" ? { match: guid } : view), [view, guid]);
-  // Whether the pending teammate reset came from a playlist change, whose select keeps the focus.
+  // Whether the pending teammate reset came from a playlist change, whose dropdown keeps the focus.
   const resetByFilter = useRef(false);
 
   // A friend not on your team in this session (under the playlist filter) goes back to Anyone;
   // replaced, so Back doesn't return to the empty view. Soloqueue stays, as paging lands on sessions
   // with no friend. A pair who never played together in it goes back too.
-  const reset = detail.data === undefined ? null : recapReset(teammate, detail.data);
+  // Not on placeholder data: that's the previous With's session, kept while a tick loads.
+  const reset = detail.data === undefined || detail.isPlaceholderData ? null : recapReset(teammate, detail.data);
   useEffect(() => {
     if (!reset) return;
     // Runs before the focus effect below, so `seen` still holds the filter before this load.
@@ -138,11 +139,10 @@ export function RecapSession({ view }: { view: SessionView }) {
 
   // While a session loads, the loading state replaces the controls, so the one used loses focus to
   // the page. Once a session is on screen, focus that fell there goes to the picker, the h1 naming
-  // the session; after a filter change (not Back or Forward), back to that filter's select, as
-  // arrowing through a closed select changes it on each key. A teammate reset counts as a change of
-  // the select that caused it. Moving between the session's pages unmounts the link used, so focus
-  // goes to the open match in the list, or to the open page's tab. Focus anywhere else, or arriving
-  // on the page, is left be.
+  // the session; after a filter change (not Back or Forward), back to that filter's dropdown, the
+  // control just used. A teammate reset counts as a change of the dropdown that caused it. Moving
+  // between the session's pages unmounts the link used, so focus goes to the open match in the list,
+  // or to the open page's tab. Focus anywhere else, or arriving on the page, is left be.
   useEffect(() => {
     if (!ready) return;
     const last = seen.current;
@@ -179,18 +179,22 @@ export function RecapSession({ view }: { view: SessionView }) {
     );
   }
   // Waits for the session rather than showing the last one, whose controls would act on old data.
+  // The one exception is a With-only change (same session and playlist): the previous detail stays
+  // as placeholder data, so the With list stays open for a second tick. The friends and playlists
+  // offered follow the session and playlist only, so they hold; the matches follow the old With, so
+  // while it loads only the two-friend cap greys, and Share (which would carry the old stats) hides.
   if (!detail.data) return <RecapLoading />;
 
   const d = detail.data;
   return (
-    <div data-session={d.key} ref={page}>
+    <div data-session={d.key} ref={page} aria-busy={detail.isPlaceholderData}>
       <GuessCard />
       <div className={styles.bar}>
         <SessionPicker detail={d} filter={filter} teammate={teammate} view={view === "overview" ? "overview" : "matches"} buttonRef={pickerButton} />
         <div className={styles.end}>
           <PlaylistFilter value={filter} present={d.playlistsPresent} selectRef={filterSelect} onChange={(f) => { void navigate(recapPath(session, f, here, teammate)); }} />
-          <TeammateFilter value={teammate} friends={d.friendsPresent} selectRef={teammateSelect} onChange={(t) => { void navigate(recapPath(session, filter, here, t)); }} />
-          {d.summary && <ShareButton detail={d} summary={d.summary} filter={filter} teammate={teammate} />}
+          <TeammateFilter value={teammate} friends={d.friendsPresent} together={togetherInMatches(detail.isPlaceholderData ? undefined : d.matches)} page="recap" selectRef={teammateSelect} onChange={(t) => { void navigate(recapPath(session, filter, here, t)); }} />
+          {d.summary && !detail.isPlaceholderData && <ShareButton detail={d} summary={d.summary} filter={filter} teammate={teammate} />}
         </div>
       </div>
       <RecapTabs session={session} filter={filter} teammate={teammate} view={view} />

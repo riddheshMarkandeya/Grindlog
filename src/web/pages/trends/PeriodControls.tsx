@@ -4,7 +4,9 @@ import type { PlaylistFilter as Filter } from "../../../shared/playlist-filter";
 import type { TeammateFilter as Teammate } from "../../../shared/teammate-filter";
 import { PlaylistFilter } from "../../components/PlaylistFilter";
 import { TeammateFilter } from "../../components/TeammateFilter";
+import { pairsTogether } from "../../logic/filter-options";
 import { quickPicks, specEqual, type TrendsState } from "../../logic/trends";
+import { useFriendPairs } from "../../queries";
 import { YearStrip } from "./YearStrip";
 import styles from "./Trends.module.css";
 
@@ -39,6 +41,8 @@ export function PeriodControls({
   onTeammate: (teammate: Teammate) => void;
   onYear: (year: number) => void;
 }) {
+  // Thresholded like the Friends page's suggestions; while it loads, only the two-friend cap greys.
+  const pairs = useFriendPairs().data;
   const thisYear = Number(today.slice(0, 4));
   const firstYear = firstDay ? Number(firstDay.slice(0, 4)) : thisYear;
   return (
@@ -53,7 +57,7 @@ export function PeriodControls({
         </div>
         <div className={styles.filters}>
           {present && <PlaylistFilter value={state.filter} present={present} onChange={onFilter} />}
-          <TeammateFilter value={state.teammate} friends={friends} onChange={onTeammate} />
+          <TeammateFilter value={state.teammate} friends={friends} together={pairsTogether(pairs)} page="trends" onChange={onTeammate} />
         </div>
       </div>
       <div className={styles.stepper}>

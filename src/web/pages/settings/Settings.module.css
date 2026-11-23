@@ -53,7 +53,7 @@
 .switch:checked::after { transform: translateX(16px); background: var(--page); }
 .switch:disabled { cursor: default; }
 
-.select, .number { background: var(--surf2); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r); padding: 4px 8px; font: inherit; }
+.number { background: var(--surf2); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r); padding: 4px 8px; font: inherit; }
 .number { width: 5em; }
 .number[aria-invalid="true"] { border-color: var(--down); }
 

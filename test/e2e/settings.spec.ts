@@ -2,6 +2,7 @@
 // so what it saves can't reach the other specs. Each test starts from the defaults.
 import AxeBuilder from "@axe-core/playwright";
 import type { APIRequestContext, Page } from "@playwright/test";
+import { dropdown, pick } from "./dropdown";
 import { expect, test } from "./fixtures";
 import { openCard, shareDialog } from "./share-card";
 import { indPos, leftOf } from "./indicator";
@@ -43,9 +44,9 @@ test("each setting saves, says so, and survives a reload", async ({ page }) => {
   await expect(saved(page, "Speed")).toHaveText("✓ Saved");
   await page.getByRole("radio", { name: "Trends" }).click();
   await expect(saved(page, "Start page")).toHaveText("✓ Saved");
-  await page.getByLabel("Recap playlist").selectOption("private");
+  await pick(page, "Recap playlist", "Private matches");
   await expect(saved(page, "Recap playlist")).toHaveText("✓ Saved");
-  await page.getByLabel("Trends playlist").selectOption("everything");
+  await pick(page, "Trends playlist", "Everything (excl. private)");
   await expect(saved(page, "Trends playlist")).toHaveText("✓ Saved");
   const window = page.getByLabel("Trends rolling window");
   await window.fill("35");
@@ -63,8 +64,8 @@ test("each setting saves, says so, and survives a reload", async ({ page }) => {
   await expect(page.getByRole("radio", { name: "12h" })).toBeChecked();
   await expect(page.getByRole("radio", { name: "mph" })).toBeChecked();
   await expect(page.getByRole("radio", { name: "Trends" })).toBeChecked();
-  await expect(page.getByLabel("Recap playlist")).toHaveValue("private");
-  await expect(page.getByLabel("Trends playlist")).toHaveValue("everything");
+  await expect(dropdown(page, "Recap playlist")).toHaveText("Private matches");
+  await expect(dropdown(page, "Trends playlist")).toHaveText("Everything (excl. private)");
   await expect(window).toHaveValue("35");
   await expect(page.getByRole("switch", { name: "Mood line" })).not.toBeChecked();
   await expect(page.getByRole("switch", { name: "Show remarks" })).toBeChecked();
@@ -117,13 +118,13 @@ test("the start page and each page's default filter; a filter in the URL still w
   await put(request, "startPage=trends&recapFilter=private&trendsFilter=everything");
   await page.goto("/");
   await expect(page).toHaveURL(/\/trends$/);
-  await expect(page.getByLabel("Playlist")).toHaveValue("everything");
+  await expect(dropdown(page, "Playlist")).toHaveText("Everything (excl. private)");
   await page.goto("/recap");
   await expect(page).toHaveURL(/\/recap\/e2e-private\?filter=private$/);
   await page.goto("/recap/e2e-first-a?filter=everything");
-  await expect(page.getByLabel("Playlist")).toHaveValue("everything");
+  await expect(dropdown(page, "Playlist")).toHaveText("Everything (excl. private)");
   await page.goto("/trends?filter=ranked");
-  await expect(page.getByLabel("Playlist")).toHaveValue("ranked");
+  await expect(dropdown(page, "Playlist")).toHaveText("All ranked");
 });
 
 test("the rolling window: a new size reaches Trends; a bad one says why and sends nothing", async ({ page }) => {

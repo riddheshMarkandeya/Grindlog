@@ -17,6 +17,7 @@ import { lastApplyLink, lastApplyText } from "../../../shared/update-text";
 import { useAutostart, useCheckForUpdates, useInstallUpdate, useSetAutoApply, useSetAutostart, useSettings, useSettingsQuery, useUpdate } from "../../queries";
 import { ApiError, codeOf } from "../../api";
 import { SaveStatus, type SaveState } from "../../components/SaveStatus";
+import { Select } from "../../components/Select";
 import { Section, SECTIONS, TableState, useSave } from "./parts";
 import { SeasonsSection } from "./SeasonsSection";
 import styles from "./Settings.module.css";
@@ -31,7 +32,7 @@ function RowFrame<V>({ label, help, htmlFor, labelId, m, save, children }: { lab
     if (!m.isSuccess || !retried.current) return;
     retried.current = false;
     const box = row.current;
-    (box?.querySelector<HTMLElement>("input:checked") ?? box?.querySelector<HTMLElement>("select, input"))?.focus();
+    (box?.querySelector<HTMLElement>("input:checked") ?? box?.querySelector<HTMLElement>("input, button[aria-haspopup=listbox]"))?.focus();
   }, [m.isSuccess]);
   const retry = () => {
     if (m.variables === undefined) return;
@@ -149,12 +150,10 @@ function WindowInput({ id, stored, from, onSave }: { id: string; stored: number;
   );
 }
 
-function FilterSelect({ id, value, onPick }: { id: string; value: Settings["recapFilter"]; onPick: (f: Settings["recapFilter"]) => void }) {
-  return (
-    <select id={id} className={styles.select} value={value} onChange={(e) => { onPick(groupFilter.parse(e.target.value)); }}>
-      {groupFilter.options.map((f) => <option key={f} value={f}>{filterLabel(f)}</option>)}
-    </select>
-  );
+const GROUP_OPTIONS = [{ label: null, options: groupFilter.options.map((f) => ({ value: f, label: filterLabel(f) })) }];
+
+function FilterSelect({ labelId, value, onPick }: { labelId: string; value: Settings["recapFilter"]; onPick: (f: Settings["recapFilter"]) => void }) {
+  return <Select label={{ labelledBy: labelId }} value={value} groups={GROUP_OPTIONS} onChange={(v) => { onPick(groupFilter.parse(v)); }} />;
 }
 
 const THEME_NAMES: Record<Settings["theme"], string> = { carbon: "Carbon", slate: "Slate", oled: "OLED" };
@@ -179,11 +178,11 @@ function Form({ s }: { s: Settings }) {
         <Row label="Start page" help="Where the dashboard opens." labelId={id("start")}>
           {(save) => <Choice labelId={id("start")} name="startPage" value={s.startPage} options={[["recap", "Recap"], ["trends", "Trends"]]} onPick={(startPage) => { save({ startPage }); }} />}
         </Row>
-        <Row label="Recap playlist" help="The recap's filter when you open it." htmlFor={id("recapFilter")} labelId={id("recapFilterL")}>
-          {(save) => <FilterSelect id={id("recapFilter")} value={s.recapFilter} onPick={(recapFilter) => { save({ recapFilter }); }} />}
+        <Row label="Recap playlist" help="The recap's filter when you open it." labelId={id("recapFilterL")}>
+          {(save) => <FilterSelect labelId={id("recapFilterL")} value={s.recapFilter} onPick={(recapFilter) => { save({ recapFilter }); }} />}
         </Row>
-        <Row label="Trends playlist" help="The Trends filter when you open it." htmlFor={id("trendsFilter")} labelId={id("trendsFilterL")}>
-          {(save) => <FilterSelect id={id("trendsFilter")} value={s.trendsFilter} onPick={(trendsFilter) => { save({ trendsFilter }); }} />}
+        <Row label="Trends playlist" help="The Trends filter when you open it." labelId={id("trendsFilterL")}>
+          {(save) => <FilterSelect labelId={id("trendsFilterL")} value={s.trendsFilter} onPick={(trendsFilter) => { save({ trendsFilter }); }} />}
         </Row>
         <Row label="Trends rolling window" help="Matches per point when Trends is “By match”. 5–100." htmlFor={id("window")} labelId={id("windowL")}>
           {(save) => <WindowInput id={id("window")} stored={s.rollingWindow} from={s} onSave={(rollingWindow, onFailed) => { save({ rollingWindow }, onFailed); }} />}

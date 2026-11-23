@@ -35,6 +35,7 @@ import type { IdAnswer, SeasonInput } from "../shared/schemas/tables";
 import { codeOf, getJson, postJson } from "./api";
 import { namedPairs } from "./logic/friends";
 import { staleAfterTables, type CachedQuery } from "./logic/invalidation";
+import { keepDetailWhileWithChanges } from "./logic/recap";
 import { patchQuery } from "./logic/settings";
 import { periodQuery } from "./logic/trends";
 
@@ -81,9 +82,11 @@ export function useSessionList(filter: PlaylistFilter, from: string, to: string,
 /** One session under the filters. */
 export function useSessionDetail(key: string, filter: PlaylistFilter, teammate: TeammateFilter) {
   const f = filterValue(filter);
+  const queryKey = ["session", key, f, withKey(teammate)];
   return useQuery({
-    queryKey: ["session", key, f, withKey(teammate)],
+    queryKey,
     queryFn: () => getJson(`/api/sessions/${encodeURIComponent(key)}?filter=${f}${withQuery(teammate)}`, sessionDetailResponse),
+    placeholderData: (prev, prevQuery) => (keepDetailWhileWithChanges(prevQuery?.queryKey, queryKey) ? prev : undefined),
   });
 }
 

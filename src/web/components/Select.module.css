@@ -1,0 +1,46 @@
+/* The app's dropdowns (React Aria Select): a themed button and a listbox popover. TeammateFilter
+   reuses these classes for its multi-select. */
+
+.select { display: inline-flex; align-items: center; gap: var(--s2); min-width: 0; }
+.label { font-size: 12px; color: var(--ink2); }
+
+.trigger {
+  display: inline-flex; align-items: center; justify-content: space-between; gap: var(--s2);
+  min-height: 30px; min-width: 0; max-width: 220px; padding: 4px 8px 4px 10px;
+  background: var(--surf2); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r);
+  font: inherit; cursor: pointer; text-align: left;
+  transition: border-color var(--dur-1) var(--ease-standard), scale var(--dur-1) var(--ease-standard);
+}
+.trigger > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trigger::after { content: "▾" / ""; color: var(--muted); font-size: 11px; flex: none; transition: rotate var(--dur-2) var(--ease-standard); }
+.trigger[aria-expanded=true]::after { rotate: 180deg; }
+.trigger[data-hovered] { border-color: var(--muted); }
+.trigger[aria-expanded=true] { border-color: var(--accent); }
+.trigger[data-pressed] { scale: var(--press); }
+.trigger[data-disabled] { opacity: .4; cursor: default; }
+.trigger[data-focus-visible] { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.pop {
+  min-width: max(200px, var(--trigger-width)); max-width: calc(100vw - 16px); max-height: min(420px, 70vh); overflow: auto;
+  background: var(--surf); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r);
+  box-shadow: 0 12px 32px var(--shadow); padding: 6px;
+}
+.pop[data-entering] { animation: rise var(--dur-3) var(--ease-enter); }
+.pop[data-exiting] { animation: rise var(--dur-exit) var(--ease-exit) reverse; }
+@keyframes rise { from { opacity: 0; translate: 0 calc(-1 * var(--rise)); } }
+
+.list { outline: none; }
+.groupHead { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink2); font-weight: 700; margin: 8px 8px 4px; }
+/* A group's options sit indented under its heading, as a native optgroup's do. */
+.section .option { padding-left: 20px; }
+
+.option {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px var(--s3);
+  padding: 6px 8px; border-radius: 4px; cursor: pointer; outline: none; font-size: 14px;
+}
+.option[data-focused], .option[data-hovered] { background: var(--surf2); }
+.option[data-focus-visible] { outline: 2px solid var(--accent); outline-offset: -2px; }
+.option[data-selected] { font-weight: 600; }
+.option[data-selected]::after { content: "✓" / ""; color: var(--accent); grid-column: 2; grid-row: 1; }
+.option[data-disabled] { color: var(--muted); cursor: default; }
+.reason { grid-column: 1; font-size: 12px; font-weight: 400; color: var(--muted); }

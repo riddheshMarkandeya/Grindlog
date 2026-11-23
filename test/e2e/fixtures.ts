@@ -27,7 +27,7 @@ export interface Stack {
  * "screens" is the pseudonymised real data `bun run screens-data` wrote, for test/site; "accounts" is "rich"
  * with a second confirmed id that played its own session).
  */
-export type Seed = "rich" | "empty" | "few" | "share" | "settings" | "tables" | "friends" | "friends-page" | "update" | "setup" | "guess" | "seasons" | "screens" | "accounts";
+export type Seed = "rich" | "empty" | "few" | "share" | "settings" | "tables" | "friends" | "friends-page" | "update" | "setup" | "guess" | "seasons" | "screens" | "accounts" | "trio";
 
 export const test = base.extend<{ consoleErrors: string[] }, { stack: Stack; seed: Seed }>({
   seed: ["rich", { scope: "worker", option: true }],

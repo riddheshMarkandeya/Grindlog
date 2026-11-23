@@ -5,6 +5,7 @@
 // seeded, so no test counts on an earlier one's writes.
 import AxeBuilder from "@axe-core/playwright";
 import type { APIRequestContext, Page } from "@playwright/test";
+import { dropdown, options } from "./dropdown";
 import { expect, test } from "./fixtures";
 
 // Its own seed name: it writes, and the friends spec shares the "friends" stack.
@@ -81,7 +82,8 @@ test("add moves focus to the next suggestion, the one before after the last; nev
 
   // Lee and Max are now offered by the recap's With on a session they're in.
   await page.goto("/recap/e2e-pair-0");
-  await expect(page.getByLabel("With").locator("option")).toHaveText(["Anyone", "Soloqueue", "Lee", "Max"]);
+  await dropdown(page, "With").click();
+  await expect(options(page)).toHaveText(["Anyone", "Soloqueue", "Lee", "Max"]);
 });
 
 test("a friend: scorebug, both zones, the mode switch, the pager and a match link", async ({ page }) => {
@@ -188,11 +190,11 @@ test("a pair: the Together card, both zones, the four-way carry and the links to
   await zone.getByRole("link", { name: "Matches with Kim and Lee →" }).click();
   // The latest session: the pair's last match.
   await expect(page).toHaveURL(/\/recap\/e2e-pair-2\?filter=everything&with=Epic%7Ce2e-kim%7C0%2CEpic%7Ce2e-lee%7C0$/);
-  await expect(page.getByLabel("With").locator("option:checked")).toHaveText("Kim + Lee");
+  await expect(dropdown(page, "With")).toHaveText("Kim + Lee");
   await page.goBack();
   await zone.getByRole("link", { name: "Trends with Kim and Lee →" }).click();
   await expect(page).toHaveURL(/\/trends\?with=Epic%7Ce2e-kim%7C0%2CEpic%7Ce2e-lee%7C0$/);
-  await expect(page.getByLabel("With").locator("option:checked")).toHaveText("Kim + Lee");
+  await expect(dropdown(page, "With")).toHaveText("Kim + Lee");
 });
 
 test("a pair link with someone who isn't a friend says so", async ({ page, request, consoleErrors }) => {

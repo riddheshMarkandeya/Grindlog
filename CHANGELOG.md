@@ -6,6 +6,14 @@ All notable changes to Grindlog are listed here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- "With" takes up to two friends: tick a second friend to see the matches where both were on your team. The list
+  stays open after the first tick, and friends who can't join the one you ticked are greyed out with the reason.
+
+### Changed
+- The dropdowns (playlist, With, account and the Settings playlist pickers) match the dashboard's theme instead of
+  looking like the browser's own.
+
 ## [0.1.6] - 2026-11-19
 
 ### Added

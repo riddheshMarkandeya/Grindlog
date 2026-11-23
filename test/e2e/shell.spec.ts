@@ -3,6 +3,7 @@
 // Serial: the replay is one-shot.
 import AxeBuilder from "@axe-core/playwright";
 import type { Page, Route } from "@playwright/test";
+import { dropdown } from "./dropdown";
 import { expect, test } from "./fixtures";
 import { indDuration, indPos, leftOf, transitionEnd } from "./indicator";
 
@@ -36,7 +37,7 @@ test("a dev build says so, in the header, logo, favicon and tab title, so it isn
 test("one confirmed id: no account picker in the header", async ({ page }) => {
   await page.goto("/recap");
   await expect(status(page, "connected")).toBeVisible();
-  await expect(page.getByRole("banner").getByRole("combobox")).toHaveCount(0);
+  await expect(dropdown(page.getByRole("banner"), "Account")).toHaveCount(0);
 });
 
 test("before the match: redirect, live status, chip, navigation, deep link, not found", async ({ page }) => {
