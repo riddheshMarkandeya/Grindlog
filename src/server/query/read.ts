@@ -147,12 +147,15 @@ interface GoalRow {
   deflected: number;
   aerial: number;
   own_goal: number;
+  clock_seconds: number | null;
+  clock_overtime: number | null;
   scorer_name: string | null;
   assister_name: string | null;
 }
 
 type FullMatchRow = Omit<MatchRow, "winner_source" | "mvp_source" | "check_failed" | "player_key" | "primary_id" | "team_num" | "teams_seen" | keyof PlayerStats> & {
   check_flags: string;
+  regulation_seconds: number | null;
 };
 
 type PlayerStats = Pick<MatchRow, "score" | "goals" | "shots" | "assists" | "saves" | "demos" | "touches" | "hardest_shot_kmh" | "woodwork_hits" | "aerial_touches" | "car_ms" | "boost_avg" | "supersonic_ms" | "empty_boost_ms">;
@@ -537,7 +540,7 @@ export function createQueryReader({ tracker, logger, account = () => null }: { t
       tracker
         .all<GoalRow>(
           `SELECT g.match_guid, g.idx, g.team_num, g.scorer_key, g.assister_key, g.toucher_key, g.x, g.y, g.z, g.distance, g.speed_kmh,
-             g.deflected, g.aerial, g.own_goal, s.name AS scorer_name, a.name AS assister_name
+             g.deflected, g.aerial, g.own_goal, g.clock_seconds, g.clock_overtime, s.name AS scorer_name, a.name AS assister_name
            FROM match_goals g
            LEFT JOIN match_players s ON s.match_guid = g.match_guid AND s.player_key = g.scorer_key
            LEFT JOIN match_players a ON a.match_guid = g.match_guid AND a.player_key = g.assister_key
@@ -560,6 +563,7 @@ export function createQueryReader({ tracker, logger, account = () => null }: { t
           deflected: g.deflected === 1,
           aerial: g.aerial === 1,
           ownGoal: g.own_goal === 1,
+          clock: g.clock_seconds === null ? null : { seconds: g.clock_seconds, overtime: g.clock_overtime === 1 },
         })),
     );
   }
@@ -569,7 +573,7 @@ export function createQueryReader({ tracker, logger, account = () => null }: { t
     const [m] = timed("readMatch", () =>
       tracker.all<FullMatchRow>(
         `SELECT guid, started_at, ended_at, playlist_id, arena, end_kind, closed_via, joined_in_progress, overtime, score_team0,
-           score_team1, winner_team_num, mvp_key, camera_primary_id, check_flags
+           score_team1, winner_team_num, mvp_key, camera_primary_id, check_flags, regulation_seconds
          FROM matches WHERE guid = ?`,
         guid,
       ),
@@ -601,6 +605,7 @@ export function createQueryReader({ tracker, logger, account = () => null }: { t
         winnerTeamNum: m.winner_team_num,
         mvpKey: m.mvp_key,
         checkFlags: JSON.parse(m.check_flags) as string[],
+        regulationSeconds: m.regulation_seconds,
       },
       players: players.map((p) => ({
         playerKey: p.player_key,

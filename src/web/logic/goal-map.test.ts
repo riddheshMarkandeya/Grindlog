@@ -21,6 +21,7 @@ const goal = (matchGuid: string, over: Partial<Goal>): Goal => ({
   deflected: false,
   aerial: false,
   ownGoal: false,
+  clock: null,
   ...over,
 });
 

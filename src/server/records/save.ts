@@ -18,15 +18,16 @@ const C = "records";
 
 const UPSERT_MATCH = `
   INSERT INTO matches (guid, started_at, ended_at, playlist_id, arena, end_kind, closed_via, joined_in_progress, overtime,
-    score_team0, score_team1, winner_team_num, winner_source, mvp_key, mvp_source, camera_primary_id, check_flags, rule_versions)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    score_team0, score_team1, winner_team_num, winner_source, mvp_key, mvp_source, camera_primary_id, check_flags, rule_versions,
+    regulation_seconds)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT (guid) DO UPDATE SET
     started_at = excluded.started_at, ended_at = excluded.ended_at, playlist_id = excluded.playlist_id, arena = excluded.arena,
     end_kind = excluded.end_kind, closed_via = excluded.closed_via, joined_in_progress = excluded.joined_in_progress,
     overtime = excluded.overtime, score_team0 = excluded.score_team0, score_team1 = excluded.score_team1,
     winner_team_num = excluded.winner_team_num, winner_source = excluded.winner_source, mvp_key = excluded.mvp_key,
     mvp_source = excluded.mvp_source, camera_primary_id = excluded.camera_primary_id, check_flags = excluded.check_flags,
-    rule_versions = excluded.rule_versions`;
+    rule_versions = excluded.rule_versions, regulation_seconds = excluded.regulation_seconds`;
 
 // The extras' columns come from the registry, so a new stat needs only its entry and a migration.
 const BASE_PLAYER_COLUMNS = ["match_guid", "player_key", "primary_id", "name", "is_bot", "team_num", "teams_seen", "present_at_end", "score", "goals", "shots", "assists", "saves", "touches", "demos"];
@@ -34,8 +35,9 @@ const PLAYER_COLUMNS = [...BASE_PLAYER_COLUMNS, ...PLAYER_EXTRAS.map((e) => e.co
 const INSERT_PLAYER = `INSERT INTO match_players (${PLAYER_COLUMNS.join(", ")}) VALUES (${PLAYER_COLUMNS.map(() => "?").join(", ")})`;
 
 const INSERT_GOAL = `
-  INSERT INTO match_goals (match_guid, idx, team_num, scorer_key, assister_key, toucher_key, x, y, z, distance, speed_kmh, deflected, aerial, own_goal)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  INSERT INTO match_goals (match_guid, idx, team_num, scorer_key, assister_key, toucher_key, x, y, z, distance, speed_kmh, deflected, aerial, own_goal,
+    clock_seconds, clock_overtime)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
 /**
  * The camera's id, unless it is already in my_ids (whatever its status: a rejected one is never
@@ -92,6 +94,7 @@ export function createRecordWriter({ tracker, logger, now = Date.now }: RecordWr
       m.cameraPrimaryId,
       JSON.stringify(m.checkFlags),
       JSON.stringify(m.ruleVersions),
+      m.regulationSeconds,
     );
     deleteRows(tracker, m.guid);
     for (const p of players) {
@@ -99,8 +102,26 @@ export function createRecordWriter({ tracker, logger, now = Date.now }: RecordWr
       tracker.run(INSERT_PLAYER, m.guid, p.playerKey, p.primaryId, p.name, p.isBot, p.teamNum, p.teamsSeen, p.presentAtEnd, p.score, p.goals, p.shots, p.assists, p.saves, p.touches, p.demos, ...extras);
     }
     goals.forEach((g, idx) => {
-      const { pos } = g;
-      tracker.run(INSERT_GOAL, m.guid, idx, g.teamNum, g.scorerKey, g.assisterKey, g.toucherKey, pos?.x ?? null, pos?.y ?? null, pos?.z ?? null, g.distance, g.speedKmh, g.deflected, g.aerial, g.ownGoal);
+      const { pos, clock } = g;
+      tracker.run(
+        INSERT_GOAL,
+        m.guid,
+        idx,
+        g.teamNum,
+        g.scorerKey,
+        g.assisterKey,
+        g.toucherKey,
+        pos?.x ?? null,
+        pos?.y ?? null,
+        pos?.z ?? null,
+        g.distance,
+        g.speedKmh,
+        g.deflected,
+        g.aerial,
+        g.ownGoal,
+        clock?.seconds ?? null,
+        clock?.overtime ?? null,
+      );
     });
     for (const s of statfeed) {
       tracker.run("INSERT INTO match_player_statfeed (match_guid, player_key, event_name, count) VALUES (?, ?, ?, ?)", m.guid, s.playerKey, s.eventName, s.count);

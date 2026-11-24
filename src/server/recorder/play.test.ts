@@ -222,6 +222,7 @@ describe("buildPlay: goals", () => {
         deflected: true,
         aerial: false,
         ownGoal: false,
+        clock: null,
       },
     ]);
     expect(play.hardestShot[key("A")]).toBe(95);
@@ -344,5 +345,56 @@ describe("buildPlay: goals", () => {
   test("a last touch the hits don't show is counted", () => {
     const play = buildPlay([at(0, "RoundStarted"), hit(100, ["A"]), goal(200, "A", "C")], summary());
     expect(play.facts.lastTouchDisagrees).toBe(1);
+  });
+});
+
+describe("buildPlay: goal clock", () => {
+  const clock = (ts: number, seconds: unknown, overtime?: unknown) => at(ts, "ClockUpdatedSeconds", { TimeSeconds: seconds, bOvertime: overtime });
+  const clocks = (events: StoredEvent[]) => buildPlay(events, summary()).goals.map((g) => g.clock);
+
+  test("a goal's clock is the last reading before it; a later one isn't used", () => {
+    const events = [at(0, "RoundStarted"), clock(10, 299, false), clock(20, 252, false), hit(30, ["A"]), goal(40, "A", "A"), clock(50, 251, false)];
+    expect(clocks(events)).toEqual([{ seconds: 252, overtime: false }]);
+  });
+
+  test("a state's own TimeSeconds is ignored", () => {
+    const events = [at(0, "RoundStarted"), clock(10, 100, false), state(20, { A: {} }, { TimeSeconds: 99 }), goal(30, "A", "A")];
+    expect(clocks(events)).toEqual([{ seconds: 100, overtime: false }]);
+  });
+
+  test("an overtime reading sets the flag; a reading without a numeric TimeSeconds is skipped", () => {
+    const events = [at(0, "RoundStarted"), clock(10, 0, false), clock(20, 14, true), clock(30, null, true), goal(40, "A", "A")];
+    expect(clocks(events)).toEqual([{ seconds: 14, overtime: true }]);
+  });
+
+  test("a goal with no reading before it has a null clock and is counted", () => {
+    const play = buildPlay([at(0, "RoundStarted"), goal(10, "A", "A"), clock(20, 200, false), goal(30, "B", "B")], summary());
+    expect(play.goals.map((g) => g.clock)).toEqual([null, { seconds: 200, overtime: false }]);
+    expect(play.facts.goalsWithoutClock).toBe(1);
+  });
+
+  test("regulation length is the largest regulation reading, up to a whole minute; overtime readings and a lone 0 are left out", () => {
+    const reg = (...readings: [number, boolean][]) => buildPlay(readings.map(([s, ot], i) => clock(i, s, ot)), summary()).regulationSeconds;
+    expect(reg([299, false], [120, false])).toBe(300);
+    expect(reg([180, false])).toBe(180);
+    expect(reg([372, false])).toBe(420);
+    expect(reg([299, false], [400, true])).toBe(300);
+    expect(reg([400, true])).toBeNull();
+    // Joined at the very end, the only reading is the reset to 0.
+    expect(reg([0, false])).toBeNull();
+    expect(reg()).toBeNull();
+    // A negative reading is flagged by clock_non_negative; it gives no length either.
+    expect(reg([-1, false])).toBeNull();
+  });
+
+  test("a reading after MatchEnded changes neither a goal's clock nor the regulation length", () => {
+    const play = buildPlay([at(0, "RoundStarted"), clock(10, 180, false), goal(20, "A", "A"), at(30, "MatchEnded"), clock(40, 300, false), goal(50, "B", "B")], summary());
+    expect(play.goals.map((g) => g.clock)).toEqual([{ seconds: 180, overtime: false }]);
+    expect(play.regulationSeconds).toBe(180);
+  });
+
+  test("a reading whose bOvertime isn't a boolean is counted", () => {
+    const play = buildPlay([at(0, "RoundStarted"), clock(10, 299, false), clock(20, 200), clock(30, 199, "yes"), clock(40, 14, true)], summary());
+    expect(play.facts.clockReadingsWithoutOvertimeFlag).toBe(2);
   });
 });

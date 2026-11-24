@@ -144,6 +144,8 @@ const CHECKS: readonly Check[] = [
   },
   { id: "extras_computed", run: (s) => s.extrasError },
   { id: "goals_placed", run: withExtras((_, x) => fails(x.facts.droppedGoals, "goal(s) whose scorer isn't a roster player with a team, so no point")) },
+  { id: "goals_clocked", run: withExtras((_, x) => fails(x.facts.goalsWithoutClock, "goal(s) with no clock reading before them")) },
+  { id: "clock_overtime_flagged", run: withExtras((_, x) => fails(x.facts.clockReadingsWithoutOvertimeFlag, "clock reading(s) with no boolean bOvertime")) },
   {
     id: "touches_resolved",
     run: withExtras((_, { facts: { unresolved: u } }) => {

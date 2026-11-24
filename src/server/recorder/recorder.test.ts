@@ -117,6 +117,9 @@ describe("recorder on the fixtures", () => {
     expect(summary).toMatchObject({ endKind: "completed", playlistId: 13, overtime: true, score: [5, 4], winner: { teamNum: 0, source: "match_ended" }, facts: { liveGoals: 9 } });
     expect(summary.roster).toHaveLength(6);
     expect(summary.roster.filter((r) => r.presentAtEnd)).toHaveLength(2);
+    const reg = (seconds: number) => ({ seconds, overtime: false });
+    expect(summary.extras?.goals.map((g) => g.clock)).toEqual([...[177, 172, 160, 93, 87, 66, 54, 8].map(reg), { seconds: 180, overtime: true }]);
+    expect(summary.extras).toMatchObject({ regulationSeconds: 300, facts: { goalsWithoutClock: 0 } });
   });
 
   test("joined-in-progress: no MatchCreated or MatchInitialized, so goal events aren't compared", () => {

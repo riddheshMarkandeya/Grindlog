@@ -123,6 +123,8 @@ export const goalSchema = z.object({
   deflected: z.boolean(),
   aerial: z.boolean(),
   ownGoal: z.boolean(),
+  /** The last game-clock reading before the goal: time left in regulation, time played in overtime. Null until recompute. */
+  clock: z.object({ seconds: z.number(), overtime: z.boolean() }).nullable(),
 });
 
 /** A session as the picker and the header chip show it, counting only matches you played under the filter. */
@@ -210,6 +212,8 @@ export const matchDetailResponse = z.object({
     winnerTeamNum: z.number().nullable(),
     mvpKey: z.string().nullable(),
     checkFlags: z.array(z.string()),
+    /** The largest regulation clock reading, up to a whole minute; null until recompute or with no reading. */
+    regulationSeconds: z.number().nullable(),
   }),
   players: z.array(matchPlayerSchema),
   goals: z.array(goalSchema),

@@ -176,6 +176,12 @@ export const trackerMigrations: readonly string[] = [
     SELECT name FROM seed WHERE NOT EXISTS (SELECT 1 FROM seasons WHERE seasons.name = seed.name COLLATE NOCASE);
   DROP TABLE seed;
   `,
+  // Each goal's game-clock reading, and each match's regulation length; null until recompute, as for the extras.
+  `
+  ALTER TABLE match_goals ADD COLUMN clock_seconds  INTEGER; -- time left in regulation, or time played in overtime
+  ALTER TABLE match_goals ADD COLUMN clock_overtime INTEGER; -- that reading was in overtime
+  ALTER TABLE matches ADD COLUMN regulation_seconds INTEGER; -- the largest regulation reading, up to a whole minute
+  `,
 ];
 
 export const rawMigrations: readonly string[] = [

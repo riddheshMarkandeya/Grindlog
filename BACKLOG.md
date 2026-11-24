@@ -130,6 +130,9 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   `src/shared/clutch.ts` already gives the casual/ranked/tournament rule and can be reused.
 
 ## Watch list
+- [ ] **[bug, Low, Standard]** Trigger: the first match flagged `goals_clocked` (a goal with no
+  `ClockUpdatedSeconds` reading before it) or `clock_overtime_flagged` (a reading whose `bOvertime` isn't a boolean; none in 1,988 stored
+  goals). Fit the `goal_clock` rule (and, for a bad `bOvertime`, `regulation_length`) to that match. Record: `docs/plans/2026-11-24-goal-clock.md`.
 - [ ] **[feature, Low, Standard]** Trigger: the analytics map's Tilt section (step B) says "You drop …" (2.5 standard
   errors) in the wide all-matches view, not only in a filtered one, where four buckets checked per view leave room
   for a chance false alarm. Then add an in-session nudge (e.g. "3 losses in a row; your win rate here is X%").

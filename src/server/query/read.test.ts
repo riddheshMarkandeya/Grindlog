@@ -200,7 +200,7 @@ describe("readGoals", () => {
     writer.save(
       record("G", 1000, {
         players: [player(ME, 0, { name: "Me" }), player(THEM, 1, { name: "Them" })],
-        goals: [goal(0, ME, { assisterKey: THEM, deflected: true }), goal(1, THEM, { ownGoal: true, toucherKey: null, pos: null, distance: null, aerial: true })],
+        goals: [goal(0, ME, { assisterKey: THEM, deflected: true }), goal(1, THEM, { ownGoal: true, toucherKey: null, pos: null, distance: null, aerial: true, clock: null })],
       }),
     );
     writer.save(record("H", 2000));
@@ -227,8 +227,10 @@ describe("readGoals", () => {
       deflected: true,
       aerial: false,
       ownGoal: false,
+      clock: { seconds: 120, overtime: false },
     });
-    expect(goals[1]).toMatchObject({ scorerName: "Them", assisterName: null, toucherKey: null, pos: null, distance: null, aerial: true, ownGoal: true });
+    // Null clock columns, as on a row from before the recompute.
+    expect(goals[1]).toMatchObject({ scorerName: "Them", assisterName: null, toucherKey: null, pos: null, distance: null, aerial: true, ownGoal: true, clock: null });
     expect(reader.readGoals([])).toEqual([]);
   });
 });
@@ -254,6 +256,7 @@ describe("readMatch", () => {
       winnerTeamNum: 0,
       mvpKey: ME,
       checkFlags: ["x"],
+      regulationSeconds: 300,
     });
     expect(m?.players.map((p) => [p.playerKey, p.isMe, p.isBot, p.presentAtEnd, p.hardestShotKmh, p.thirds])).toEqual([
       [ME, true, false, true, 101.5, [2, 2, 1]],
@@ -262,6 +265,13 @@ describe("readMatch", () => {
     ]);
     expect(m?.result).toBe("win");
     expect(reader.readMatch("nope")).toBeNull();
+  });
+
+  test("an overtime goal's clock reads back, and a match without a regulation length gives null", () => {
+    const { writer, reader } = setup();
+    writer.save(record("G", 1000, { goals: [goal(0, ME, { clock: { seconds: 14, overtime: true } })] }, { regulationSeconds: null }));
+    expect(reader.readGoals(["G"])[0]?.clock).toEqual({ seconds: 14, overtime: true });
+    expect(reader.readMatch("G")?.match.regulationSeconds).toBeNull();
   });
 
   test("two of your ids: only the picked one is you; spectated: nobody is", () => {

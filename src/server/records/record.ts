@@ -27,6 +27,8 @@ export interface MatchRow {
   checkFlags: string[];
   /** The recorded rules' versions it was computed under, by rule id; a thinned match's dense rules keep theirs from when it was thinned. */
   ruleVersions: Readonly<Record<string, number>>;
+  /** The largest regulation clock reading, up to a whole minute; null without extras or a reading. */
+  regulationSeconds: number | null;
 }
 
 export interface PlayerRow {
@@ -90,6 +92,7 @@ export function toRecord(s: MatchSummary): MatchRecord {
       cameraPrimaryId: cameraPrimaryId(s),
       checkFlags: [...s.flags],
       ruleVersions: { ...RECORDED_RULE_VERSIONS, ...s.thinned?.ruleVersions },
+      regulationSeconds: s.extras?.regulationSeconds ?? null,
     },
     players: s.roster.map((r) => ({
       playerKey: r.key,

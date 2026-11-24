@@ -26,6 +26,7 @@ const point = (teamNum: TeamNum, scorerKey: string): GoalPoint => ({
   deflected: false,
   aerial: false,
   ownGoal: false,
+  clock: { seconds: 120, overtime: false },
 });
 const extrasFor = (car: boolean): ExtraValues => ({
   hardest_shot_kmh: 120,
@@ -59,6 +60,7 @@ const clean = (): MatchSummary => ({
   extras: {
     players: { a: { ...extrasFor(true), woodwork_hits: 1 }, b: extrasFor(true), c: extrasFor(false) },
     goals: [point(0, "a"), point(1, "c"), point(0, "a")],
+    regulationSeconds: 300,
     facts: { ...emptyFacts(), playMs: 60_000 },
   },
   extrasError: null,
@@ -125,6 +127,8 @@ describe("runChecks", () => {
     ["goals_per_team_equal_score", (s) => (x(s).goals[1] = point(0, "a"))],
     ["extras_computed", (s) => ((s.extras = null), (s.extrasError = "TypeError: boom"))],
     ["goals_placed", (s) => (x(s).facts.droppedGoals = 1)],
+    ["goals_clocked", (s) => (x(s).facts.goalsWithoutClock = 1)],
+    ["clock_overtime_flagged", (s) => (x(s).facts.clockReadingsWithoutOvertimeFlag = 1)],
     ["touches_resolved", (s) => (x(s).facts.unresolved.hit = 1)],
     ["touches_resolved", (s) => (x(s).facts.unresolved.shot = 1)],
     ["touches_resolved", (s) => (x(s).facts.unresolved.woodwork = 1)],

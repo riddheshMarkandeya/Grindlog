@@ -202,6 +202,21 @@ describe("tracker schema", () => {
     expect(() => d.run("UPDATE seasons SET file_name = 's22' WHERE name = 'S25'")).toThrow(/UNIQUE/);
   });
 
+  test("a DB at version 9 gains the goal clock and regulation length, null on the rows it had until recompute", () => {
+    const logger = memoryLogger();
+    const d = db();
+    migrate(d, "tracker", trackerMigrations.slice(0, 9), { logger });
+    d.run(
+      `INSERT INTO matches (guid, started_at, ended_at, end_kind, closed_via, joined_in_progress, overtime, check_flags)
+        VALUES ('G', 1, 2, 'completed', 'destroyed', 0, 0, '[]')`,
+    );
+    d.run("INSERT INTO match_goals (match_guid, idx, team_num, scorer_key, deflected, aerial, own_goal) VALUES ('G', 0, 0, 'k', 0, 0, 0)");
+    migrate(d, "tracker", trackerMigrations.slice(0, 10), { logger });
+    expect(d.pragma("user_version")).toBe(10);
+    expect(d.get("SELECT clock_seconds, clock_overtime FROM match_goals")).toEqual({ clock_seconds: null, clock_overtime: null });
+    expect(d.get("SELECT regulation_seconds FROM matches")).toEqual({ regulation_seconds: null });
+  });
+
   test("a seed season deleted before version 9 is recorded as dismissed, so the season file never brings it back", () => {
     const logger = memoryLogger();
     const fresh = db("fresh.db");

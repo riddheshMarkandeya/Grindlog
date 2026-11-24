@@ -50,6 +50,7 @@ const goal = (teamNum: TeamNum, scorerKey: string, over: Partial<GoalPoint> = {}
   deflected: false,
   aerial: false,
   ownGoal: false,
+  clock: { seconds: 120, overtime: false },
   ...over,
 });
 
@@ -73,6 +74,7 @@ const record = (guid = "G", over: Partial<MatchRecord["match"]> = {}): MatchReco
     cameraPrimaryId: "Epic|me|0",
     checkFlags: [],
     ruleVersions: { winner: 1, aerial_touch: 2 },
+    regulationSeconds: 300,
     ...over,
   },
   players: [player("Epic|me|0", 0), player("Epic|them|0", 1)],
@@ -80,7 +82,7 @@ const record = (guid = "G", over: Partial<MatchRecord["match"]> = {}): MatchReco
     { playerKey: "Epic|me|0", eventName: "Goal", count: 1 },
     { playerKey: "Epic|them|0", eventName: "Goal", count: 1 },
   ],
-  goals: [goal(0, "Epic|me|0", { aerial: true }), goal(1, "Epic|them|0", { toucherKey: null, pos: null, distance: null, ownGoal: true })],
+  goals: [goal(0, "Epic|me|0", { aerial: true }), goal(1, "Epic|them|0", { toucherKey: null, pos: null, distance: null, ownGoal: true, clock: { seconds: 14, overtime: true } })],
 });
 
 function setup() {
@@ -94,6 +96,13 @@ const count = (table: string) => storage.tracker.get<{ n: number }>(`SELECT COUN
 const myIds = () => storage.tracker.all("SELECT primary_id, name, status, added_at FROM my_ids ORDER BY primary_id");
 
 describe("record writer", () => {
+  test("a goal with no clock and a match with no regulation length store null", () => {
+    const { writer } = setup();
+    writer.save({ ...record("G", { regulationSeconds: null }), goals: [goal(0, "Epic|me|0", { clock: null })] });
+    expect(storage.tracker.get("SELECT regulation_seconds FROM matches")).toEqual({ regulation_seconds: null });
+    expect(storage.tracker.get("SELECT clock_seconds, clock_overtime FROM match_goals")).toEqual({ clock_seconds: null, clock_overtime: null });
+  });
+
   test("stores the match, its players and statfeed counts", () => {
     const { writer, fields } = setup();
     writer.save(record("G", { checkFlags: ["camera_on_roster"] }));
@@ -116,6 +125,7 @@ describe("record writer", () => {
       camera_primary_id: "Epic|me|0",
       check_flags: '["camera_on_roster"]',
       rule_versions: '{"winner":1,"aerial_touch":2}',
+      regulation_seconds: 300,
     });
     expect(storage.tracker.get("SELECT * FROM match_players WHERE player_key = 'Epic|them|0'")).toEqual({
       match_guid: "G",
@@ -146,8 +156,8 @@ describe("record writer", () => {
       touches_attack: null,
     });
     expect(storage.tracker.all("SELECT * FROM match_goals ORDER BY idx")).toEqual([
-      { match_guid: "G", idx: 0, team_num: 0, scorer_key: "Epic|me|0", assister_key: null, toucher_key: "Epic|me|0", x: 10, y: -20, z: 93, distance: 5000, speed_kmh: 88, deflected: 0, aerial: 1, own_goal: 0 },
-      { match_guid: "G", idx: 1, team_num: 1, scorer_key: "Epic|them|0", assister_key: null, toucher_key: null, x: null, y: null, z: null, distance: null, speed_kmh: 88, deflected: 0, aerial: 0, own_goal: 1 },
+      { match_guid: "G", idx: 0, team_num: 0, scorer_key: "Epic|me|0", assister_key: null, toucher_key: "Epic|me|0", x: 10, y: -20, z: 93, distance: 5000, speed_kmh: 88, deflected: 0, aerial: 1, own_goal: 0, clock_seconds: 120, clock_overtime: 0 },
+      { match_guid: "G", idx: 1, team_num: 1, scorer_key: "Epic|them|0", assister_key: null, toucher_key: null, x: null, y: null, z: null, distance: null, speed_kmh: 88, deflected: 0, aerial: 0, own_goal: 1, clock_seconds: 14, clock_overtime: 1 },
     ]);
     expect(storage.tracker.all("SELECT match_guid, player_key, event_name, count FROM match_player_statfeed ORDER BY player_key")).toEqual([
       { match_guid: "G", player_key: "Epic|me|0", event_name: "Goal", count: 1 },

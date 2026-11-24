@@ -57,6 +57,16 @@ export interface GoalPoint {
   aerial: boolean;
   /** The scoring team never touched the ball since the kickoff; false when the kickoff came before the recording. */
   ownGoal: boolean;
+  /**
+   * The last ClockUpdatedSeconds reading before the goal, as read: time left in regulation, time
+   * played in overtime. Null with no reading before it.
+   */
+  clock: Clock | null;
+}
+
+export interface Clock {
+  seconds: number;
+  overtime: boolean;
 }
 
 export interface Play {
@@ -68,6 +78,8 @@ export interface Play {
   /** Woodwork hits by key (CrossbarHit fires for the posts too). */
   woodwork: Record<string, number>;
   samples: CarSample[];
+  /** The largest regulation clock reading, up to a whole minute; null with none above 0. */
+  regulationSeconds: number | null;
   facts: {
     /** Wall time spent in live play. */
     playMs: number;
@@ -80,6 +92,10 @@ export interface Play {
     lastTouchDisagrees: number;
     /** Goals whose scorer didn't resolve to a roster player with a team, so they have no point. */
     droppedGoals: number;
+    /** Live goals with no ClockUpdatedSeconds reading before them, so their clock is null. */
+    goalsWithoutClock: number;
+    /** ClockUpdatedSeconds readings whose bOvertime isn't a boolean; they're taken as regulation readings. */
+    clockReadingsWithoutOvertimeFlag: number;
     /**
      * Player objects that matched no roster entry, by kind. A missing or non-object reference isn't
      * counted, except a hit's `Players` entry: the entry is a hitter who couldn't be identified.
@@ -125,6 +141,8 @@ interface Acc {
   lastWoodworkTs: number | null;
   /** AerialGoal statfeeds by scorer key, waiting for their goal. */
   aerialPending: Map<string, number>;
+  /** The last ClockUpdatedSeconds reading. A state's own TimeSeconds can tick in a different order, so it isn't used. */
+  clock: Clock | null;
   play: Play;
 }
 
@@ -221,6 +239,7 @@ function addGoal(acc: Acc, g: GoalInput): void {
   const toucher = origin ? (origin.hit.hitters.find((p) => p.key !== null && p.key === g.scorerKey) ?? origin.hitter) : null;
   const pos = origin?.hit.pos ?? null;
   if (origin && toucher?.key) addShot(acc, toucher.key, origin.hit.speedKmh);
+  if (acc.clock === null) acc.play.facts.goalsWithoutClock++;
   acc.play.goals.push({
     teamNum: g.team,
     scorerKey: g.scorerKey,
@@ -232,6 +251,7 @@ function addGoal(acc: Acc, g: GoalInput): void {
     deflected: origin ? hits.slice(origin.index + 1).some((h) => h.hitters.some((p) => p.team !== g.team)) : false,
     aerial: g.aerial,
     ownGoal: origin === null && acc.sawKickoff,
+    clock: acc.clock,
   });
 }
 
@@ -283,6 +303,16 @@ const HANDLERS: Readonly<Record<string, Handler>> = {
   MatchEnded: (acc, ev) => {
     setPhase(acc, "ended", ev.ts);
   },
+  ClockUpdatedSeconds: (acc, ev) => {
+    const seconds = num(ev.data.TimeSeconds);
+    // As with UpdateState: the podium and teardown readings may be retagged with the next match's guid.
+    if (acc.phase === "ended" || seconds === null) return;
+    if (typeof ev.data.bOvertime !== "boolean") acc.play.facts.clockReadingsWithoutOvertimeFlag++;
+    const overtime = ev.data.bOvertime === true;
+    acc.clock = { seconds, overtime };
+    // A reading of 0 is the end-of-match reset; on its own (joined at the very end) it gives no length.
+    if (!overtime && seconds > 0) acc.play.regulationSeconds = Math.max(Math.ceil(seconds / 60) * 60, acc.play.regulationSeconds ?? 0);
+  },
   UpdateState: (acc, ev) => {
     // The podium and teardown states may be retagged with the next match's guid.
     if (acc.phase === "ended") return;
@@ -331,11 +361,11 @@ const HANDLERS: Readonly<Record<string, Handler>> = {
 };
 
 export function emptyPlay(): Play {
-  return { goals: [], touches: {}, hardestShot: {}, woodwork: {}, samples: [], facts: emptyFacts() };
+  return { goals: [], touches: {}, hardestShot: {}, woodwork: {}, samples: [], regulationSeconds: null, facts: emptyFacts() };
 }
 
 export function emptyFacts(): Play["facts"] {
-  return { playMs: 0, shotsWithoutTouch: 0, lastTouchDisagrees: 0, droppedGoals: 0, unresolved: { hit: 0, shot: 0, woodwork: 0, lastTouch: 0 } };
+  return { playMs: 0, shotsWithoutTouch: 0, lastTouchDisagrees: 0, droppedGoals: 0, goalsWithoutClock: 0, clockReadingsWithoutOvertimeFlag: 0, unresolved: { hit: 0, shot: 0, woodwork: 0, lastTouch: 0 } };
 }
 
 /** `events` are one match's events, deduped, in seq order. */
@@ -353,6 +383,7 @@ export function buildPlay(events: readonly StoredEvent[], summary: Pick<MatchSum
     lastTouch: new Map(),
     lastWoodworkTs: null,
     aerialPending: new Map(),
+    clock: null,
     play: emptyPlay(),
   };
   for (const ev of events) HANDLERS[ev.name]?.(acc, ev);

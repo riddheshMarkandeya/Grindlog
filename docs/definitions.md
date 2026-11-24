@@ -215,6 +215,15 @@ A match went to overtime when any clock reading (a state or ClockUpdatedSeconds)
 - **Evidence**: bOvertime is the game's own flag.
 - **Decided in**: `docs/plans/2026-10-20-wp4a-match-records.md`
 
+### `regulation_length` · v1 · recorded
+
+A match's regulation length is its largest non-overtime ClockUpdatedSeconds reading, rounded up to a whole minute; null with no such reading above 0. A reading whose bOvertime isn't a boolean is taken as regulation and flagged. A match joined in progress can read short.
+
+- **Checks**: `clock_overtime_flagged`
+- **Writes**: `matches.regulation_seconds`
+- **Evidence**: Of 360 stored matches, 341 start the clock at 299 and 11 at 300; 2 joined in progress read at most 245 and 296; all of them give 300. 2 private matches start at 180. 2 matches joined at the very end have only the final reset to 0, and 2 have no reading, so 4 are null. A private match starting at 372 (→ 420) is in raw.db but not stored.
+- **Decided in**: `docs/plans/2026-11-23-analytics-map.md`, `docs/plans/2026-11-24-goal-clock.md`
+
 ### `joined_in_progress` · v1 · recorded
 
 A match whose stored events have no MatchInitialized was joined in progress.
@@ -476,6 +485,15 @@ A goal's speed is the live GoalScored's GoalSpeed, in km/h.
 - **Writes**: `match_goals.speed_kmh`
 - **Evidence**: The replay's copy has GoalSpeed 0 and is dropped by dedup.
 - **Decided in**: `docs/plans/2026-10-20-wp4b-match-extras.md`
+
+### `goal_clock` · v1 · recorded
+
+A goal's clock is the last ClockUpdatedSeconds reading with a numeric TimeSeconds before its live GoalScored, stored as read (time left in regulation, time played in overtime) with the reading's bOvertime. A goal with no reading has a null clock and is flagged, as is a reading whose bOvertime isn't a boolean (it's taken as a regulation reading).
+
+- **Checks**: `goals_clocked`, `clock_overtime_flagged`
+- **Writes**: `match_goals.clock_seconds`, `match_goals.clock_overtime`
+- **Evidence**: In raw.db, all 2,005 live goals in 356 matches (1,988 of them in stored matches) have a reading before them, a median 0.5 s and p99 1.0 s earlier; the 7 gaps over 1.1 s (up to 8.1 s) are goals at 0:00 with the ball still in play. A state's own TimeSeconds is off by 1 s on 13 goals, so it isn't used. Every reading carried a boolean bOvertime, and all 57 overtime goals had it true.
+- **Decided in**: `docs/plans/2026-11-23-analytics-map.md`, `docs/plans/2026-11-24-goal-clock.md`
 
 ### `unresolved_scorer_dropped` · v1 · recorded
 

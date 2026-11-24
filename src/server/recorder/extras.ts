@@ -89,6 +89,7 @@ export interface MatchExtras {
   /** By roster key. */
   players: Record<string, ExtraValues>;
   goals: GoalPoint[];
+  regulationSeconds: Play["regulationSeconds"];
   facts: Play["facts"];
 }
 
@@ -98,6 +99,7 @@ export function computeExtras(events: readonly StoredEvent[], summary: Pick<Matc
   return {
     players: Object.fromEntries(summary.roster.map((r) => [r.key, playerExtras(play, r.key)])),
     goals: play.goals,
+    regulationSeconds: play.regulationSeconds,
     facts: play.facts,
   };
 }

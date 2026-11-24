@@ -71,6 +71,7 @@ export const goal = (teamNum: TeamNum, scorerKey: string, over: Partial<GoalPoin
   deflected: false,
   aerial: false,
   ownGoal: false,
+  clock: { seconds: 120, overtime: false },
   ...over,
 });
 
@@ -95,6 +96,7 @@ export const record = (guid: string, startedAt: number, over: Partial<MatchRecor
     cameraPrimaryId: null,
     checkFlags: [],
     ruleVersions: {},
+    regulationSeconds: 300,
     ...match,
   },
   players: [player(ME, 0), player(THEM, 1)],

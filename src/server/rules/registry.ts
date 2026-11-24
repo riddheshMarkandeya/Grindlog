@@ -81,6 +81,7 @@ const PLAN_WP6AC = "docs/plans/2026-10-27-wp6a-c-matches-and-match-page.md";
 const PLAN_CONTRIBUTION = "docs/plans/2026-11-16-contribution-stats.md";
 const PLAN_ACCOUNTS = "docs/plans/2026-11-22-account-profiles.md";
 const ANALYTICS_MAP = "docs/plans/2026-11-23-analytics-map.md";
+const PLAN_GOAL_CLOCK = "docs/plans/2026-11-24-goal-clock.md";
 
 const p = (column: string) => `match_players.${column}`;
 const m = (column: string) => `matches.${column}`;
@@ -339,6 +340,17 @@ export const RULES: readonly Rule[] = [
     applied: "recorded",
     outputs: [m("overtime")],
     refs: [PLAN_WP4A],
+  },
+  {
+    id: "regulation_length",
+    area: "match",
+    rule: "A match's regulation length is its largest non-overtime ClockUpdatedSeconds reading, rounded up to a whole minute; null with no such reading above 0. A reading whose bOvertime isn't a boolean is taken as regulation and flagged. A match joined in progress can read short.",
+    checks: ["clock_overtime_flagged"],
+    evidence: "Of 360 stored matches, 341 start the clock at 299 and 11 at 300; 2 joined in progress read at most 245 and 296; all of them give 300. 2 private matches start at 180. 2 matches joined at the very end have only the final reset to 0, and 2 have no reading, so 4 are null. A private match starting at 372 (→ 420) is in raw.db but not stored.",
+    version: 1,
+    applied: "recorded",
+    outputs: [m("regulation_seconds")],
+    refs: [ANALYTICS_MAP, PLAN_GOAL_CLOCK],
   },
   {
     id: "joined_in_progress",
@@ -678,6 +690,17 @@ export const RULES: readonly Rule[] = [
     applied: "recorded",
     outputs: [g("speed_kmh")],
     refs: [PLAN_WP4B],
+  },
+  {
+    id: "goal_clock",
+    area: "goals",
+    rule: "A goal's clock is the last ClockUpdatedSeconds reading with a numeric TimeSeconds before its live GoalScored, stored as read (time left in regulation, time played in overtime) with the reading's bOvertime. A goal with no reading has a null clock and is flagged, as is a reading whose bOvertime isn't a boolean (it's taken as a regulation reading).",
+    checks: ["goals_clocked", "clock_overtime_flagged"],
+    evidence: "In raw.db, all 2,005 live goals in 356 matches (1,988 of them in stored matches) have a reading before them, a median 0.5 s and p99 1.0 s earlier; the 7 gaps over 1.1 s (up to 8.1 s) are goals at 0:00 with the ball still in play. A state's own TimeSeconds is off by 1 s on 13 goals, so it isn't used. Every reading carried a boolean bOvertime, and all 57 overtime goals had it true.",
+    version: 1,
+    applied: "recorded",
+    outputs: [g("clock_seconds"), g("clock_overtime")],
+    refs: [ANALYTICS_MAP, PLAN_GOAL_CLOCK],
   },
   {
     id: "unresolved_scorer_dropped",
