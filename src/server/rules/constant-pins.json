@@ -120,5 +120,13 @@
     "constants": {
       "SWING_MIN_GOALS": 2
     }
+  },
+  "tilt_verdict": {
+    "version": 1,
+    "constants": {
+      "TILT_Z": 2.5,
+      "FIRM_N": 60,
+      "MIN_N": 10
+    }
   }
 }

@@ -71,6 +71,7 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   `--rise`; the reduced-motion block zeroes the spatial ones, and a test bans raw durations elsewhere),
   `global.css` the shared `.button`; `pages/trends/chart-motion.ts` the charts' draw-once and tween;
   `pages/trends/Clutch.tsx` the Trends Clutch section, its text from `logic/clutch.ts`;
+  `pages/trends/Tilt.tsx` the Trends Tilt section (verdict, two column charts), its text and marks from `logic/tilt.ts`;
   `pages/` placeholders until WP6+),
   `src/tray/` (`Tray.cs` the C# 5 tray exe: polls `/api/tray` every 2 s, icon states (reloaded when the primary monitor's scale changes), menu, balloons; `tray.manifest`
   DPI awareness; `icons/<channel>-<state>.ico` from `bun run icons`; built by `scripts/build-tray.ts`; live
@@ -80,7 +81,8 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   minisign trusted comment and its parser, the update repo URLs, `update-key.ts` the baked `GRINDLOG_UPDATE_KEY`, `constants.ts`, `result.ts` your W/L, `lobby.ts` a match's lines and `Thirds`, `contribution.ts`
   the carry and per-session contribution (shares and touch thirds per mode), `playlists.ts` ID map, `goal-range.ts`
   close/mid/long, `clutch.ts` Clutch's counted matches, goal order, comebacks and the period's stats (Trends,
-  the recap's card story line and the remarks share it), `periods.ts` local days and periods, `playlist-filter.ts` filter groups, `accounts.ts` which account the dashboard shows (server and picker share
+  the recap's card story line and the remarks share it), `tilt.ts` Tilt's session game number and streak buckets,
+  Wilson ranges and verdict (the server counts, the web reads the verdict), `periods.ts` local days and periods, `playlist-filter.ts` filter groups, `accounts.ts` which account the dashboard shows (server and picker share
   it), `schemas/` API params
   and response shapes),
   `scripts/` (standalone `capture.ts`; `make-icons.ts` packs `src/web/assets/icon.svg` and
@@ -183,6 +185,9 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
 Newest first. Decisions, Plans and Research together hold at most 50 entries; decisions and research are
 never archived, so when the total passes 50, move the oldest plan entries (a plan with its review) to the top
 of Plans in [`PROJECT_INDEX_ARCHIVE.md`](PROJECT_INDEX_ARCHIVE.md).
+- `docs/plans/2026-11-24-tilt.md`: analytics map step B, the Trends Tilt section: server counts over each whole
+  session, the verdict states and cutoffs, plan review folded in.
+- `docs/reviews/2026-11-24-tilt.md`: Tilt review summary (2 rounds, 1 disputed: one average line on the streak chart).
 - `docs/plans/2026-11-23-analytics-map.md`: the analytics map (agreed 2026-11-23): close games, tilt, goal clock;
   take the first open step.
 - `docs/plans/2026-11-22-account-profiles.md`: public release step 7, the header's account picker: the `account`

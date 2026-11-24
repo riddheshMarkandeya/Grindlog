@@ -8,10 +8,11 @@ import { inFilter, playlistsPresent, type PlaylistFilter } from "../../shared/pl
 import { pairKey, withTeammate, type TeammateFilter } from "../../shared/teammate-filter";
 import type { FriendCard, FriendDetail, FriendPair, FriendSuggestions, LatestSession, NeverSuggested, MatchDetail, MonthFolds, PairDetail, PeriodView, PlayedDays, SessionDetail, SessionList, SessionSummary } from "../../shared/schemas/responses";
 import { aggregate, baseline, byPlaylist, type MyMatch } from "../../shared/aggregate";
-import { clutchStats, type ClutchRef } from "../../shared/clutch";
+import { clutchCounts, clutchStats, type ClutchRef } from "../../shared/clutch";
 import { sessionContribution } from "../../shared/contribution";
 import { friendCard, friendView, together } from "../../shared/friend-stats";
 import type { Logger } from "../log";
+import { tiltCounts } from "../../shared/tilt";
 import { bucketKind, buckets, previousRange, rollingWindows, trendStats } from "../../shared/trends";
 import type { MatchResult, QueryReader } from "../query/read";
 import { currentSession, cutSessions, type Session } from "../query/sessions";
@@ -41,7 +42,7 @@ export function createPages({ reader, logger, now }: { reader: QueryReader; logg
         return r?.played && wanted(r) ? [r] : [];
       });
     };
-    return { all, current: currentSession(all, breaks, now()), rowsOf, results };
+    return { all, current: currentSession(all, breaks, now()), byGuid, rowsOf, results };
   }
   type Index = ReturnType<typeof index>;
 
@@ -198,7 +199,28 @@ export function createPages({ reader, logger, now }: { reader: QueryReader; logg
       }),
       rolling: rolling(idx, range, wanted, matches, window),
       clutch: clutch(idx, matches),
+      tilt: tilt(idx, inRange, wanted),
     };
+  }
+
+  /**
+   * Tilt over the sessions with a match in the period. Game number and streak run over every match you
+   * played in the session under "everything" (private and offline left out), even outside the period
+   * or the filters; only the period's counted matches under the filters land in buckets. The current
+   * session isn't counted as ended. Null when no decided match lands.
+   */
+  function tilt(idx: Index, inRange: (r: MatchResult) => boolean, wanted: ReturnType<typeof yours>): PeriodView["tilt"] {
+    const sessions = idx.all.flatMap((s) => {
+      const matches = s.guids.flatMap((g) => {
+        const r = idx.byGuid.get(g);
+        return r?.played && inFilter(r.playlistId, "everything") ? [r] : [];
+      });
+      return matches.some(inRange) ? [{ matches, ended: s !== idx.current }] : [];
+    });
+    const { counts, noResult } = tiltCounts(sessions, (r) => inRange(r) && wanted(r) && clutchCounts(r.playlistId));
+    const matches = counts.games.reduce((n, r) => n + r.w + r.l, 0);
+    logger.info(C, "tilt", { matches, sessions: counts.sessions, endedOnLoss: counts.endedOnLoss, noResult });
+    return matches ? counts : null;
   }
 
   /** Clutch over a period's matches, each biggest swing with the session that opens its match page. */

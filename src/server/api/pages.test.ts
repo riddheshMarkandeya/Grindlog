@@ -379,6 +379,76 @@ describe("Clutch on the period", () => {
   });
 });
 
+describe("Tilt on the period", () => {
+  const PRIVATE = 6;
+  const OFFLINE = 8;
+  const wl = (w: number, l: number) => ({ w, l });
+  const ZERO = wl(0, 0);
+  function setup(now = t(12, 31, 12)) {
+    const writer = createRecordWriter({ tracker: storage.tracker, logger: memoryLogger(), now: () => 1 });
+    const logger = memoryLogger();
+    const pages = createPages({ reader: createQueryReader({ tracker: storage.tracker, logger: memoryLogger() }), logger, now: () => now });
+    /** A 5-minute match of yours: won, lost, or no result (null). */
+    const play = (guid: string, at: number, won: boolean | null, playlistId = RANKED) => {
+      writer.save(record(guid, at, {}, { endedAt: at + 5 * MIN, playlistId, winnerTeamNum: won === null ? null : won ? 0 : 1 }));
+    };
+    const watch = (guid: string, at: number) => {
+      writer.save(record(guid, at, { players: [player(THEM, 0), player("Epic|x|0", 1)], goals: [], statfeed: [] }, { endedAt: at + 5 * MIN }));
+    };
+    return { play, watch, pages, logger };
+  }
+  const DAY9 = { kind: "day", day: "2026-10-09" } as const;
+  const DAY10 = { kind: "day", day: "2026-10-10" } as const;
+  const MONTH = { kind: "month", day: "2026-10-01" } as const;
+
+  test("a session across the period edge keeps its game numbers and is judged by its last match past the edge", () => {
+    const { play, pages } = setup();
+    // Day 9 ends at 04:00 on the 10th.
+    play("A", t(10, 10, 3, 40), true);
+    play("B", t(10, 10, 3, 50), true);
+    play("C", t(10, 10, 4, 0), false);
+    const day9 = pages.period(DAY9, "everything", ROLLING_WINDOW)?.tilt;
+    expect(day9).toEqual({ games: [wl(2, 0), ZERO, ZERO, ZERO], streaks: [wl(1, 0), ZERO, ZERO, ZERO], sessions: 1, endedOnLoss: 1 });
+    // C is game 3 and comes after a win, though A and B are outside the day.
+    const day10 = pages.period(DAY10, "everything", ROLLING_WINDOW)?.tilt;
+    expect(day10).toEqual({ games: [wl(0, 1), ZERO, ZERO, ZERO], streaks: [wl(0, 1), ZERO, ZERO, ZERO], sessions: 1, endedOnLoss: 1 });
+  });
+
+  test("a ranked view still numbers and streaks the casual match before it", () => {
+    const { play, pages } = setup();
+    play("A", t(10, 10, 10, 0), false, CASUAL);
+    play("B", t(10, 10, 10, 10), false);
+    play("C", t(10, 10, 10, 20), true);
+    const tilt = pages.period(MONTH, "ranked", ROLLING_WINDOW)?.tilt;
+    expect(tilt?.games).toEqual([wl(1, 1), ZERO, ZERO, ZERO]);
+    expect(tilt?.streaks).toEqual([ZERO, wl(0, 1), wl(1, 0), ZERO]);
+  });
+
+  test("private, offline and spectated matches don't number or streak", () => {
+    const { play, watch, pages } = setup();
+    play("P", t(10, 10, 10, 0), false, PRIVATE);
+    play("O", t(10, 10, 10, 10), false, OFFLINE);
+    watch("W", t(10, 10, 10, 20));
+    play("A", t(10, 10, 10, 30), false);
+    play("B", t(10, 10, 10, 40), true);
+    const tilt = pages.period(MONTH, "everything", ROLLING_WINDOW)?.tilt;
+    expect(tilt?.games).toEqual([wl(1, 1), ZERO, ZERO, ZERO]);
+    expect(tilt?.streaks).toEqual([ZERO, wl(1, 0), ZERO, ZERO]);
+    expect(pages.period(MONTH, "private", ROLLING_WINDOW)?.tilt).toBeNull();
+  });
+
+  test("the current session's matches land in buckets but it isn't counted as ended; the log line", () => {
+    const { play, pages, logger } = setup(t(10, 12, 10, 30));
+    play("A", t(10, 10, 10, 0), false);
+    play("N", t(10, 12, 10, 0), null);
+    play("B", t(10, 12, 10, 10), false);
+    const tilt = pages.period(MONTH, "everything", ROLLING_WINDOW)?.tilt;
+    expect(tilt?.games).toEqual([wl(0, 2), ZERO, ZERO, ZERO]);
+    expect([tilt?.sessions, tilt?.endedOnLoss]).toEqual([1, 1]);
+    expect(logger.lines.find((l) => l.event === "tilt")?.fields).toEqual({ matches: 2, sessions: 1, endedOnLoss: 1, noResult: 1 });
+  });
+});
+
 describe("the teammate filter", () => {
   const SAM = "Epic|sam|0";
   const ALEX = "Epic|alex|0";

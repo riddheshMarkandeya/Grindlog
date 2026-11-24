@@ -151,6 +151,24 @@ test("Clutch: its tiles over last month's ranked matches, and the best comeback 
   await expect(page).toHaveURL(/\/recap\/e2e-first-a\/match\/e2e-first-a\?filter=ranked$/);
 });
 
+test("Tilt: below Clutch, a verdict, both charts with match counts; the seed is too small to judge", async ({ page }) => {
+  await page.goto("/trends?kind=all");
+  await loaded(page);
+  const tilt = page.getByRole("region", { name: "Tilt" });
+  await expect(tilt.getByRole("heading", { level: 3, name: "Tilt" })).toBeVisible();
+  await expect(tilt.getByText(/^Too few matches to tell yet: \d+ in all/)).toBeVisible();
+  await expect(tilt.getByText("By game in the session")).toBeVisible();
+  await expect(tilt.getByText("After…")).toBeVisible();
+  // Each axis label carries its match count beneath it.
+  await expect(tilt.getByText(/^1–3\d+ match(es)?$/)).toBeVisible();
+  await expect(tilt.getByText(/^3\+ losses\d+ match(es)?$/)).toBeVisible();
+  // Screen readers get one line per column instead of the marks.
+  await expect(tilt.getByText(/^In games 1–3: \d+% won, \d+ of \d+ match(es)?$/)).toBeAttached();
+  const clutchBox = await page.getByRole("region", { name: "Clutch" }).boundingBox();
+  const tiltBox = await tilt.boundingBox();
+  expect(tiltBox?.y ?? 0).toBeGreaterThan(clutchBox?.y ?? Infinity);
+});
+
 test("a tile selects the metric in the URL", async ({ page }) => {
   await page.goto("/trends?kind=all");
   await tiles(page).getByRole("button", { name: /^Saves \/ game/ }).click();

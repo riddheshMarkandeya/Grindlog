@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { FLAG_REASONS } from "../flags";
 import type { ClutchRef, ClutchStats } from "../clutch";
+import type { TiltCounts } from "../tilt";
 import type { SessionContribution } from "../contribution";
 import { MODE_ORDER } from "../lobby";
 import type { FriendView } from "../friend-stats";
@@ -249,6 +250,16 @@ export const clutchSchema = z.object({
   worst: clutchRef.nullable(),
 }) satisfies z.ZodType<ClutchStats>;
 
+const four = z.tuple([record, record, record, record]);
+/** Wins and losses by session game number (1–3, 4–6, 7–9, 10+) and after a win / 1, 2, 3+ losses. */
+export const tiltSchema = z.object({
+  games: four,
+  streaks: four,
+  /** Ended sessions with a decided match (the current one left out), and those that ended on a loss. */
+  sessions: z.number(),
+  endedOnLoss: z.number(),
+}) satisfies z.ZodType<TiltCounts>;
+
 export const periodResponse = z.object({
   range: rangeSchema,
   aggregate: aggregateSchema,
@@ -266,6 +277,8 @@ export const periodResponse = z.object({
   rolling: z.array(z.object({ n: z.number(), startedAt: z.number(), stats: trendStatsSchema })),
   /** Clutch over the period's counted matches; null when none counts. */
   clutch: clutchSchema.nullable(),
+  /** Tilt over the period's counted matches; null when no decided one counts. */
+  tilt: tiltSchema.nullable(),
 });
 
 /** Matches you played per local day of a year under the filter; `firstDay` and `totalMatches` cover every match you played, whatever the filter. */
@@ -476,6 +489,7 @@ export type LatestSession = z.infer<typeof latestResponse>;
 export type MonthFolds = z.infer<typeof monthsResponse>;
 export type PeriodView = z.infer<typeof periodResponse>;
 export type ClutchView = z.infer<typeof clutchSchema>;
+export type TiltView = z.infer<typeof tiltSchema>;
 export type PlayedDays = z.infer<typeof playedDaysResponse>;
 export type SessionDetail = z.infer<typeof sessionDetailResponse>;
 export type MatchDetail = z.infer<typeof matchDetailResponse>;

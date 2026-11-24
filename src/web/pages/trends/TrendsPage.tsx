@@ -19,6 +19,7 @@ import { Clutch } from "./Clutch";
 import { MetricTiles } from "./MetricTiles";
 import { PeriodControls } from "./PeriodControls";
 import { PeriodHeader, StatsLine } from "./PeriodHeader";
+import { Tilt } from "./Tilt";
 import { TrendChart } from "./TrendChart";
 import styles from "./Trends.module.css";
 import { WinLossChart } from "./WinLossChart";
@@ -172,6 +173,7 @@ export function TrendsPage() {
                 {chart && <TrendChart view={period.data} size={rollingWindow} metric={state.metric} chart={chart} seasons={seasons.data} onX={(x) => { go({ x }); }} />}
                 <WinLossChart view={period.data} state={state} seasons={seasons.data} />
                 <Clutch view={period.data} state={state} />
+                <Tilt view={period.data} />
               </>
             )}
           </div>

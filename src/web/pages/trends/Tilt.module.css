@@ -1,0 +1,37 @@
+/* The Tilt section: a verdict line, two column charts (one below 760px), a legend and a note. Class
+   names stay clear of "row", "label" and "panel", which e2e selectors match by substring. */
+.title { margin: 0 0 var(--s1); font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+.verdict { margin: 0 0 var(--s4); padding-left: var(--s2); border-left: 3px solid var(--muted); font-size: 15px; color: var(--ink); }
+.verdict.tilt { border-color: var(--loss); }
+.verdict.nosign { border-color: var(--win); }
+.verdict.few { border-color: var(--surf2); color: var(--ink2); }
+
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s5); }
+@media (max-width: 760px) { .charts { grid-template-columns: 1fr; } }
+.fig { margin: 0; }
+.cols { position: relative; height: 160px; margin-top: var(--s5); display: flex; gap: var(--s3); border-bottom: 1px solid var(--line); }
+.avg { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--muted); pointer-events: none; z-index: 2; }
+.colCell { flex: 1; height: 100%; position: relative; font-size: 12px; }
+.colPct { position: absolute; left: 0; right: 0; text-align: center; }
+.col { position: absolute; bottom: 0; left: 50%; translate: -50% 0; width: 100%; max-width: 52px; border-radius: 3px 3px 0 0; box-sizing: border-box; }
+.neutral { background: color-mix(in srgb, var(--ink) 28%, transparent); }
+.above { background: var(--win); }
+.below { background: var(--loss); }
+/* Under FIRM_N matches: stripes over whatever colour the bar has. */
+.thin { background-image: repeating-linear-gradient(135deg, rgb(0 0 0 / .45) 0 3px, transparent 3px 7px); }
+/* The bar a "You drop" verdict names. */
+.focus { outline: 2px solid var(--ink); outline-offset: 2px; }
+.whisk { position: absolute; left: 50%; width: 10px; translate: -50% 0; border: 1.5px solid var(--ink); border-left: 0; border-right: 0; box-sizing: border-box; z-index: 1; }
+.whisk::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; border-left: 1.5px solid var(--ink); }
+.axis { display: flex; gap: var(--s3); margin-top: var(--s1); }
+.axis > span { flex: 1; display: flex; flex-direction: column; align-items: center; font-size: 12px; text-align: center; }
+.named { font-weight: 700; color: var(--ink); }
+
+.legend { list-style: none; margin: var(--s4) 0 0; padding: 0; font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); }
+.legend li { display: flex; align-items: center; gap: 6px; }
+.keyAvg { display: inline-block; width: 18px; border-top: 1px dashed var(--muted); }
+.keyWhisk { width: 10px; height: 16px; fill: none; stroke: var(--ink); stroke-width: 1.5; }
+.keySwatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; }
+.keySwatch.focus { outline-offset: 1px; outline-width: 1.5px; }
+.note { margin: var(--s2) 0 0; font-size: 12px; color: var(--muted); }

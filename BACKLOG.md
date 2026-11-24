@@ -90,8 +90,9 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   comments and v0.1.6 had 4 installer downloads on 2026-11-22. Trigger: around 2026-12-22, check the release
   download counts (`gh api repos/riddheshMarkandeya/Grindlog/releases`); start only if they've picked up.
 - [ ] **[test-coverage, Low, Standard]** `season-file.spec.ts` "a season in the file shows up in Settings" timed out
-  (S25 not listed within 15 s) once in a full `bun run e2e` on 2026-11-22; it passed 4 of 4 runs alone. Watch for a
-  repeat before looking at the first sync's timing under load.
+  (S25 not listed within 15 s) once in a full `bun run e2e` on 2026-11-22; it passed 4 of 4 runs alone. Repeated the
+  same way in a full run on 2026-11-24 (Tilt build; passed alone right after): the repeat is in, so the first sync's
+  timing under load is next to look at.
 - [ ] **[test-coverage, Med, Standard]** `tray.test.ts` "goes red within ~5 s of the tracker stopping" is flaky under
   the full suite: on 2026-11-19, 3 of 10 local `bun run test` runs took 7.6–8.3 s against its 6.5 s bound. It was
   already there before the 0.1.6 icon change (1 of 5 at `9a0fccf`), though that change's `bun build --compile` test
@@ -121,9 +122,11 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   `src/shared/clutch.ts` already gives the casual/ranked/tournament rule and can be reused.
 
 ## Watch list
-- [ ] **[feature, Low, Standard]** Trigger: the analytics map's Tilt section (step B) shows a real win % drop late
-  in sessions or after losses. Then add an in-session nudge (e.g. "3 losses in a row; your win rate here is X%").
-  Record: `docs/plans/2026-11-23-analytics-map.md`.
+- [ ] **[feature, Low, Standard]** Trigger: the analytics map's Tilt section (step B) says "You drop …" (2.5 standard
+  errors) in the wide all-matches view, not only in a filtered one, where four buckets checked per view leave room
+  for a chance false alarm. Then add an in-session nudge (e.g. "3 losses in a row; your win rate here is X%").
+  Upheld 2026-11-24 after the Tilt prototype: no dip in any view on real data. Record:
+  `docs/plans/2026-11-23-analytics-map.md`.
 - [ ] **[bug, Low, Standard]** Trigger: a user reports the header picker disagreeing with the page, or runs two
   dashboard tabs. An account picked in one tab leaves the other tab's picker on the old value, while that tab's
   pages follow the new account at their next refetch. A reload corrects it. Fix with a hub event on a settings

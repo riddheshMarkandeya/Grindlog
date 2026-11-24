@@ -13,6 +13,7 @@ import {
   WEEK_START_DAY,
 } from "../../shared/constants";
 import { SWING_MIN_GOALS } from "../../shared/clutch";
+import { FIRM_N, MIN_N, TILT_Z } from "../../shared/tilt";
 import { CLOSE_UNDER, LONG_FROM } from "../../shared/goal-range";
 import { AERIAL_MIN_Z, CORNER_MAX_XY_SUM, HARDEST_SHOT_MAX_KMH, THIRD_Y, WALL_MARGIN } from "../recorder/extras";
 import { CAR_SAMPLE_CAP_MS, TOUCH_MERGE_MS, WOODWORK_WINDOW_MS } from "../recorder/play";
@@ -823,6 +824,27 @@ export const RULES: readonly Rule[] = [
     rule: "A 1-goal game is one whose final score differs by one, overtime included; the overtime record is the matches that went to overtime.",
     checks: [],
     evidence: "The user's choice (2026-11-23): the tile shows the total, with the record without overtime in its note.",
+    version: 1,
+    applied: "read",
+    refs: [ANALYTICS_MAP],
+  },
+  {
+    id: "tilt_session_order",
+    area: "queries",
+    rule: "A match's session game number and the run before it count every match you played in its session under \"everything\" (private and offline left out), whatever the page's period or filters. Game numbers bucket 1–3, 4–6, 7–9, 10+; the run before a match buckets as after a win, 1 loss, 2 losses or 3+ losses (none for the session's first decided match). A match with no result keeps its game number but neither extends nor breaks the run. Only casual, ranked and tournament matches with a result that started in the period and pass the filters land in buckets. Sessions ended on a loss: by each session's last decided match, over the whole session, the current session left out.",
+    checks: [],
+    evidence: "The Tilt prototype (2026-11-24, three rounds on real data): a session is time at the PC, so a ranked match after four casual ones is game 5. Private and offline left out as the prototype did (user's choice, 2026-11-24).",
+    version: 1,
+    applied: "read",
+    refs: [ANALYTICS_MAP],
+  },
+  {
+    id: "tilt_verdict",
+    area: "queries",
+    rule: "Each bucket's win rate is compared with the rest of its chart (game buckets with every counted match, run buckets with those that have a decided match before them), z on the pooled rate. The verdict looks at 7–9, 10+, 2 losses and 3+ losses: too few to tell under FIRM_N counted matches or with any of them under MIN_N; else a drop where the worst is TILT_Z or more standard errors below; else no clear sign once all four have FIRM_N; else no sign so far. Bars are coloured only past TILT_Z and never under MIN_N, and striped under FIRM_N.",
+    constants: { TILT_Z, FIRM_N, MIN_N },
+    checks: [],
+    evidence: "The Tilt prototype (2026-11-24): with four buckets checked per view, 2 standard errors would false-alarm in ~1 view in 11 with no real tilt, 2.5 in ~1 in 40; at 30 matches a bucket could show only a ~24-point drop, at 60 ~18. FIRM_N also gates \"too few\" overall (user's choice, 2026-11-24). Real data: no drop in any view.",
     version: 1,
     applied: "read",
     refs: [ANALYTICS_MAP],
