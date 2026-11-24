@@ -583,7 +583,7 @@ A match's goal order is its goals by idx, each credited to its team, used only w
 
 A 1-goal game is one whose final score differs by one, overtime included; the overtime record is the matches that went to overtime.
 
-- **Evidence**: The user's choice (2026-11-23): the tile shows the total, with the record without overtime in its note.
+- **Evidence**: The user's choice (2026-11-24): the tile shows the win %, like the other share tiles, with the total record and the record without overtime in its note (on 2026-11-23 the total record was the value).
 - **Decided in**: `docs/plans/2026-11-23-analytics-map.md`
 
 ### `tilt_session_order` · v1 · read

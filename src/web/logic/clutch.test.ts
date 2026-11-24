@@ -21,10 +21,10 @@ const view = (over: Partial<ClutchView> = {}): ClutchView => ({
 });
 
 describe("clutchTiles", () => {
-  test("values and notes, as the prototype worded them", () => {
+  test("values and notes", () => {
     expect(clutchTiles(view()).map((t) => [t.label, t.value, t.note])).toEqual([
-      ["1-goal games", "70–84", "45% won · 50–49 without OT"],
-      ["Overtime", "20–35", "36% won"],
+      ["1-goal games", "45%", "won 70–84 · 50–49 without OT"],
+      ["Overtime", "36%", "won 20–35"],
       ["Scored first", "70%", "won 116–49 when you opened the scoring"],
       ["Conceded first", "25%", "won 40–120 when they opened it"],
       ["Comebacks", "10%", "won 14 of 134 after going 2+ down"],

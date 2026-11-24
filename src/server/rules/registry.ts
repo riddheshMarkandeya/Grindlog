@@ -823,7 +823,7 @@ export const RULES: readonly Rule[] = [
     area: "queries",
     rule: "A 1-goal game is one whose final score differs by one, overtime included; the overtime record is the matches that went to overtime.",
     checks: [],
-    evidence: "The user's choice (2026-11-23): the tile shows the total, with the record without overtime in its note.",
+    evidence: "The user's choice (2026-11-24): the tile shows the win %, like the other share tiles, with the total record and the record without overtime in its note (on 2026-11-23 the total record was the value).",
     version: 1,
     applied: "read",
     refs: [ANALYTICS_MAP],

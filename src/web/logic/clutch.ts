@@ -27,8 +27,8 @@ export function clutchTiles(c: ClutchView): ClutchTile[] {
   // The share of the matches that swung; the counts go in the note.
   const swing = (label: string, icon: IconKey, s: { n: number; of: number }, note: string) => ({ label, icon, value: s.of === 0 ? EMPTY : winPctText({ w: s.n, l: s.of - s.n }), note: s.of === 0 ? undefined : note });
   return [
-    record("1-goal games", "score", c.oneGoal, `${winPctText(c.oneGoal)} won · ${recordText(c.oneGoalNoOt)} without OT`),
-    record("Overtime", "overtime", c.overtime, `${winPctText(c.overtime)} won`),
+    share("1-goal games", "score", c.oneGoal, `won ${recordText(c.oneGoal)} · ${recordText(c.oneGoalNoOt)} without OT`),
+    share("Overtime", "overtime", c.overtime, `won ${recordText(c.overtime)}`),
     share("Scored first", "goal", c.scoredFirst, `won ${recordText(c.scoredFirst)} when you opened the scoring`),
     share("Conceded first", "save", c.concededFirst, `won ${recordText(c.concededFirst)} when they opened it`),
     swing("Comebacks", "trendUp", c.comebacks, `won ${whole(c.comebacks.n)} of ${whole(c.comebacks.of)} after going ${swingText} down`),
