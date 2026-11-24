@@ -3,6 +3,14 @@
 Tags: `[type, priority, effort]` — type bug/refactor/feature/performance/test-coverage/design/misc;
 priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
 
+- [ ] **[test-coverage, Med, Standard]** `test/e2e/season-file.spec.ts:8` is flaky and blocks `bun run deploy`:
+  the S25 row never appears within 15 s. It failed 2 of 2 deploys and 1 of 2 solo runs on 2026-11-24 (at commit
+  4416217, which only changed Clutch display strings). It then passed 8 of 8 solo runs (`--repeat-each 8`) and a
+  full run (157 passed). On a failing run, the tracker log showed S25 added and `seasons_changed` published to 1
+  subscriber. Lead: the page's seasons read races the sync (`GRINDLOG_SEASONS_DELAY_MS=1000`), or the refetch after
+  the event misses the row. Not yet reproduced on demand; first step is a loop with a higher repro rate (e.g. the
+  full `bun run deploy` sequence, `GRINDLOG_E2E_KEEP=1`, trace on).
+
 - [ ] **[misc, Med, Trivial]** v1 roadmap (`docs/plans/2026-10-16-v1-roadmap.md`): every work package
   is deployed (WP9, the last, on 2026-11-02). Open items from the work packages:
   - **[design, Low, Trivial]** (from public release map step 8) Add back the themes midnight, dusk, steel and daylight (values in the
