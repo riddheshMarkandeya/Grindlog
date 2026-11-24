@@ -164,6 +164,15 @@ test("the Overview's section headings share one size, each above its panel and n
   }
 });
 
+test("match cards tell a comeback and a blown lead, in words for a screen reader", async ({ page }) => {
+  await page.goto("/recap/e2e-first-a");
+  const cards = page.getByRole("region", { name: "Matches" }).getByRole("link");
+  await expect(cards.nth(0)).toContainText("from 0–2");
+  await expect(cards.nth(0)).toHaveAccessibleName(/, win, 3–2, Ranked Doubles, came back from 0–2(,|$)/);
+  await expect(cards.nth(1)).toContainText("led 2–0");
+  await expect(cards.nth(1)).toHaveAccessibleName(/, loss, 2–3, Ranked Doubles, led 2–0(,|$)/);
+});
+
 test("one playlist: no By playlist, Per game alone; no baseline: no card marked and no ▲▼", async ({ page }) => {
   await page.goto("/recap/e2e-first-a");
   await expect(page.getByRole("heading", { name: "Per game vs your 30-day average" })).toBeVisible();

@@ -2,6 +2,7 @@
 // web parses with them, so a shape change is a type error on both sides.
 import { z } from "zod";
 import { FLAG_REASONS } from "../flags";
+import type { ClutchRef, ClutchStats } from "../clutch";
 import type { SessionContribution } from "../contribution";
 import { MODE_ORDER } from "../lobby";
 import type { FriendView } from "../friend-stats";
@@ -228,6 +229,26 @@ export const trendStatsSchema = z.object({
   perGame: z.object({ goals: orNull, assists: orNull, saves: orNull, shots: orNull }),
 }) satisfies z.ZodType<TrendStats>;
 
+const record = z.object({ w: z.number(), l: z.number() });
+const rungs = z.tuple([record, record, record]);
+/** The period's biggest swing; `sessionKey` opens its match page, null when its session wasn't found. */
+const clutchRef = z.object({ guid: z.string(), startedAt: z.number(), score: z.string(), at: z.string(), by: z.number(), sessionKey: z.string().nullable() }) satisfies z.ZodType<ClutchRef>;
+export const clutchSchema = z.object({
+  matches: z.number(),
+  skippedOrder: z.number(),
+  oneGoal: record,
+  oneGoalNoOt: record,
+  overtime: record,
+  scoredFirst: record,
+  concededFirst: record,
+  forfeits: record,
+  comebacks: z.object({ n: z.number(), of: z.number() }),
+  blownLeads: z.object({ n: z.number(), of: z.number() }),
+  ladder: z.object({ down: rungs, up: rungs }),
+  best: clutchRef.nullable(),
+  worst: clutchRef.nullable(),
+}) satisfies z.ZodType<ClutchStats>;
+
 export const periodResponse = z.object({
   range: rangeSchema,
   aggregate: aggregateSchema,
@@ -243,6 +264,8 @@ export const periodResponse = z.object({
   buckets: z.array(z.object({ from: z.number(), to: z.number(), day: z.string(), stats: trendStatsSchema, session: z.string().nullable() })),
   /** One point per period match `n` (from 1) that ends a full rolling window (the request's `window`); the window reaches back before the period. */
   rolling: z.array(z.object({ n: z.number(), startedAt: z.number(), stats: trendStatsSchema })),
+  /** Clutch over the period's counted matches; null when none counts. */
+  clutch: clutchSchema.nullable(),
 });
 
 /** Matches you played per local day of a year under the filter; `firstDay` and `totalMatches` cover every match you played, whatever the filter. */
@@ -452,6 +475,7 @@ export type SessionList = z.infer<typeof sessionsResponse>;
 export type LatestSession = z.infer<typeof latestResponse>;
 export type MonthFolds = z.infer<typeof monthsResponse>;
 export type PeriodView = z.infer<typeof periodResponse>;
+export type ClutchView = z.infer<typeof clutchSchema>;
 export type PlayedDays = z.infer<typeof playedDaysResponse>;
 export type SessionDetail = z.infer<typeof sessionDetailResponse>;
 export type MatchDetail = z.infer<typeof matchDetailResponse>;

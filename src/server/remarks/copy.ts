@@ -150,6 +150,23 @@ const triggers = {
       l("ot-losses-1", "Lost {n} in overtime. So close it hurts more."),
       l("ot-losses-2", "{n} overtime loss(es). Golden goal, wrong net."),
       l("ot-losses-3", "Lost {n} in overtime. Five more minutes of hope, then this."),
+      l("ot-losses-4", "Lost {n} in overtime. Probably lag. Definitely lag."),
+    ],
+  },
+  comeback: {
+    tier: "rare",
+    lines: [
+      l("comeback-1", "Came back from 2+ down {n} time(s). Never in doubt. (It was in doubt.)"),
+      l("comeback-2", "{n} comeback(s). The other team celebrated too early."),
+      l("comeback-3", "Down two or more, won anyway. {n} time(s). Kickoff after kickoff."),
+    ],
+  },
+  blown_lead: {
+    tier: "rare",
+    lines: [
+      l("blown-lead-1", "Blew {n} lead(s) of 2+ goals. The comeback was theirs to enjoy."),
+      l("blown-lead-2", "{n} lead(s) of two or more, gone. Probably lag."),
+      l("blown-lead-3", "Up by two or more, then not. {n} time(s). Must have been the servers."),
     ],
   },
   mvp_haul: {
@@ -266,6 +283,14 @@ const triggers = {
       l("crossbar-2", "{n} crossbar hits. The goal frame is fine, thanks for asking."),
       l("crossbar-3", "Hit the crossbar {n} times. Physics was not on your side."),
       l("crossbar-4", "{n} crossbars. Somewhere a goal post is laughing."),
+    ],
+  },
+  close_losses: {
+    tier: "common",
+    lines: [
+      l("close-losses-1", "{n} one-goal losses. A crossbar here and there and it's a different night."),
+      l("close-losses-2", "Lost {n} by a single goal. Probably lag."),
+      l("close-losses-3", "{n} losses by one goal. Definitely the ping."),
     ],
   },
   marathon: {

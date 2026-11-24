@@ -68,6 +68,7 @@ const facts = (matches: MyMatch[], over: Partial<SessionFacts> = {}): SessionFac
   aggregate: aggregate(matches),
   friendsPresent: [SAMMY],
   teammate: "anyone",
+  goals: [],
   ...over,
 });
 const fired = (f: SessionFacts) => triggersFor(f).map((t) => t.id);
@@ -131,6 +132,12 @@ describe("triggersFor", () => {
     const f = facts([match({ overtime: true }), loss({ overtime: true }), loss({ overtime: true }), match()]);
     expect(firedOne(f, "ot_wins")?.values).toEqual({ n: 1 });
     expect(firedOne(f, "ot_losses")?.values).toEqual({ n: 2 });
+  });
+
+  test("overtime in a playlist Clutch doesn't count (an LTM, a private match) is no OT remark", () => {
+    const f = facts([match({ overtime: true, playlistId: 33 }), loss({ overtime: true, playlistId: 6 })]);
+    expect(fired(f)).not.toContain("ot_wins");
+    expect(fired(f)).not.toContain("ot_losses");
   });
 
   test("an MVP haul needs 3 and 40 % of matches", () => {
@@ -199,6 +206,45 @@ describe("triggersFor", () => {
     const ids = fired(facts(ms, { startedAt: at(1) - 4 * HOUR, endedAt: at(2) }));
     expect(ids.length).toBeGreaterThan(10);
     for (const id of ids) expect(TRIGGERS[id].inert).toBeUndefined();
+  });
+});
+
+describe("clutch triggers", () => {
+  /** Goals for `m` in scoring order, each the team that scored it (you're team 0). */
+  const goalsOf = (m: MyMatch, teams: number[]) => teams.map((teamNum, idx) => ({ matchGuid: m.guid, idx, teamNum }));
+
+  test("a comeback: a win from 2+ down fires, from 1 down doesn't", () => {
+    const two = match({ scoreTeam0: 3, scoreTeam1: 2 });
+    const one = match({ scoreTeam0: 2, scoreTeam1: 1 });
+    expect(firedOne(facts([two, one], { goals: [...goalsOf(two, [1, 1, 0, 0, 0]), ...goalsOf(one, [1, 0, 0])] }), "comeback")?.values).toEqual({ n: 1 });
+    expect(fired(facts([one], { goals: goalsOf(one, [1, 0, 0]) }))).not.toContain("comeback");
+  });
+
+  test("a blown lead: a loss after 2+ up fires, after 1 up doesn't", () => {
+    const two = loss({ scoreTeam0: 2, scoreTeam1: 3 });
+    const one = loss({ scoreTeam0: 1, scoreTeam1: 2 });
+    expect(firedOne(facts([two], { goals: goalsOf(two, [0, 0, 1, 1, 1]) }), "blown_lead")?.values).toEqual({ n: 1 });
+    expect(fired(facts([one], { goals: goalsOf(one, [0, 1, 1]) }))).not.toContain("blown_lead");
+  });
+
+  test("goals that don't add up to the score, or an uncounted playlist: no swing remark", () => {
+    const joined = match({ scoreTeam0: 3, scoreTeam1: 2 });
+    expect(fired(facts([joined], { goals: goalsOf(joined, [1, 1, 0, 0]) }))).not.toContain("comeback");
+    const ltm = match({ scoreTeam0: 3, scoreTeam1: 2, playlistId: 33 });
+    expect(fired(facts([ltm], { goals: goalsOf(ltm, [1, 1, 0, 0, 0]) }))).not.toContain("comeback");
+  });
+
+  test("close losses: 3 one-goal losses without OT fire, 2 don't; OT and wider losses don't count", () => {
+    expect(firedOne(facts([loss(), loss(), loss()]), "close_losses")?.values).toEqual({ n: 3 });
+    expect(fired(facts([loss(), loss(), loss({ overtime: true }), loss({ scoreTeam1: 3 })]))).not.toContain("close_losses");
+  });
+
+  test("only matches played to the end are close losses: not one you left, forfeited or crashed out of at 0–1", () => {
+    const left = loss({ endKind: "left", winnerTeamNum: null, scoreTeam0: 0, scoreTeam1: 1 });
+    const forfeited = loss({ endKind: "early_end", scoreTeam0: 0, scoreTeam1: 1 });
+    const crashed = loss({ endKind: "orphaned", winnerTeamNum: null, scoreTeam0: 0, scoreTeam1: 1 });
+    for (const m of [left, forfeited, crashed]) expect(fired(facts([loss(), loss(), m]))).not.toContain("close_losses");
+    expect(fired(facts([loss(), loss(), loss({ scoreTeam0: 0, scoreTeam1: 1 })]))).toContain("close_losses");
   });
 });
 

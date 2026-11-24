@@ -2,6 +2,7 @@
 // the numbers their lines show. Thresholds are first guesses from the copy, kept here rather than
 // as settings; the inert triggers have no check here, so they never fire.
 import type { Aggregate, MyMatch } from "../../shared/aggregate";
+import { matchClutch, type ClutchGoal, type MatchClutch } from "../../shared/clutch";
 import type { TeammateFilter } from "../../shared/teammate-filter";
 import type { Band, GoalKind, TriggerId } from "./copy";
 
@@ -24,6 +25,8 @@ export const THRESHOLDS = {
   /** Local hours [from, to) a session's end counts as late night; the spec only fixes the start. */
   lateNightFromHour: 1,
   lateNightToHour: 6,
+  /** One-goal losses without overtime in a session (user's choice). */
+  closeLosses: 3,
 };
 
 export interface Mood {
@@ -66,6 +69,8 @@ export interface SessionFacts {
   /** Friends on your team in the session under the playlist filter, by display name. */
   friendsPresent: readonly { id: string; name: string }[];
   teammate: TeammateFilter;
+  /** The session's goals, for the Clutch triggers' goal order. */
+  goals: readonly ClutchGoal[];
 }
 
 /**
@@ -110,10 +115,23 @@ export function triggersFor(facts: SessionFacts): Fired[] {
   const kinds: GoalKind[] = [...(sf("AerialGoal") >= 1 ? (["aerial"] as const) : []), ...(sf("LongGoal") >= 1 ? (["long"] as const) : [])];
   if (kinds.length) out.push({ id: "aerial_or_long", values: {}, kinds });
   add(sf("EpicSave") >= THRESHOLDS.epicSaves, "epic_saves", { n: sf("EpicSave") });
-  const otWins = count((m) => m.overtime && m.result === "win");
-  const otLosses = count((m) => m.overtime && m.result === "loss");
+  // Overtime, comebacks and close losses follow Clutch: its playlists, decided matches only.
+  const clutch = matches.flatMap((m) => {
+    const c = matchClutch(m, facts.goals);
+    return c ? [{ m, c }] : [];
+  });
+  const clutchCount = (p: (c: MatchClutch, m: MyMatch) => boolean) => clutch.filter(({ m, c }) => p(c, m)).length;
+  const otWins = clutchCount((c, m) => c.ot && m.result === "win");
+  const otLosses = clutchCount((c, m) => c.ot && m.result === "loss");
   add(otWins >= 1, "ot_wins", { n: otWins });
   add(otLosses >= 1, "ot_losses", { n: otLosses });
+  const comebacks = clutchCount((c) => c.comebackFrom !== null);
+  const blown = clutchCount((c) => c.blownFrom !== null);
+  add(comebacks >= 1, "comeback", { n: comebacks });
+  add(blown >= 1, "blown_lead", { n: blown });
+  // Only matches played to the end: a quit, forfeit or crash at 0–1 was never a crossbar away.
+  const closeLosses = clutchCount((c, m) => c.oneGoal && !c.ot && m.result === "loss" && m.endKind === "completed");
+  add(closeLosses >= THRESHOLDS.closeLosses, "close_losses", { n: closeLosses });
   const mvps = agg.mvps ?? 0;
   add(mvps >= THRESHOLDS.mvpHaul && mvps >= THRESHOLDS.mvpHaulShare * agg.matches, "mvp_haul", { n: mvps });
   const speed = agg.hardestShotKmh;

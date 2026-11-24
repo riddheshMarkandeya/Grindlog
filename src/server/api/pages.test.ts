@@ -347,6 +347,38 @@ describe("match detail, periods and seasons", () => {
   });
 });
 
+describe("Clutch on the period", () => {
+  const MONTH = { kind: "month", day: "2026-10-01" } as const;
+  /** A ranked 3–2 win from 0–2 down. */
+  const comeback = (guid: string, at: number, playlistId = RANKED) =>
+    record(guid, at, { goals: [goal(1, THEM), goal(1, THEM), goal(0, ME), goal(0, ME), goal(0, ME)] }, { endedAt: at + 5 * MIN, playlistId, scoreTeam0: 3, scoreTeam1: 2 });
+
+  test("over the filtered matches, with the best comeback's session key and the skipped matches logged", () => {
+    const writer = createRecordWriter({ tracker: storage.tracker, logger: memoryLogger(), now: () => 1 });
+    const logger = memoryLogger();
+    const pages = createPages({ reader: createQueryReader({ tracker: storage.tracker, logger: memoryLogger() }), logger, now: () => t(12, 31, 12) });
+    writer.save(record("A", t(10, 10, 10), {}, { endedAt: t(10, 10, 10, 5) })); // 1–1, scored first
+    writer.save(comeback("B", t(10, 10, 10, 10)));
+    writer.save(record("J", t(10, 10, 10, 20), {}, { endedAt: t(10, 10, 10, 25), scoreTeam0: 2 })); // joined: goals ≠ score
+    writer.save(record("C", t(10, 12, 10), {}, { endedAt: t(10, 12, 10, 5), playlistId: CASUAL }));
+    const clutch = pages.period(MONTH, "everything", ROLLING_WINDOW)?.clutch;
+    expect(clutch).toMatchObject({ matches: 4, skippedOrder: 1, scoredFirst: { w: 2, l: 0 }, concededFirst: { w: 1, l: 0 }, comebacks: { n: 1, of: 1 } });
+    expect(clutch?.best).toEqual({ guid: "B", startedAt: t(10, 10, 10, 10), score: "3–2", at: "0–2", by: 2, sessionKey: "A" });
+    expect(clutch?.worst).toBeNull();
+    expect(logger.lines.find((l) => l.event === "clutch")?.fields).toEqual({ matches: 4, skippedOrder: 1, skipped: ["J"] });
+    expect(pages.period(MONTH, "casual", ROLLING_WINDOW)?.clutch?.matches).toBe(1);
+  });
+
+  test("a period of only private matches has none", () => {
+    const { pages } = seed();
+    const writer = createRecordWriter({ tracker: storage.tracker, logger: memoryLogger(), now: () => 1 });
+    writer.save(comeback("P", t(10, 10, 10), 6));
+    const v = pages().period(MONTH, "private", ROLLING_WINDOW);
+    expect(v?.aggregate.matches).toBe(1);
+    expect(v?.clutch).toBeNull();
+  });
+});
+
 describe("the teammate filter", () => {
   const SAM = "Epic|sam|0";
   const ALEX = "Epic|alex|0";
@@ -432,6 +464,7 @@ describe("the teammate filter", () => {
     play("C", t(10, 11, 12), [[SAM, 0]], { won: false });
     const v = pages().period({ kind: "month", day: "2026-10-01" }, "everything", 2, sam);
     expect(v?.aggregate).toMatchObject({ matches: 2, wins: 1, losses: 1 });
+    expect(v?.clutch?.matches).toBe(2);
     expect(v?.sessions).toBe(2);
     expect(v?.rolling.map((r) => r.n)).toEqual([2]);
     expect(pages().playedDays(2026, "everything", sam)).toEqual({

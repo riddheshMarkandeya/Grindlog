@@ -12,6 +12,7 @@ import {
   SIDE_WALL_X,
   WEEK_START_DAY,
 } from "../../shared/constants";
+import { SWING_MIN_GOALS } from "../../shared/clutch";
 import { CLOSE_UNDER, LONG_FROM } from "../../shared/goal-range";
 import { AERIAL_MIN_Z, CORNER_MAX_XY_SUM, HARDEST_SHOT_MAX_KMH, THIRD_Y, WALL_MARGIN } from "../recorder/extras";
 import { CAR_SAMPLE_CAP_MS, TOUCH_MERGE_MS, WOODWORK_WINDOW_MS } from "../recorder/play";
@@ -78,6 +79,7 @@ const PLAN_WP6AA = "docs/plans/2026-10-26-wp6a-a-recap-navigation.md";
 const PLAN_WP6AC = "docs/plans/2026-10-27-wp6a-c-matches-and-match-page.md";
 const PLAN_CONTRIBUTION = "docs/plans/2026-11-16-contribution-stats.md";
 const PLAN_ACCOUNTS = "docs/plans/2026-11-22-account-profiles.md";
+const ANALYTICS_MAP = "docs/plans/2026-11-23-analytics-map.md";
 
 const p = (column: string) => `match_players.${column}`;
 const m = (column: string) => `matches.${column}`;
@@ -793,6 +795,37 @@ export const RULES: readonly Rule[] = [
     version: 1,
     applied: "read",
     refs: [PLAN_WP5AA],
+  },
+  {
+    id: "clutch_playlists",
+    area: "queries",
+    rule: "Clutch counts casual, ranked (ranked extras included) and tournament playlists, and of those every match with a team of yours and a win or loss, forfeits and matches you left included. Private, casual extras, LTMs, offline and unknown ids aren't counted, nor is a match with no result.",
+    checks: [],
+    evidence: "The user's choice (2026-11-23): only team modes where the most goals win. In the prototype's data, 59–19 of 340 counted matches were forfeits, shown on their own.",
+    version: 1,
+    applied: "read",
+    refs: [ANALYTICS_MAP],
+  },
+  {
+    id: "clutch_goal_order",
+    area: "queries",
+    rule: "A match's goal order is its goals by idx, each credited to its team, used only when the goals per team equal the final score (else the match is left out of goal-order stats and kept in the final-score ones). A comeback is a win after being SWING_MIN_GOALS or more goals down at some point; a blown lead is a loss after being that many up. The ladder buckets each match by its biggest deficit and lead (1, 2, 3+). A match whose result contradicts its final score (a win while behind, as when the other side quits while ahead; a loss while ahead) is left out of comebacks, blown leads and the ladder.",
+    constants: { SWING_MIN_GOALS },
+    checks: ["goals_per_team_equal_score", "player_goals_equal_score"],
+    evidence: "The user's choice (2026-11-23): at any deficit about 3 in 4 comebacks were from one goal down, which happens in almost every match. A joined match (no checks, flagged joined) and a mis-credited own goal fail the per-team comparison. In the 2026-11-23 data, 2 forfeit wins finished behind (one at 0–7) and would have read as comebacks (user's choice to leave them out).",
+    version: 1,
+    applied: "read",
+    refs: [ANALYTICS_MAP],
+  },
+  {
+    id: "clutch_one_goal",
+    area: "queries",
+    rule: "A 1-goal game is one whose final score differs by one, overtime included; the overtime record is the matches that went to overtime.",
+    checks: [],
+    evidence: "The user's choice (2026-11-23): the tile shows the total, with the record without overtime in its note.",
+    version: 1,
+    applied: "read",
+    refs: [ANALYTICS_MAP],
   },
 ];
 

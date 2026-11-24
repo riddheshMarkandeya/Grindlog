@@ -104,6 +104,21 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   period on Trends, as a density view, since ~1,900 goals as dots would just be clutter. Lowest priority: the
   recap's "Where the goals came from" already shows scored and conceded per session and match. Record:
   `docs/plans/2026-11-23-analytics-map.md`.
+- [ ] **[bug, Med, Standard]** (found in analytics step A, 2026-11-23) An own goal is credited to the wrong team.
+  Match `6437938E11F1E4A6451A93B20A8916A6` (Ranked Doubles, final 3–7) stores 2 goals for team 0 and 8 for team 1.
+  In raw.db, team 0's scoreboard goes 2→3 at seq 1500 while no team-0 player's goal count moves, then the GoalScored
+  at seq 1501 names a team-1 player as `Scorer` (`TeamNum: 1`, also the last toucher). The Stats API names whoever
+  put the ball in, and the recorder credits a goal to `Scorer.TeamNum`. The `own_goal` rule ("the scoring team never
+  hit the ball since kickoff") can't catch it, because the credited team is the one that touched it. Ruled out:
+  replay goals (every replay GoalScored has an empty scorer and is dropped) and a lost goal (10 live GoalScoreds,
+  10 scoreboard steps). The fix changes the goal-team rule: credit a goal to the team whose scoreboard score rose
+  at that GoalScored (falling back to `Scorer.TeamNum` with no scoreboard step), and make `own_goal` also mean "the
+  credited team isn't the scorer's", with no scorer credit or point. One rule at a time with version bumps,
+  `rules-diff`, then `release-recompute` moves it. Clutch already leaves this match out of goal-order stats (goals
+  per team ≠ score), so it doesn't wait on the fix. Seen 1 time in ~1,931 goals.
+- [ ] **[design, Low, Standard]** (from analytics step A, the user's future task) Drop support for unknown and
+  limited-time playlists: they'd stop showing in the playlist filter and the stats. `clutchCounts` in
+  `src/shared/clutch.ts` already gives the casual/ranked/tournament rule and can be reused.
 
 ## Watch list
 - [ ] **[feature, Low, Standard]** Trigger: the analytics map's Tilt section (step B) shows a real win % drop late

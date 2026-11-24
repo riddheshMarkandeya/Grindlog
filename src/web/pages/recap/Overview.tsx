@@ -5,8 +5,9 @@ import { useEffect, useId, useRef, useState, type PointerEvent as ReactPointerEv
 import { Link } from "react-router";
 import { filterValue, type PlaylistFilter } from "../../../shared/playlist-filter";
 import { teammateValue, type TeammateFilter } from "../../../shared/teammate-filter";
+import { matchClutch } from "../../../shared/clutch";
 import { playlistInfo } from "../../../shared/playlists";
-import type { AggregateWire, MyMatchWire, SessionDetail, SessionSummary } from "../../../shared/schemas/responses";
+import type { AggregateWire, Goal, MyMatchWire, SessionDetail, SessionSummary } from "../../../shared/schemas/responses";
 import { cx } from "../../components/cx";
 import { GoalMap } from "../../components/GoalMap";
 import { Icon } from "../../components/Icon";
@@ -16,6 +17,7 @@ import { StatCard, StatCards } from "../../components/StatCard";
 import { Tile, Tiles, VsText } from "../../components/Tile";
 import { clock, dayLabel, decimal, durationText, plural, whole } from "../../logic/format";
 import {
+  clutchStory,
   extrasCards,
   highlights,
   isDense,
@@ -44,7 +46,7 @@ export function Overview({ detail, summary, filter, teammate }: { detail: Sessio
     <>
       <RecapScorebug detail={detail} summary={summary} />
       <Headline detail={detail} filter={filter} teammate={teammate} />
-      <MatchCards matches={detail.matches} matchPath={matchPath} />
+      <MatchCards matches={detail.matches} goals={detail.goals} matchPath={matchPath} />
       <PerGame detail={detail} />
       <GoalsAndShares detail={detail} teammate={teammate} matchPath={matchPath} />
       <ExtrasSection agg={detail.aggregate} matches={detail.matches} heading="Extras" />
@@ -126,7 +128,7 @@ function Headline({ detail, filter, teammate }: { detail: SessionDetail; filter:
   );
 }
 
-function MatchCards({ matches, matchPath }: { matches: MyMatchWire[]; matchPath: (guid: string) => string }) {
+function MatchCards({ matches, goals, matchPath }: { matches: MyMatchWire[]; goals: Goal[]; matchPath: (guid: string) => string }) {
   const { clock: hours } = useSettings();
   return (
     <Section title="Matches" aside={<span className={cx("muted", styles.small)}>Results in order</span>}>
@@ -135,12 +137,14 @@ function MatchCards({ matches, matchPath }: { matches: MyMatchWire[]; matchPath:
           const score = scoreFor(m);
           const mvp = isMyMvp(m);
           const playlist = playlistInfo(m.playlistId).name;
+          const story = clutchStory(matchClutch(m, goals));
           return (
             <li key={m.guid}>
-              <Link to={matchPath(m.guid)} className={cx(styles.card, m.result === "win" && styles.win, m.result === "loss" && styles.loss, m.flags.length > 0 && styles.flagged)} aria-label={matchLabel(m, i + 1, hours)}>
+              <Link to={matchPath(m.guid)} className={cx(styles.card, m.result === "win" && styles.win, m.result === "loss" && styles.loss, m.flags.length > 0 && styles.flagged)} aria-label={matchLabel(m, i + 1, hours, story?.label)}>
                 <span className={styles.t} aria-hidden="true">#{i + 1} · {clock(m.startedAt, hours)}</span>
                 <b className="num display" aria-hidden="true"><i>{letter(m.result)}</i> {score}</b>
                 <span className={styles.p} aria-hidden="true" title={playlist}>{playlist}</span>
+                {story && <span className={cx(styles.story, story.tone !== null && styles[story.tone])} aria-hidden="true" title={story.text}>{story.text}</span>}
                 {mvp && <Icon k="mvp" className={styles.mvp} />}
               </Link>
             </li>

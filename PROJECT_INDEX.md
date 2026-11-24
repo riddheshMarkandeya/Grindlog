@@ -70,6 +70,7 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   `styles/tokens.css` themes carbon, slate, oled and the motion tokens (durations, easings, springs, `--press`,
   `--rise`; the reduced-motion block zeroes the spatial ones, and a test bans raw durations elsewhere),
   `global.css` the shared `.button`; `pages/trends/chart-motion.ts` the charts' draw-once and tween;
+  `pages/trends/Clutch.tsx` the Trends Clutch section, its text from `logic/clutch.ts`;
   `pages/` placeholders until WP6+),
   `src/tray/` (`Tray.cs` the C# 5 tray exe: polls `/api/tray` every 2 s, icon states (reloaded when the primary monitor's scale changes), menu, balloons; `tray.manifest`
   DPI awareness; `icons/<channel>-<state>.ico` from `bun run icons`; built by `scripts/build-tray.ts`; live
@@ -78,7 +79,8 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   `GRINDLOG_VERSION` (null in dev and source runs), `release.ts` release version parsing and compare, installer name, the
   minisign trusted comment and its parser, the update repo URLs, `update-key.ts` the baked `GRINDLOG_UPDATE_KEY`, `constants.ts`, `result.ts` your W/L, `lobby.ts` a match's lines and `Thirds`, `contribution.ts`
   the carry and per-session contribution (shares and touch thirds per mode), `playlists.ts` ID map, `goal-range.ts`
-  close/mid/long, `periods.ts` local days and periods, `playlist-filter.ts` filter groups, `accounts.ts` which account the dashboard shows (server and picker share
+  close/mid/long, `clutch.ts` Clutch's counted matches, goal order, comebacks and the period's stats (Trends,
+  the recap's card story line and the remarks share it), `periods.ts` local days and periods, `playlist-filter.ts` filter groups, `accounts.ts` which account the dashboard shows (server and picker share
   it), `schemas/` API params
   and response shapes),
   `scripts/` (standalone `capture.ts`; `make-icons.ts` packs `src/web/assets/icon.svg` and

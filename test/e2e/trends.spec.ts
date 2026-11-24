@@ -139,6 +139,18 @@ test("on all time a month's W/L column opens that month", async ({ page }) => {
   await charted(page);
 });
 
+test("Clutch: its tiles over last month's ranked matches, and the best comeback opens its match", async ({ page }) => {
+  await lastMonth(page);
+  const clutch = page.getByRole("region", { name: "Clutch" });
+  await expect(clutch.getByRole("heading", { level: 3, name: "Clutch" })).toBeVisible();
+  // Day 12's 3–2 win from 0–2 down and 2–3 loss after leading 2–0, plus the 4–1 hat-trick win.
+  await expect(clutch.getByText("won 1 of 1 after going 2+ down")).toBeVisible();
+  await expect(clutch.getByText("lost 1 of 2 after going 2+ up")).toBeVisible();
+  await expect(clutch.getByText("1 won, 0 lost").first()).toBeAttached();
+  await clutch.getByRole("link", { name: "Best: won 3–2 from 0–2" }).click();
+  await expect(page).toHaveURL(/\/recap\/e2e-first-a\/match\/e2e-first-a\?filter=ranked$/);
+});
+
 test("a tile selects the metric in the URL", async ({ page }) => {
   await page.goto("/trends?kind=all");
   await tiles(page).getByRole("button", { name: /^Saves \/ game/ }).click();

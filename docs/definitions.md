@@ -562,3 +562,26 @@ Win and loss streaks run in start order; a match with no result neither extends 
 
 - **Evidence**: A restart leaves the result unknown, which says nothing about the run.
 - **Decided in**: `docs/plans/2026-10-21-wp5a-a-query-logic.md`
+
+### `clutch_playlists` · v1 · read
+
+Clutch counts casual, ranked (ranked extras included) and tournament playlists, and of those every match with a team of yours and a win or loss, forfeits and matches you left included. Private, casual extras, LTMs, offline and unknown ids aren't counted, nor is a match with no result.
+
+- **Evidence**: The user's choice (2026-11-23): only team modes where the most goals win. In the prototype's data, 59–19 of 340 counted matches were forfeits, shown on their own.
+- **Decided in**: `docs/plans/2026-11-23-analytics-map.md`
+
+### `clutch_goal_order` · v1 · read
+
+A match's goal order is its goals by idx, each credited to its team, used only when the goals per team equal the final score (else the match is left out of goal-order stats and kept in the final-score ones). A comeback is a win after being SWING_MIN_GOALS or more goals down at some point; a blown lead is a loss after being that many up. The ladder buckets each match by its biggest deficit and lead (1, 2, 3+). A match whose result contradicts its final score (a win while behind, as when the other side quits while ahead; a loss while ahead) is left out of comebacks, blown leads and the ladder.
+
+- **Constants**: `SWING_MIN_GOALS` = 2
+- **Checks**: `goals_per_team_equal_score`, `player_goals_equal_score`
+- **Evidence**: The user's choice (2026-11-23): at any deficit about 3 in 4 comebacks were from one goal down, which happens in almost every match. A joined match (no checks, flagged joined) and a mis-credited own goal fail the per-team comparison. In the 2026-11-23 data, 2 forfeit wins finished behind (one at 0–7) and would have read as comebacks (user's choice to leave them out).
+- **Decided in**: `docs/plans/2026-11-23-analytics-map.md`
+
+### `clutch_one_goal` · v1 · read
+
+A 1-goal game is one whose final score differs by one, overtime included; the overtime record is the matches that went to overtime.
+
+- **Evidence**: The user's choice (2026-11-23): the tile shows the total, with the record without overtime in its note.
+- **Decided in**: `docs/plans/2026-11-23-analytics-map.md`

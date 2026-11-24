@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import type { MatchClutch } from "../../shared/clutch";
 import type { AggregateWire, MatchDetail, MyMatchWire } from "../../shared/schemas/responses";
 import {
   keepDetailWhileWithChanges,
@@ -9,6 +10,7 @@ import {
   isDense,
   letter,
   matchLabel,
+  clutchStory,
   perGameCards,
   playlistRows,
   recapPath,
@@ -183,6 +185,23 @@ test("matchLabel: number, time, result, score, playlist, then MVP and flags when
   expect(matchLabel(m, 2, "24h")).toBe(`Match 2, ${t}, win, 3–1, Ranked Doubles, MVP, flagged: MVP inferred`);
   expect(matchLabel({ ...m, mvpKey: "other", flags: [], result: null, scoreTeam0: null }, 1, "24h")).toBe(`Match 1, ${t}, no result, Ranked Doubles`);
   expect(matchLabel(m, 2, "12h")).toContain(clock(m.startedAt, "12h"));
+  expect(matchLabel(m, 2, "24h", "came back from 1–4, overtime")).toBe(`Match 2, ${t}, win, 3–1, Ranked Doubles, came back from 1–4, overtime, MVP, flagged: MVP inferred`);
+});
+
+describe("clutchStory", () => {
+  const c = (over: Partial<MatchClutch> = {}): MatchClutch => ({ oneGoal: false, ot: false, ff: false, swings: true, final: null, comebackFrom: null, blownFrom: null, order: null, ...over });
+
+  test("shown and read aloud: the swing, then OT and FF", () => {
+    expect(clutchStory(c({ comebackFrom: "1–4", ot: true }))).toEqual({ text: "from 1–4, OT", label: "came back from 1–4, overtime", tone: "up" });
+    expect(clutchStory(c({ blownFrom: "3–0" }))).toEqual({ text: "led 3–0", label: "led 3–0", tone: "down" });
+    expect(clutchStory(c({ comebackFrom: "0–3", ff: true }))).toEqual({ text: "from 0–3, FF", label: "came back from 0–3, forfeit", tone: "up" });
+    expect(clutchStory(c({ ff: true }))).toEqual({ text: "FF", label: "forfeit", tone: null });
+  });
+
+  test("nothing to tell, or a match Clutch doesn't count: null", () => {
+    expect(clutchStory(c({ oneGoal: true }))).toBeNull();
+    expect(clutchStory(null)).toBeNull();
+  });
 });
 
 describe("scoreboardTeams", () => {

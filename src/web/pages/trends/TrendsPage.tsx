@@ -1,7 +1,8 @@
 // The Trends page: the period controls and year strip, the period's title line, then its stats
-// line, the six tiles and the two charts. The state lives in the query string. The controls and the
-// title line are built from the URL and the seasons alone, so they stay mounted while a period
-// loads and focus stays on the control used; only the stats, tiles and charts wait for the period.
+// line, the six tiles, the two charts and the Clutch section. The state lives in the query string.
+// The controls and the title line are built from the URL and the seasons alone, so they stay
+// mounted while a period loads and focus stays on the control used; only the stats, tiles, charts
+// and Clutch wait for the period.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { dayOf, periodRange, shiftDay } from "../../../shared/periods";
@@ -14,6 +15,7 @@ import { chartMode } from "../../logic/trend-chart";
 import { ENOUGH_MATCHES, parseTrends, patchTrends, stripYear, trendsPath, type TrendsState } from "../../logic/trends";
 import { useFriends, usePeriod, usePlayedDays, useSeasons, useSettings } from "../../queries";
 import { redirect } from "../../redirect";
+import { Clutch } from "./Clutch";
 import { MetricTiles } from "./MetricTiles";
 import { PeriodControls } from "./PeriodControls";
 import { PeriodHeader, StatsLine } from "./PeriodHeader";
@@ -169,6 +171,7 @@ export function TrendsPage() {
                 <MetricTiles view={period.data} metric={state.metric} onMetric={(metric) => { go({ metric }); }} />
                 {chart && <TrendChart view={period.data} size={rollingWindow} metric={state.metric} chart={chart} seasons={seasons.data} onX={(x) => { go({ x }); }} />}
                 <WinLossChart view={period.data} state={state} seasons={seasons.data} />
+                <Clutch view={period.data} state={state} />
               </>
             )}
           </div>

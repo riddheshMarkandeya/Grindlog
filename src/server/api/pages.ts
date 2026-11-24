@@ -8,6 +8,7 @@ import { inFilter, playlistsPresent, type PlaylistFilter } from "../../shared/pl
 import { pairKey, withTeammate, type TeammateFilter } from "../../shared/teammate-filter";
 import type { FriendCard, FriendDetail, FriendPair, FriendSuggestions, LatestSession, NeverSuggested, MatchDetail, MonthFolds, PairDetail, PeriodView, PlayedDays, SessionDetail, SessionList, SessionSummary } from "../../shared/schemas/responses";
 import { aggregate, baseline, byPlaylist, type MyMatch } from "../../shared/aggregate";
+import { clutchStats, type ClutchRef } from "../../shared/clutch";
 import { sessionContribution } from "../../shared/contribution";
 import { friendCard, friendView, together } from "../../shared/friend-stats";
 import type { Logger } from "../log";
@@ -196,7 +197,17 @@ export function createPages({ reader, logger, now }: { reader: QueryReader; logg
         return { ...b, stats: trendStats(aggregate(matches.slice(start, next))), session: next > start && first ? sessionOf(b.day, first.guid) : null };
       }),
       rolling: rolling(idx, range, wanted, matches, window),
+      clutch: clutch(idx, matches),
     };
+  }
+
+  /** Clutch over a period's matches, each biggest swing with the session that opens its match page. */
+  function clutch(idx: Index, matches: readonly MyMatch[]): PeriodView["clutch"] {
+    const c = clutchStats(matches, reader.readGoals(matches.map((m) => m.guid)));
+    logger.info(C, "clutch", { matches: c?.stats.matches ?? 0, skippedOrder: c?.stats.skippedOrder ?? 0, skipped: c?.skipped.slice(0, 5) ?? [] });
+    if (!c) return null;
+    const keyed = (r: ClutchRef | null) => r && { ...r, sessionKey: keyOf(idx, r.guid) };
+    return { ...c.stats, best: keyed(c.stats.best), worst: keyed(c.stats.worst) };
   }
 
   /**

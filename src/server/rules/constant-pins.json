@@ -114,5 +114,11 @@
     "constants": {
       "BASELINE_DAYS": 30
     }
+  },
+  "clutch_goal_order": {
+    "version": 1,
+    "constants": {
+      "SWING_MIN_GOALS": 2
+    }
   }
 }

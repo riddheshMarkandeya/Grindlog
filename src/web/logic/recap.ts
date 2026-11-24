@@ -2,6 +2,7 @@
 // with nothing behind it is left out rather than shown as a zero.
 import type { PlaylistFilter } from "../../shared/playlist-filter";
 import { playlistInfo } from "../../shared/playlists";
+import type { MatchClutch } from "../../shared/clutch";
 import type { FlagReason } from "../../shared/flags";
 import type { AggregateWire, MatchDetail, MyMatchWire, SessionDetail } from "../../shared/schemas/responses";
 import { filterValue } from "../../shared/playlist-filter";
@@ -265,11 +266,34 @@ export const flagShort = (flags: readonly FlagReason[]): string | null => (flags
 /** Whether this match's MVP is you. */
 export const isMyMvp = (m: MyMatchWire): boolean => m.me !== null && m.mvpKey === m.me.playerKey;
 
-/** How a match link is announced: "Match 2, 21:04, win, 3–1, Ranked Doubles, MVP, flagged: …". */
-export function matchLabel(m: MyMatchWire, n: number, hours: Units["clock"]): string {
-  return [`Match ${String(n)}`, clock(m.startedAt, hours), resultWord(m.result), scoreFor(m), playlistInfo(m.playlistId).name, isMyMvp(m) && "MVP", flagShort(m.flags)]
+/**
+ * How a match link is announced: "Match 2, 21:04, win, 3–1, Ranked Doubles, came back from 0–2, MVP,
+ * flagged: …". `story` is a recap card's Clutch story in words; other links pass none.
+ */
+export function matchLabel(m: MyMatchWire, n: number, hours: Units["clock"], story: string | null = null): string {
+  return [`Match ${String(n)}`, clock(m.startedAt, hours), resultWord(m.result), scoreFor(m), playlistInfo(m.playlistId).name, story, isMyMvp(m) && "MVP", flagShort(m.flags)]
     .filter(Boolean)
     .join(", ");
+}
+
+/**
+ * A match card's Clutch line: "from 1–4" (the score at the biggest deficit of a comeback), "led
+ * 3–0" (a blown lead), "OT", "FF", and the same in words for a screen reader, which would spell
+ * out "FF". Null when there's nothing to tell or Clutch doesn't count the match.
+ */
+export function clutchStory(c: MatchClutch | null): { text: string; label: string; tone: "up" | "down" | null } | null {
+  if (!c) return null;
+  const parts: [string, string][] = [];
+  if (c.comebackFrom) parts.push([`from ${c.comebackFrom}`, `came back from ${c.comebackFrom}`]);
+  if (c.blownFrom) parts.push([`led ${c.blownFrom}`, `led ${c.blownFrom}`]);
+  if (c.ot) parts.push(["OT", "overtime"]);
+  if (c.ff) parts.push(["FF", "forfeit"]);
+  if (parts.length === 0) return null;
+  return {
+    text: parts.map(([t]) => t).join(", "),
+    label: parts.map(([, l]) => l).join(", "),
+    tone: c.comebackFrom ? "up" : c.blownFrom ? "down" : null,
+  };
 }
 
 type MatchPlayer = MatchDetail["players"][number];

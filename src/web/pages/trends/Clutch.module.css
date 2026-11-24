@@ -1,0 +1,12 @@
+/* The Clutch ladder: two columns of rungs, one column below 760px. Class names stay clear of "row",
+   "label" and "panel", which e2e selectors match by substring. */
+.ladders { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s5); margin-top: var(--s4); }
+@media (max-width: 760px) { .ladders { grid-template-columns: 1fr; } }
+.title { margin: 0 0 var(--s1); font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.hint { margin: 0 0 var(--s2); font-size: 12px; color: var(--muted); }
+.rungs { list-style: none; margin: 0; padding: 0; }
+.rung { display: grid; grid-template-columns: 5.5em 1fr 3em 4.5em; gap: var(--s2); align-items: center; padding: 4px 0; }
+.rung > :nth-child(3), .rung > :nth-child(4) { text-align: right; }
+.bar { height: 10px; border-radius: 2px; }
+.swing { grid-column: 2 / -1; font-size: 12px; color: var(--ink2); }
+.swing:hover { color: var(--ink); }
