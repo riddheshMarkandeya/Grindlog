@@ -24,7 +24,8 @@ export const swingText = `${String(SWING_MIN_GOALS)}+`;
 export function clutchTiles(c: ClutchView): ClutchTile[] {
   const record = (label: string, icon: IconKey, r: WL, note: string) => ({ label, icon, value: none(r) ? EMPTY : recordText(r), note: none(r) ? undefined : note });
   const share = (label: string, icon: IconKey, r: WL, note: string) => ({ label, icon, value: winPctText(r), note: none(r) ? undefined : note });
-  const swing = (label: string, icon: IconKey, s: { n: number; of: number }, note: string) => ({ label, icon, value: s.of === 0 ? EMPTY : whole(s.n), note: s.of === 0 ? undefined : note });
+  // The share of the matches that swung; the counts go in the note.
+  const swing = (label: string, icon: IconKey, s: { n: number; of: number }, note: string) => ({ label, icon, value: s.of === 0 ? EMPTY : winPctText({ w: s.n, l: s.of - s.n }), note: s.of === 0 ? undefined : note });
   return [
     record("1-goal games", "score", c.oneGoal, `${winPctText(c.oneGoal)} won · ${recordText(c.oneGoalNoOt)} without OT`),
     record("Overtime", "overtime", c.overtime, `${winPctText(c.overtime)} won`),
@@ -42,15 +43,14 @@ export type LadderSide = "down" | "up";
 export const rungLabel = (side: LadderSide, i: number): string => `${String(i + 1)}${i === LADDER_TOP - 1 ? "+" : ""} ${side}`;
 
 /**
- * The best comeback (down side) or worst collapse (up side) as a link under its rung: the 3+ rung,
- * or the 2 rung when the biggest swing was 2. Null with no swing, or with no session to open it in,
+ * The best comeback (down side) or worst collapse (up side) as a link under the ladder; its text
+ * names the score, so it needn't sit on a rung. Null with no swing, or with no session to open it in,
  * since a null key opens the latest recap instead.
  */
-export function swingLink(c: ClutchView, side: LadderSide, filter: PlaylistFilter, teammate: TeammateFilter): { rung: number; text: string; path: string } | null {
+export function swingLink(c: ClutchView, side: LadderSide, filter: PlaylistFilter, teammate: TeammateFilter): { text: string; path: string } | null {
   const ref = side === "down" ? c.best : c.worst;
   if (!ref?.sessionKey) return null;
   return {
-    rung: ref.by >= LADDER_TOP ? LADDER_TOP - 1 : 1,
     text: side === "down" ? `Best: won ${ref.score} from ${ref.at}` : `Worst: lost ${ref.score} after leading ${ref.at}`,
     path: recapPath(ref.sessionKey, filter, { match: ref.guid }, teammate),
   };

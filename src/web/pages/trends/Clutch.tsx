@@ -55,14 +55,14 @@ function Ladder({ side, rungs, link }: { side: LadderSide; rungs: readonly WL[];
               <span aria-hidden="true">{recordText(r)}</span>
               <span className="visually-hidden">{recordLabel(r)}</span>
             </span>
-            {link?.rung === i && (
-              <Link to={link.path} className={styles.swing}>
-                {link.text} <span aria-hidden="true">→</span>
-              </Link>
-            )}
           </li>
         ))}
       </ul>
+      {link && (
+        <Link to={link.path} className={styles.swing}>
+          {link.text} <span aria-hidden="true">→</span>
+        </Link>
+      )}
     </div>
   );
 }

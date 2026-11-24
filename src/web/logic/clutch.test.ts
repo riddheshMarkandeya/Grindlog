@@ -27,8 +27,8 @@ describe("clutchTiles", () => {
       ["Overtime", "20–35", "36% won"],
       ["Scored first", "70%", "won 116–49 when you opened the scoring"],
       ["Conceded first", "25%", "won 40–120 when they opened it"],
-      ["Comebacks", "14", "won 14 of 134 after going 2+ down"],
-      ["Blown leads", "20", "lost 20 of 143 after going 2+ up"],
+      ["Comebacks", "10%", "won 14 of 134 after going 2+ down"],
+      ["Blown leads", "14%", "lost 20 of 143 after going 2+ up"],
       ["Forfeits", "59–19", "matches a side quit early"],
     ]);
   });
@@ -42,8 +42,8 @@ describe("clutchTiles", () => {
     expect(by("Comebacks")).toMatchObject({ value: "–", note: undefined });
   });
 
-  test("none out of some is 0, not –", () => {
-    expect(clutchTiles(view({ blownLeads: { n: 0, of: 5 } })).find((t) => t.label === "Blown leads")).toMatchObject({ value: "0", note: "lost 0 of 5 after going 2+ up" });
+  test("none out of some is 0%, not –", () => {
+    expect(clutchTiles(view({ blownLeads: { n: 0, of: 5 } })).find((t) => t.label === "Blown leads")).toMatchObject({ value: "0%", note: "lost 0 of 5 after going 2+ up" });
   });
 });
 
@@ -53,13 +53,12 @@ test("rung labels in words", () => {
 });
 
 describe("swingLink", () => {
-  test("the best comeback sits on the 3+ rung and opens its match", () => {
-    expect(swingLink(view(), "down", "ranked", "anyone")).toEqual({ rung: 2, text: "Best: won 5–4 from 0–4", path: "/recap/S1/match/B?filter=ranked" });
+  test("the best comeback opens its match", () => {
+    expect(swingLink(view(), "down", "ranked", "anyone")).toEqual({ text: "Best: won 5–4 from 0–4", path: "/recap/S1/match/B?filter=ranked" });
   });
 
-  test("a biggest swing of 2 sits on the 2 rung", () => {
+  test("the worst collapse keeps the With filter", () => {
     expect(swingLink(view(), "up", "everything", { friends: ["Epic|sam|0"] })).toEqual({
-      rung: 1,
       text: "Worst: lost 3–4 after leading 2–0",
       path: "/recap/S2/match/W?filter=everything&with=Epic%7Csam%7C0",
     });
