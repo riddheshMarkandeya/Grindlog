@@ -133,6 +133,14 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
 - [ ] **[bug, Low, Standard]** Trigger: the first match flagged `goals_clocked` (a goal with no
   `ClockUpdatedSeconds` reading before it) or `clock_overtime_flagged` (a reading whose `bOvertime` isn't a boolean; none in 1,988 stored
   goals). Fit the `goal_clock` rule (and, for a bad `bOvertime`, `regulation_length`) to that match. Record: `docs/plans/2026-11-24-goal-clock.md`.
+- [ ] **[bug, Low, Standard]** Trigger: the first match flagged `moments_clocked` (a Shot, Save or Assist statfeed
+  with no clock: no reading before it, in a match joined in progress, with no regulation length, or whose first
+  reading is more than 2 s short of the length (early readings missing); none in 6,838 stored moments, where the 9
+  kickoff shots before the first tick take the regulation length). Fit the
+  `timeline_moments` rule to that match. Record: `docs/plans/2026-11-24-goal-timeline.md`.
+- [ ] **[bug, Low, Standard]** Trigger: the first match flagged `forfeit_end_clocked` (a forfeit with no Win
+  statfeed, or no clock reading before it; all 81 stored forfeits have both). Its end clock would be the reset to 0;
+  fit the `end_clock` rule to where that match's forfeit shows. Record: `docs/plans/2026-11-24-goal-timeline.md`.
 - [ ] **[feature, Low, Standard]** Trigger: the analytics map's Tilt section (step B) says "You drop …" (2.5 standard
   errors) in the wide all-matches view, not only in a filtered one, where four buckets checked per view leave room
   for a chance false alarm. Then add an in-session nudge (e.g. "3 losses in a row; your win rate here is X%").

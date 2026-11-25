@@ -217,6 +217,22 @@ describe("tracker schema", () => {
     expect(d.get("SELECT regulation_seconds FROM matches")).toEqual({ regulation_seconds: null });
   });
 
+  test("a DB at version 10 gains match_moments and the end clock, empty and null until recompute", () => {
+    const logger = memoryLogger();
+    const d = db();
+    migrate(d, "tracker", trackerMigrations.slice(0, 10), { logger });
+    d.run(
+      `INSERT INTO matches (guid, started_at, ended_at, end_kind, closed_via, joined_in_progress, overtime, check_flags)
+        VALUES ('G', 1, 2, 'completed', 'destroyed', 0, 0, '[]')`,
+    );
+    migrate(d, "tracker", trackerMigrations.slice(0, 11), { logger });
+    expect(d.pragma("user_version")).toBe(11);
+    expect(d.get("SELECT end_clock_seconds, end_clock_overtime FROM matches")).toEqual({ end_clock_seconds: null, end_clock_overtime: null });
+    expect(d.all("SELECT * FROM match_moments")).toEqual([]);
+    d.run("INSERT INTO match_moments (match_guid, idx, kind, player_key, clock_seconds, clock_overtime, goal_idx) VALUES ('G', 0, 'epic_save', 'k', 44, 0, NULL)");
+    expect(() => d.run("INSERT INTO match_moments (match_guid, idx, kind, player_key) VALUES ('G', 1, 'demo', 'k')")).toThrow(/CHECK/);
+  });
+
   test("a seed season deleted before version 9 is recorded as dismissed, so the season file never brings it back", () => {
     const logger = memoryLogger();
     const fresh = db("fresh.db");

@@ -5,7 +5,7 @@ import type { Logger } from "../log";
 import { flagReasons, type FlagInput } from "../../shared/flags";
 import type { Season } from "../../shared/periods";
 import { resultFor, type Result } from "../../shared/result";
-import type { Friend, Goal, MatchDetail } from "../../shared/schemas/responses";
+import type { Friend, Goal, MatchDetail, Moment } from "../../shared/schemas/responses";
 import { sum, type MyMatch, type MyRow } from "../../shared/aggregate";
 import { sumThirds, type LobbyFriend, type LobbyMatch, type Stats, type Thirds } from "../../shared/lobby";
 
@@ -156,7 +156,20 @@ interface GoalRow {
 type FullMatchRow = Omit<MatchRow, "winner_source" | "mvp_source" | "check_failed" | "player_key" | "primary_id" | "team_num" | "teams_seen" | keyof PlayerStats> & {
   check_flags: string;
   regulation_seconds: number | null;
+  end_clock_seconds: number | null;
+  end_clock_overtime: number | null;
 };
+
+interface MomentRow {
+  idx: number;
+  kind: Moment["kind"];
+  player_key: string;
+  clock_seconds: number | null;
+  clock_overtime: number | null;
+  goal_idx: number | null;
+}
+
+const clockOf = (seconds: number | null, overtime: number | null) => (seconds === null ? null : { seconds, overtime: overtime === 1 });
 
 type PlayerStats = Pick<MatchRow, "score" | "goals" | "shots" | "assists" | "saves" | "demos" | "touches" | "hardest_shot_kmh" | "woodwork_hits" | "aerial_touches" | "car_ms" | "boost_avg" | "supersonic_ms" | "empty_boost_ms">;
 
@@ -563,17 +576,39 @@ export function createQueryReader({ tracker, logger, account = () => null }: { t
           deflected: g.deflected === 1,
           aerial: g.aerial === 1,
           ownGoal: g.own_goal === 1,
-          clock: g.clock_seconds === null ? null : { seconds: g.clock_seconds, overtime: g.clock_overtime === 1 },
+          clock: clockOf(g.clock_seconds, g.clock_overtime),
         })),
     );
   }
 
+  /**
+   * A match's timeline moments, in order. Null when the match was stored before timeline_moments
+   * ran, when its extras threw, or when it doesn't exist, so "not computed" reads apart from "none".
+   */
+  function readMoments(guid: string): Moment[] | null {
+    const [ran] = timed("readMomentsRule", () =>
+      // The rule version is stamped even when the extras threw, so that flag means not computed too.
+      tracker.all<{ ran: number | null }>(
+        `SELECT json_extract(rule_versions, '$.timeline_moments') IS NOT NULL
+           AND NOT EXISTS (SELECT 1 FROM json_each(check_flags) WHERE value = 'extras_computed') AS ran
+         FROM matches WHERE guid = ?`,
+        guid,
+      ),
+    );
+    if (ran?.ran !== 1) return null;
+    return timed("readMoments", () =>
+      tracker
+        .all<MomentRow>("SELECT idx, kind, player_key, clock_seconds, clock_overtime, goal_idx FROM match_moments WHERE match_guid = ? ORDER BY idx", guid)
+        .map((r) => ({ idx: r.idx, kind: r.kind, playerKey: r.player_key, clock: clockOf(r.clock_seconds, r.clock_overtime), goalIdx: r.goal_idx })),
+    );
+  }
+
   /** One match with every player, you marked by the same rule as readMyMatches; null when there's no such match. */
-  function readMatch(guid: string): Omit<MatchDetail, "goals" | "sessionKey"> | null {
+  function readMatch(guid: string): Omit<MatchDetail, "goals" | "moments" | "sessionKey"> | null {
     const [m] = timed("readMatch", () =>
       tracker.all<FullMatchRow>(
         `SELECT guid, started_at, ended_at, playlist_id, arena, end_kind, closed_via, joined_in_progress, overtime, score_team0,
-           score_team1, winner_team_num, mvp_key, camera_primary_id, check_flags, regulation_seconds
+           score_team1, winner_team_num, mvp_key, camera_primary_id, check_flags, regulation_seconds, end_clock_seconds, end_clock_overtime
          FROM matches WHERE guid = ?`,
         guid,
       ),
@@ -606,6 +641,7 @@ export function createQueryReader({ tracker, logger, account = () => null }: { t
         mvpKey: m.mvp_key,
         checkFlags: JSON.parse(m.check_flags) as string[],
         regulationSeconds: m.regulation_seconds,
+        endClock: clockOf(m.end_clock_seconds, m.end_clock_overtime),
       },
       players: players.map((p) => ({
         playerKey: p.player_key,
@@ -645,6 +681,7 @@ export function createQueryReader({ tracker, logger, account = () => null }: { t
     readNeverSuggest: (): string[] =>
       timed("readNeverSuggest", () => tracker.all<{ primary_id: string }>("SELECT primary_id FROM never_suggest").map((r) => r.primary_id)),
     readGoals,
+    readMoments,
     readMatch,
     readBreaks: (): number[] => timed("readBreaks", () => tracker.all<{ at: number }>("SELECT at FROM session_breaks ORDER BY at").map((b) => b.at)),
     readSeasons: (): Season[] => timed("readSeasons", () => tracker.all<Season>("SELECT id, name, start_date AS startDate FROM seasons ORDER BY start_date")),

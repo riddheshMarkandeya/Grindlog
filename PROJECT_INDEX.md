@@ -185,11 +185,14 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
 Newest first. Decisions, Plans and Research together hold at most 50 entries; decisions and research are
 never archived, so when the total passes 50, move the oldest plan entries (a plan with its review) to the top
 of Plans in [`PROJECT_INDEX_ARCHIVE.md`](PROJECT_INDEX_ARCHIVE.md).
+- `docs/plans/2026-11-24-goal-timeline.md`: analytics map step C part 2, the goal timeline (variant H): the
+  `timeline_moments` and `end_clock` rules (WP1), then the match-page timeline (WP2); plan review folded in.
 - `docs/plans/2026-11-24-goal-clock.md`: analytics map step C part 1, the `goal_clock` and `regulation_length`
   rules (stored per goal and per match), then the goal-timeline prototype; plan review folded in.
 - `docs/plans/2026-11-24-tilt.md`: analytics map step B, the Trends Tilt section: server counts over each whole
   session, the verdict states and cutoffs, plan review folded in.
 - `docs/reviews/2026-11-24-goal-clock.md`: goal clock review summary (2 rounds; a second check, `clock_overtime_flagged`, added).
+- `docs/reviews/2026-11-24-goal-timeline-wp1.md`: goal timeline WP1 review summary (2 rounds; the regulation-start fill now needs a start-tick first reading).
 - `docs/reviews/2026-11-24-tilt.md`: Tilt review summary (2 rounds, 1 disputed: one average line on the streak chart).
 - `docs/plans/2026-11-23-analytics-map.md`: the analytics map (agreed 2026-11-23): close games, tilt, goal clock;
   take the first open step.

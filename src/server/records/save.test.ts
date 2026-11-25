@@ -75,6 +75,7 @@ const record = (guid = "G", over: Partial<MatchRecord["match"]> = {}): MatchReco
     checkFlags: [],
     ruleVersions: { winner: 1, aerial_touch: 2 },
     regulationSeconds: 300,
+    endClock: { seconds: 0, overtime: false },
     ...over,
   },
   players: [player("Epic|me|0", 0), player("Epic|them|0", 1)],
@@ -83,6 +84,10 @@ const record = (guid = "G", over: Partial<MatchRecord["match"]> = {}): MatchReco
     { playerKey: "Epic|them|0", eventName: "Goal", count: 1 },
   ],
   goals: [goal(0, "Epic|me|0", { aerial: true }), goal(1, "Epic|them|0", { toucherKey: null, pos: null, distance: null, ownGoal: true, clock: { seconds: 14, overtime: true } })],
+  moments: [
+    { kind: "shot", key: "Epic|me|0", clock: { seconds: 121, overtime: false }, goalIdx: 0 },
+    { kind: "epic_save", key: "Epic|them|0", clock: { seconds: 15, overtime: true }, goalIdx: null },
+  ],
 });
 
 function setup() {
@@ -101,6 +106,14 @@ describe("record writer", () => {
     writer.save({ ...record("G", { regulationSeconds: null }), goals: [goal(0, "Epic|me|0", { clock: null })] });
     expect(storage.tracker.get("SELECT regulation_seconds FROM matches")).toEqual({ regulation_seconds: null });
     expect(storage.tracker.get("SELECT clock_seconds, clock_overtime FROM match_goals")).toEqual({ clock_seconds: null, clock_overtime: null });
+  });
+
+  test("a moment with no clock and a match with no end clock store null; saving again replaces the moments", () => {
+    const { writer } = setup();
+    writer.save(record("G"));
+    writer.save({ ...record("G", { endClock: null }), moments: [{ kind: "assist", key: "Epic|me|0", clock: null, goalIdx: null }] });
+    expect(storage.tracker.get("SELECT end_clock_seconds, end_clock_overtime FROM matches")).toEqual({ end_clock_seconds: null, end_clock_overtime: null });
+    expect(storage.tracker.all("SELECT kind, clock_seconds, clock_overtime FROM match_moments")).toEqual([{ kind: "assist", clock_seconds: null, clock_overtime: null }]);
   });
 
   test("stores the match, its players and statfeed counts", () => {
@@ -126,6 +139,8 @@ describe("record writer", () => {
       check_flags: '["camera_on_roster"]',
       rule_versions: '{"winner":1,"aerial_touch":2}',
       regulation_seconds: 300,
+      end_clock_seconds: 0,
+      end_clock_overtime: 0,
     });
     expect(storage.tracker.get("SELECT * FROM match_players WHERE player_key = 'Epic|them|0'")).toEqual({
       match_guid: "G",
@@ -158,6 +173,10 @@ describe("record writer", () => {
     expect(storage.tracker.all("SELECT * FROM match_goals ORDER BY idx")).toEqual([
       { match_guid: "G", idx: 0, team_num: 0, scorer_key: "Epic|me|0", assister_key: null, toucher_key: "Epic|me|0", x: 10, y: -20, z: 93, distance: 5000, speed_kmh: 88, deflected: 0, aerial: 1, own_goal: 0, clock_seconds: 120, clock_overtime: 0 },
       { match_guid: "G", idx: 1, team_num: 1, scorer_key: "Epic|them|0", assister_key: null, toucher_key: null, x: null, y: null, z: null, distance: null, speed_kmh: 88, deflected: 0, aerial: 0, own_goal: 1, clock_seconds: 14, clock_overtime: 1 },
+    ]);
+    expect(storage.tracker.all("SELECT * FROM match_moments ORDER BY idx")).toEqual([
+      { match_guid: "G", idx: 0, kind: "shot", player_key: "Epic|me|0", clock_seconds: 121, clock_overtime: 0, goal_idx: 0 },
+      { match_guid: "G", idx: 1, kind: "epic_save", player_key: "Epic|them|0", clock_seconds: 15, clock_overtime: 1, goal_idx: null },
     ]);
     expect(storage.tracker.all("SELECT match_guid, player_key, event_name, count FROM match_player_statfeed ORDER BY player_key")).toEqual([
       { match_guid: "G", player_key: "Epic|me|0", event_name: "Goal", count: 1 },
@@ -232,7 +251,7 @@ describe("record writer", () => {
   });
 
   describe("an ignored playlist (Online Freeplay, 73)", () => {
-    const tables = ["matches", "match_players", "match_player_statfeed", "match_goals"];
+    const tables = ["matches", "match_players", "match_player_statfeed", "match_goals", "match_moments"];
 
     test("keeps no record and no guess, and says so", () => {
       const { writer, fields } = setup();

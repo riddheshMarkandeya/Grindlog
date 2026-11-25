@@ -224,6 +224,24 @@ A match's regulation length is its largest non-overtime ClockUpdatedSeconds read
 - **Evidence**: Of 360 stored matches, 341 start the clock at 299 and 11 at 300; 2 joined in progress read at most 245 and 296; all of them give 300. 2 private matches start at 180. 2 matches joined at the very end have only the final reset to 0, and 2 have no reading, so 4 are null. A private match starting at 372 (→ 420) is in raw.db but not stored.
 - **Decided in**: `docs/plans/2026-11-23-analytics-map.md`, `docs/plans/2026-11-24-goal-clock.md`
 
+### `timeline_moments` · v1 · recorded
+
+Every Shot, Save, EpicSave and Assist statfeed from the start of the match until the first Win statfeed or MatchEnded, whose MainTarget resolves to a roster player, is a moment: its kind, player and the last ClockUpdatedSeconds reading before it (as for a goal). The clock starts at the kickoff's first touch, so a moment before the first reading takes the regulation length when that reading is within 2 s of it; joined in progress, with no regulation length, or after a later first reading (early readings missing), it's null and flagged. At each live goal, the scorer's last shot since the kickoff that isn't paired yet becomes that goal's shot. The moments of each kind equal each player's statfeed tally, which is checked.
+
+- **Checks**: `moments_clocked`, `moments_match_statfeed`
+- **Writes**: `match_moments.kind`, `match_moments.player_key`, `match_moments.clock_seconds`, `match_moments.clock_overtime`, `match_moments.goal_idx`
+- **Evidence**: In the dev data's non-joined matches, Save+EpicSave and Assist statfeeds equal the scoreboard for all 1,601 player rows and Shot statfeeds for all but 5. Shot statfeeds are 4,370 in play and 1 in the countdown; the rest are all in play. 1,878 of 1,987 goals have a Shot by the scorer since the kickoff (the game didn't count the other 109 as shots); the gap is a median 1.0 s, p99 5.4 s and up to 84 s, so the pairing uses no time window. In 9 of 360 stored matches a kickoff Shot comes before the first reading, the 299 tick, while the states still show 300. No Shot, Save or Assist statfeed comes after its GoalScored or after the first Win.
+- **Decided in**: `docs/plans/2026-11-23-analytics-map.md`, `docs/plans/2026-11-24-goal-timeline.md`
+
+### `end_clock` · v1 · recorded
+
+A match's end clock is the last ClockUpdatedSeconds reading before the first Win statfeed (resolved or not) that comes before MatchEnded, or the last reading at all when no Win comes (left, orphaned); null with no reading. It's stored as read, with the reading's bOvertime. A forfeit resets the clock to 0 only after its Win, hence the cut there; a forfeit with no Win statfeed is flagged.
+
+- **Checks**: `forfeit_end_clocked`
+- **Writes**: `matches.end_clock_seconds`, `matches.end_clock_overtime`
+- **Evidence**: In the dev data, all 81 non-joined forfeits have a Win statfeed and a non-zero regulation reading before it. 199 of 207 regulation completions read 0 and 8 read 1; all 53 overtime completions read in overtime. None of the 11 left matches has a Win: 9 have a reading and 2 have none.
+- **Decided in**: `docs/plans/2026-11-23-analytics-map.md`, `docs/plans/2026-11-24-goal-timeline.md`
+
 ### `joined_in_progress` · v1 · recorded
 
 A match whose stored events have no MatchInitialized was joined in progress.

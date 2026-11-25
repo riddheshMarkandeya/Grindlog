@@ -398,3 +398,124 @@ describe("buildPlay: goal clock", () => {
     expect(play.facts.clockReadingsWithoutOvertimeFlag).toBe(2);
   });
 });
+
+describe("buildPlay: timeline moments and the end clock", () => {
+  const clock = (ts: number, seconds: number, overtime = false) => at(ts, "ClockUpdatedSeconds", { TimeSeconds: seconds, bOvertime: overtime });
+  const unresolved = (ts: number, eventName: string) =>
+    at(ts, "StatfeedEvent", { EventName: eventName, MainTarget: { Name: "Ghost", Shortcut: 99, TeamNum: 0 } });
+  const moments = (events: StoredEvent[]) => buildPlay(events, summary()).moments;
+
+  test("each kind is recorded with the last reading before it; EpicSave becomes epic_save", () => {
+    const events = [
+      at(0, "RoundStarted"),
+      clock(10, 290),
+      statfeed(20, "Shot", "A"),
+      clock(30, 280),
+      statfeed(40, "Save", "B"),
+      statfeed(50, "EpicSave", "B"),
+      statfeed(60, "Assist", "C"),
+      statfeed(70, "Demolish", "A"),
+    ];
+    expect(moments(events)).toEqual([
+      { kind: "shot", key: key("A"), clock: { seconds: 290, overtime: false }, goalIdx: null },
+      { kind: "save", key: key("B"), clock: { seconds: 280, overtime: false }, goalIdx: null },
+      { kind: "epic_save", key: key("B"), clock: { seconds: 280, overtime: false }, goalIdx: null },
+      { kind: "assist", key: key("C"), clock: { seconds: 280, overtime: false }, goalIdx: null },
+    ]);
+  });
+
+  test("a moment outside live play is still recorded (a shot in the countdown)", () => {
+    const events = [at(0, "CountdownBegin"), clock(5, 300), statfeed(10, "Shot", "A")];
+    expect(moments(events).map((m) => m.kind)).toEqual(["shot"]);
+  });
+
+  test("an unresolved target is skipped", () => {
+    expect(moments([at(0, "RoundStarted"), clock(5, 200), unresolved(10, "Save")])).toEqual([]);
+  });
+
+  test("a moment before the clock's first tick reads the regulation length: the clock starts at the first touch", () => {
+    const play = buildPlay([at(0, "RoundStarted"), statfeed(10, "Shot", "A"), clock(20, 299), statfeed(30, "Save", "B")], summary());
+    expect(play.moments.map((m) => m.clock)).toEqual([
+      { seconds: 300, overtime: false },
+      { seconds: 299, overtime: false },
+    ]);
+    expect(play.facts.momentsWithoutClock).toBe(0);
+  });
+
+  test("joined in progress, or with no regulation reading, a moment with no reading has a null clock and is counted", () => {
+    const events = [at(0, "RoundStarted"), statfeed(10, "Save", "B"), clock(20, 100), statfeed(30, "Save", "B")];
+    const joined = buildPlay(events, summary({ joinedInProgress: true }));
+    expect(joined.moments.map((m) => m.clock)).toEqual([null, { seconds: 100, overtime: false }]);
+    expect(joined.facts.momentsWithoutClock).toBe(1);
+    const noReading = buildPlay([at(0, "RoundStarted"), statfeed(10, "Save", "B"), clock(20, 0)], summary());
+    expect(noReading.moments.map((m) => m.clock)).toEqual([null]);
+    expect(noReading.facts.momentsWithoutClock).toBe(1);
+  });
+
+  test("a first reading that isn't the start tick leaves the earlier moments null and counted: early readings went missing", () => {
+    // 280 makes the regulation length 300, but 20 s of play passed without a reading.
+    const late = buildPlay([at(0, "RoundStarted"), statfeed(10, "Shot", "A"), clock(20, 280), clock(30, 299)], summary());
+    expect(late.moments.map((m) => m.clock)).toEqual([null]);
+    expect(late.facts.momentsWithoutClock).toBe(1);
+    // 298 is still within 2 s of the start.
+    const start = buildPlay([at(0, "RoundStarted"), statfeed(10, "Shot", "A"), clock(20, 298)], summary());
+    expect(start.moments.map((m) => m.clock)).toEqual([{ seconds: 300, overtime: false }]);
+  });
+
+  test("statfeeds after the first Win aren't recorded, and the end clock is the reading before it", () => {
+    const play = buildPlay(
+      [at(0, "RoundStarted"), clock(10, 44), statfeed(20, "Shot", "A"), unresolved(30, "Win"), clock(40, 0), statfeed(50, "Save", "B"), at(60, "MatchEnded")],
+      summary(),
+    );
+    expect(play.moments.map((m) => m.kind)).toEqual(["shot"]);
+    expect(play.endClock).toEqual({ seconds: 44, overtime: false });
+    // The first Win sets the cut whether or not its target resolves.
+    expect(play.facts.sawWin).toBe(true);
+  });
+
+  test("with no Win the end clock is the last reading, and with no readings it is null", () => {
+    const left = buildPlay([at(0, "RoundStarted"), clock(10, 120), clock(20, 15, true)], summary());
+    expect(left.endClock).toEqual({ seconds: 15, overtime: true });
+    expect(left.facts.sawWin).toBe(false);
+    expect(buildPlay([at(0, "RoundStarted"), statfeed(10, "Shot", "A")], summary()).endClock).toBeNull();
+  });
+
+  test("statfeeds after MatchEnded aren't recorded", () => {
+    expect(moments([at(0, "RoundStarted"), clock(5, 10), at(10, "MatchEnded"), statfeed(20, "Shot", "A")])).toEqual([]);
+  });
+
+  describe("pairing a shot with its goal", () => {
+    const paired = (events: StoredEvent[]) => moments(events).map((m) => m.goalIdx);
+
+    test("a shot pairs with its scorer's goal", () => {
+      expect(paired([at(0, "RoundStarted"), clock(5, 200), hit(10, ["A"]), statfeed(11, "Shot", "A"), goal(12, "A", "A")])).toEqual([0]);
+    });
+
+    test("a shot before the kickoff doesn't pair", () => {
+      const events = [at(0, "RoundStarted"), clock(5, 200), statfeed(10, "Shot", "A"), at(20, "RoundStarted"), hit(30, ["A"]), goal(31, "A", "A")];
+      expect(paired(events)).toEqual([null]);
+    });
+
+    test("two shots then a goal pair the later one; another player's shot doesn't pair", () => {
+      const events = [at(0, "RoundStarted"), clock(5, 200), statfeed(10, "Shot", "A"), statfeed(11, "Shot", "C"), statfeed(12, "Shot", "A"), goal(13, "A", "A")];
+      expect(paired(events)).toEqual([null, null, 0]);
+    });
+
+    test("a goal with no shot leaves every shot unpaired; the next goal's index counts it", () => {
+      const events = [
+        at(0, "RoundStarted"),
+        clock(5, 200),
+        statfeed(10, "Shot", "B"),
+        goal(11, "A", "A"),
+        at(20, "RoundStarted"),
+        statfeed(21, "Shot", "B"),
+        goal(22, "B", "B"),
+      ];
+      expect(paired(events)).toEqual([null, 1]);
+    });
+
+    test("a dropped goal pairs nothing", () => {
+      expect(paired([at(0, "RoundStarted"), clock(5, 200), statfeed(10, "Shot", "A"), goal(11, null, "A")])).toEqual([null]);
+    });
+  });
+});

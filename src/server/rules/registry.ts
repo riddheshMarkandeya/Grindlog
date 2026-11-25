@@ -82,10 +82,12 @@ const PLAN_CONTRIBUTION = "docs/plans/2026-11-16-contribution-stats.md";
 const PLAN_ACCOUNTS = "docs/plans/2026-11-22-account-profiles.md";
 const ANALYTICS_MAP = "docs/plans/2026-11-23-analytics-map.md";
 const PLAN_GOAL_CLOCK = "docs/plans/2026-11-24-goal-clock.md";
+const PLAN_GOAL_TIMELINE = "docs/plans/2026-11-24-goal-timeline.md";
 
 const p = (column: string) => `match_players.${column}`;
 const m = (column: string) => `matches.${column}`;
 const g = (column: string) => `match_goals.${column}`;
+const mo = (column: string) => `match_moments.${column}`;
 
 const CAR_STATS = [p("car_ms"), p("boost_avg"), p("supersonic_ms"), p("empty_boost_ms")];
 const TOUCH_THIRDS = [p("touches_defence"), p("touches_midfield"), p("touches_attack")];
@@ -351,6 +353,28 @@ export const RULES: readonly Rule[] = [
     applied: "recorded",
     outputs: [m("regulation_seconds")],
     refs: [ANALYTICS_MAP, PLAN_GOAL_CLOCK],
+  },
+  {
+    id: "timeline_moments",
+    area: "match",
+    rule: "Every Shot, Save, EpicSave and Assist statfeed from the start of the match until the first Win statfeed or MatchEnded, whose MainTarget resolves to a roster player, is a moment: its kind, player and the last ClockUpdatedSeconds reading before it (as for a goal). The clock starts at the kickoff's first touch, so a moment before the first reading takes the regulation length when that reading is within 2 s of it; joined in progress, with no regulation length, or after a later first reading (early readings missing), it's null and flagged. At each live goal, the scorer's last shot since the kickoff that isn't paired yet becomes that goal's shot. The moments of each kind equal each player's statfeed tally, which is checked.",
+    checks: ["moments_clocked", "moments_match_statfeed"],
+    evidence: "In the dev data's non-joined matches, Save+EpicSave and Assist statfeeds equal the scoreboard for all 1,601 player rows and Shot statfeeds for all but 5. Shot statfeeds are 4,370 in play and 1 in the countdown; the rest are all in play. 1,878 of 1,987 goals have a Shot by the scorer since the kickoff (the game didn't count the other 109 as shots); the gap is a median 1.0 s, p99 5.4 s and up to 84 s, so the pairing uses no time window. In 9 of 360 stored matches a kickoff Shot comes before the first reading, the 299 tick, while the states still show 300. No Shot, Save or Assist statfeed comes after its GoalScored or after the first Win.",
+    version: 1,
+    applied: "recorded",
+    outputs: [mo("kind"), mo("player_key"), mo("clock_seconds"), mo("clock_overtime"), mo("goal_idx")],
+    refs: [ANALYTICS_MAP, PLAN_GOAL_TIMELINE],
+  },
+  {
+    id: "end_clock",
+    area: "match",
+    rule: "A match's end clock is the last ClockUpdatedSeconds reading before the first Win statfeed (resolved or not) that comes before MatchEnded, or the last reading at all when no Win comes (left, orphaned); null with no reading. It's stored as read, with the reading's bOvertime. A forfeit resets the clock to 0 only after its Win, hence the cut there; a forfeit with no Win statfeed is flagged.",
+    checks: ["forfeit_end_clocked"],
+    evidence: "In the dev data, all 81 non-joined forfeits have a Win statfeed and a non-zero regulation reading before it. 199 of 207 regulation completions read 0 and 8 read 1; all 53 overtime completions read in overtime. None of the 11 left matches has a Win: 9 have a reading and 2 have none.",
+    version: 1,
+    applied: "recorded",
+    outputs: [m("end_clock_seconds"), m("end_clock_overtime")],
+    refs: [ANALYTICS_MAP, PLAN_GOAL_TIMELINE],
   },
   {
     id: "joined_in_progress",

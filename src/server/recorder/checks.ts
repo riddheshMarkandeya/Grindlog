@@ -1,7 +1,7 @@
 // Sanity checks over a MatchSummary, as a table. A failure is logged and flags the summary; the
 // summary still goes to the hook. Each stat added to the summary gets a row here.
 import { PLAYER_EXTRAS } from "./extras";
-import { REF_KINDS, type RefKind } from "./play";
+import { MOMENT_KINDS, REF_KINDS, type RefKind } from "./play";
 import { NO_CONTEST, TEAMS, type MatchSummary, type PlayerStats, type TeamNum } from "./summary";
 
 /** A stretch with this share of replay states is replay playback, not live play. */
@@ -56,6 +56,30 @@ function statfeedMismatches(s: MatchSummary): string | null {
 }
 
 type Extras = NonNullable<MatchSummary["extras"]>;
+
+/** The stats moments are recorded for, each with its statfeed events and their moment kinds. */
+const MOMENT_STATS = STATFEED_FOR.filter(([stat]) => stat === "shots" || stat === "saves" || stat === "assists").map(([stat, events]) => ({
+  stat,
+  events,
+  kinds: new Set(events.map((e) => MOMENT_KINDS.get(e))),
+}));
+
+/**
+ * Each player's moments of a kind against their statfeed tally. Both come from the same events, so
+ * a difference is play's filters (phase, the Win cut-off, resolution) drifting from summary's.
+ */
+function momentMismatches(s: MatchSummary, x: Extras): string | null {
+  const bad: string[] = [];
+  for (const r of s.roster) {
+    const counts = s.statfeed[r.key] ?? {};
+    for (const { stat, events, kinds } of MOMENT_STATS) {
+      const fed = events.reduce((sum, e) => sum + (counts[e] ?? 0), 0);
+      const recorded = x.moments.filter((m) => m.key === r.key && kinds.has(m.kind)).length;
+      if (recorded !== fed) bad.push(`${r.key} ${stat}: ${String(recorded)} moment(s), statfeed ${String(fed)}`);
+    }
+  }
+  return bad.length ? bad.join("; ") : null;
+}
 
 /** A check against the extras; a summary without them (summarise alone) has nothing to check. */
 const withExtras = (run: (s: MatchSummary, x: Extras) => string | null) => (s: MatchSummary) => (s.extras ? run(s, s.extras) : null);
@@ -145,6 +169,16 @@ const CHECKS: readonly Check[] = [
   { id: "extras_computed", run: (s) => s.extrasError },
   { id: "goals_placed", run: withExtras((_, x) => fails(x.facts.droppedGoals, "goal(s) whose scorer isn't a roster player with a team, so no point")) },
   { id: "goals_clocked", run: withExtras((_, x) => fails(x.facts.goalsWithoutClock, "goal(s) with no clock reading before them")) },
+  { id: "moments_clocked", run: withExtras((_, x) => fails(x.facts.momentsWithoutClock, "moment(s) with no clock: no reading before them (joined in progress, no regulation length, or a first reading more than 2 s short)")) },
+  { id: "moments_match_statfeed", run: withExtras(momentMismatches) },
+  {
+    // A forfeit resets the clock to 0 after its Win statfeed; with no Win seen, the end clock would
+    // be that reset. Joined in progress is left out: a match joined after the vote sees only the
+    // reset and no Win, as 2 of the 3 joined forfeits in the dev data do.
+    id: "forfeit_end_clocked",
+    appliesTo: (s) => s.endKind === "early_end" && !s.joinedInProgress,
+    run: withExtras((_, x) => (!x.facts.sawWin ? "forfeit with no Win statfeed" : x.endClock === null ? "forfeit with no clock reading" : null)),
+  },
   { id: "clock_overtime_flagged", run: withExtras((_, x) => fails(x.facts.clockReadingsWithoutOvertimeFlag, "clock reading(s) with no boolean bOvertime")) },
   {
     id: "touches_resolved",

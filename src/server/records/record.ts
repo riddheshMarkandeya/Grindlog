@@ -1,7 +1,7 @@
 // A finished match's summary mapped to the rows tracker.db stores. Nothing here depends on which
 // player is "you": every player gets a full row, and pages pick "you" by joining with my_ids.
 import { PLAYER_EXTRAS, type ExtraValues } from "../recorder/extras";
-import type { GoalPoint } from "../recorder/play";
+import type { Clock, GoalPoint, MomentPoint } from "../recorder/play";
 import type { MatchSummary, TeamNum } from "../recorder/summary";
 import { RECORDED_RULE_VERSIONS } from "../rules/registry";
 
@@ -29,6 +29,8 @@ export interface MatchRow {
   ruleVersions: Readonly<Record<string, number>>;
   /** The largest regulation clock reading, up to a whole minute; null without extras or a reading. */
   regulationSeconds: number | null;
+  /** The last clock reading before the first Win statfeed, else the last; null without extras or a reading. */
+  endClock: Clock | null;
 }
 
 export interface PlayerRow {
@@ -62,6 +64,8 @@ export interface MatchRecord {
   statfeed: StatfeedRow[];
   /** In match order. */
   goals: GoalPoint[];
+  /** The timeline's moments, in match order. */
+  moments: MomentPoint[];
 }
 
 const NO_EXTRAS: ExtraValues = Object.fromEntries(PLAYER_EXTRAS.map((e) => [e.column, null]));
@@ -93,6 +97,7 @@ export function toRecord(s: MatchSummary): MatchRecord {
       checkFlags: [...s.flags],
       ruleVersions: { ...RECORDED_RULE_VERSIONS, ...s.thinned?.ruleVersions },
       regulationSeconds: s.extras?.regulationSeconds ?? null,
+      endClock: s.extras?.endClock ?? null,
     },
     players: s.roster.map((r) => ({
       playerKey: r.key,
@@ -107,5 +112,6 @@ export function toRecord(s: MatchSummary): MatchRecord {
     })),
     statfeed: Object.entries(s.statfeed).flatMap(([playerKey, counts]) => Object.entries(counts).map(([eventName, count]) => ({ playerKey, eventName, count }))),
     goals: s.extras?.goals ?? [],
+    moments: s.extras?.moments ?? [],
   };
 }

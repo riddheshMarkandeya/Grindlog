@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { runChecks } from "./checks";
 import type { ExtraValues } from "./extras";
-import { emptyFacts, type GoalPoint } from "./play";
+import { emptyFacts, type GoalPoint, type MomentPoint } from "./play";
 import type { MatchSummary, RosterEntry, TeamNum } from "./summary";
 
 const entry = (key: string, teamNum: TeamNum, goals: number, assists = 0): RosterEntry => ({
@@ -28,6 +28,7 @@ const point = (teamNum: TeamNum, scorerKey: string): GoalPoint => ({
   ownGoal: false,
   clock: { seconds: 120, overtime: false },
 });
+const moment = (kind: MomentPoint["kind"], key: string): MomentPoint => ({ kind, key, clock: { seconds: 100, overtime: false }, goalIdx: null });
 const extrasFor = (car: boolean): ExtraValues => ({
   hardest_shot_kmh: 120,
   woodwork_hits: 0,
@@ -61,7 +62,9 @@ const clean = (): MatchSummary => ({
     players: { a: { ...extrasFor(true), woodwork_hits: 1 }, b: extrasFor(true), c: extrasFor(false) },
     goals: [point(0, "a"), point(1, "c"), point(0, "a")],
     regulationSeconds: 300,
-    facts: { ...emptyFacts(), playMs: 60_000 },
+    moments: [moment("shot", "a"), moment("shot", "a"), moment("assist", "b"), moment("shot", "c")],
+    endClock: { seconds: 0, overtime: false },
+    facts: { ...emptyFacts(), playMs: 60_000, sawWin: true },
   },
   extrasError: null,
   thinned: null,
@@ -128,6 +131,12 @@ describe("runChecks", () => {
     ["extras_computed", (s) => ((s.extras = null), (s.extrasError = "TypeError: boom"))],
     ["goals_placed", (s) => (x(s).facts.droppedGoals = 1)],
     ["goals_clocked", (s) => (x(s).facts.goalsWithoutClock = 1)],
+    ["moments_clocked", (s) => (x(s).facts.momentsWithoutClock = 1)],
+    ["moments_match_statfeed", (s) => x(s).moments.pop()],
+    ["moments_match_statfeed", (s) => x(s).moments.push(moment("save", "c"))],
+    ["moments_match_statfeed", (s) => (x(s).moments[2] = moment("shot", "b"))],
+    ["forfeit_end_clocked", (s) => ((s.endKind = "early_end"), (x(s).facts.sawWin = false))],
+    ["forfeit_end_clocked", (s) => ((s.endKind = "early_end"), (x(s).endClock = null))],
     ["clock_overtime_flagged", (s) => (x(s).facts.clockReadingsWithoutOvertimeFlag = 1)],
     ["touches_resolved", (s) => (x(s).facts.unresolved.hit = 1)],
     ["touches_resolved", (s) => (x(s).facts.unresolved.shot = 1)],
@@ -145,9 +154,30 @@ describe("runChecks", () => {
   ])("%s fails on a summary built to break it", (id, breakIt) => {
     const s = clean();
     breakIt(s);
-    // A broken roster also disagrees with its statfeed, which has its own rows.
-    expect(ids(s).filter((x) => x === id || x !== "statfeed_matches_scoreboard")).toEqual([id]);
+    // A broken roster also disagrees with its statfeed, and a broken statfeed with its moments;
+    // those have their own rows.
+    const knockOn = new Set(["statfeed_matches_scoreboard", "moments_match_statfeed"]);
+    expect(ids(s).filter((x) => x === id || !knockOn.has(x))).toEqual([id]);
     expect(runChecks(s)[0]?.detail).toEqual(expect.any(String));
+  });
+
+  test("moments_match_statfeed names the player and stat that's off", () => {
+    const s = clean();
+    s.statfeed.c = { Goal: 1, Shot: 1, Save: 1, EpicSave: 1 };
+    s.roster = [entry("a", 0, 2), entry("b", 0, 0, 1), { ...entry("c", 1, 1), stats: { ...entry("c", 1, 1).stats, saves: 2 } }];
+    x(s).moments.push(moment("epic_save", "c"));
+    expect(runChecks(s).find((f) => f.id === "moments_match_statfeed")?.detail).toBe("c saves: 1 moment(s), statfeed 2");
+  });
+
+  test("forfeit_end_clocked passes a forfeit with a Win and an end clock, and skips joined matches and other ends", () => {
+    const forfeit = (over: (s: MatchSummary) => void) => {
+      const s = { ...clean(), endKind: "early_end" as const };
+      over(s);
+      return ids(s);
+    };
+    expect(forfeit(() => undefined)).not.toContain("forfeit_end_clocked");
+    expect(forfeit((s) => ((s.joinedInProgress = true), (x(s).facts.sawWin = false)))).not.toContain("forfeit_end_clocked");
+    expect(ids({ ...clean(), endKind: "left", extras: { ...x(clean()), endClock: null, facts: { ...x(clean()).facts, sawWin: false } } })).not.toContain("forfeit_end_clocked");
   });
 
   test("touches_resolved names only the kinds with unidentified players", () => {
@@ -168,6 +198,7 @@ describe("runChecks", () => {
     const s = clean();
     s.roster = [entry("a", 0, 2), entry("b", 0, 0, 1), { ...entry("c", 1, 1), stats: { ...entry("c", 1, 1).stats, saves: 3 } }];
     s.statfeed.c = { Goal: 1, Shot: 1, Save: 2, EpicSave: 1 };
+    x(s).moments.push(moment("save", "c"), moment("save", "c"), moment("epic_save", "c"));
     expect(runChecks(s)).toEqual([]);
   });
 
@@ -184,6 +215,7 @@ describe("runChecks", () => {
     s.facts.liveGoals = 1;
     // Statfeeds before the recording began were never seen either.
     s.statfeed = {};
+    x(s).moments = [];
     expect(runChecks(s)).toEqual([]);
   });
 

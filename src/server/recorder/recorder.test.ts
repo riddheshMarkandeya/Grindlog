@@ -68,6 +68,17 @@ const state = (t: number, guid: string, score: [number, number], timeSeconds = 2
 /** A match that is live at t=2000 with a 1–0 state at t=3000. */
 const liveMatch = (guid: string): CaptureLine[] => [frame(1000, "MatchCreated", guid), frame(2000, "MatchInitialized", guid), state(3000, guid, [1, 0])];
 
+/** Moments counted by kind and player name. */
+function momentCounts(summary: MatchSummary): Record<string, number> {
+  const name = new Map(summary.roster.map((r) => [r.key, r.name]));
+  const out: Record<string, number> = {};
+  for (const m of summary.extras?.moments ?? []) {
+    const k = `${m.kind} ${name.get(m.key) ?? m.key}`;
+    out[k] = (out[k] ?? 0) + 1;
+  }
+  return out;
+}
+
 describe("recorder on the fixtures", () => {
   test("completed: one finished match with the result, MVP and roster, passing every check", () => {
     const { recorder, calls } = setup();
@@ -106,6 +117,20 @@ describe("recorder on the fixtures", () => {
     expect(failures).toEqual([]);
     expect(short(summary.guid)).toBe("0116");
     expect(summary).toMatchObject({ endKind: "early_end", playlistId: 2, arena: "Stadium_P", score: [2, 3], winner: { teamNum: 0, source: "match_ended" }, facts: { liveGoals: 5 } });
+    // The forfeit's Win comes at 1:08; the clock resets to 0 only after it.
+    expect(summary.extras).toMatchObject({ endClock: { seconds: 68, overtime: false }, facts: { sawWin: true, momentsWithoutClock: 0 } });
+    expect(momentCounts(summary)).toEqual({
+      "assist Player 2": 1,
+      "assist Player 4": 1,
+      "epic_save Player 3": 1,
+      "save Player 1": 1,
+      "save Player 2": 1,
+      "save Player 3": 1,
+      "shot Player 2": 5,
+      "shot Player 3": 1,
+      "shot Player 4": 2,
+    });
+    expect(summary.extras?.moments.filter((m) => m.goalIdx !== null)).toHaveLength(3);
   });
 
   test("overtime-leavers: overtime, no podium, and leavers kept on the roster", () => {
@@ -120,6 +145,22 @@ describe("recorder on the fixtures", () => {
     const reg = (seconds: number) => ({ seconds, overtime: false });
     expect(summary.extras?.goals.map((g) => g.clock)).toEqual([...[177, 172, 160, 93, 87, 66, 54, 8].map(reg), { seconds: 180, overtime: true }]);
     expect(summary.extras).toMatchObject({ regulationSeconds: 300, facts: { goalsWithoutClock: 0 } });
+    // Expected counts read from the fixture's raw statfeeds before the first Win.
+    expect(momentCounts(summary)).toEqual({
+      "assist Player 2": 1,
+      "assist Player 3": 1,
+      "assist Player 6": 2,
+      "save Player 1": 3,
+      "save Player 4": 1,
+      "save Player 6": 1,
+      "shot Player 1": 5,
+      "shot Player 2": 1,
+      "shot Player 4": 7,
+      "shot Player 5": 1,
+      "shot Player 6": 3,
+    });
+    expect(summary.extras?.moments.filter((m) => m.goalIdx !== null)).toHaveLength(7);
+    expect(summary.extras).toMatchObject({ endClock: { seconds: 180, overtime: true }, facts: { momentsWithoutClock: 0, sawWin: true } });
   });
 
   test("joined-in-progress: no MatchCreated or MatchInitialized, so goal events aren't compared", () => {
@@ -138,6 +179,9 @@ describe("recorder on the fixtures", () => {
     expect(failures).toEqual([]);
     expect(short(summary.guid)).toBe("5ABA");
     expect(summary).toMatchObject({ endKind: "left", playlistId: 10, arena: "street_p", score: [0, 4], winner: null, mvp: null, facts: { liveGoals: 4 } });
+    // No Win statfeed: the end clock is the last reading.
+    expect(summary.extras).toMatchObject({ endClock: { seconds: 146, overtime: false }, facts: { sawWin: false } });
+    expect(momentCounts(summary)).toEqual({ "save Player 1": 2, "shot Player 2": 5 });
   });
 
   test("left-countdown: the menu's PlaylistId 0 states are skipped, and the bot is flagged", () => {

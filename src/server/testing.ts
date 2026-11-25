@@ -97,6 +97,7 @@ export const record = (guid: string, startedAt: number, over: Partial<MatchRecor
     checkFlags: [],
     ruleVersions: {},
     regulationSeconds: 300,
+    endClock: { seconds: 0, overtime: false },
     ...match,
   },
   players: [player(ME, 0), player(THEM, 1)],
@@ -105,5 +106,6 @@ export const record = (guid: string, startedAt: number, over: Partial<MatchRecor
     { playerKey: THEM, eventName: "Goal", count: 1 },
   ],
   goals: [goal(0, ME, { speedKmh: 120 }), goal(1, THEM)],
+  moments: [],
   ...over,
 });

@@ -161,7 +161,7 @@ export function trim(db: Database, { since, maxMatches }: { since?: number; maxM
     if (maxMatches !== undefined) {
       db.run("DELETE FROM matches WHERE guid NOT IN (SELECT guid FROM matches ORDER BY started_at DESC, guid DESC LIMIT ?)", [maxMatches]);
     }
-    for (const t of ["match_players", "match_player_statfeed", "match_goals"]) db.run(`DELETE FROM ${t} WHERE match_guid NOT IN (SELECT guid FROM matches)`);
+    for (const t of ["match_players", "match_player_statfeed", "match_goals", "match_moments"].filter((t) => hasTable(db, t))) db.run(`DELETE FROM ${t} WHERE match_guid NOT IN (SELECT guid FROM matches)`);
     // A session's key is its first match's guid, so a remark row whose key matches no remaining
     // match belongs to a session that's gone, or re-keyed because the cut fell inside it.
     for (const t of ["remark_picks", "remark_shown"]) db.run(`DELETE FROM ${t} WHERE session_key NOT IN (SELECT guid FROM matches)`);
@@ -169,6 +169,8 @@ export function trim(db: Database, { since, maxMatches }: { since?: number; maxM
   return { dropped: before - matchCount(db) };
 }
 
+// The dev DB is copied as is, so it can predate a migration that added a table.
+const hasTable = (db: Database, name: string) => db.query("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(name) !== null;
 const matchCount = (db: Database) => (db.query("SELECT count(*) AS n FROM matches").get() as { n: number }).n;
 const column = (db: Database, sql: string) => (db.query(sql).values() as [string | null][]).flatMap(([v]) => (v === null ? [] : [v]));
 
@@ -180,6 +182,7 @@ const ID_COLUMNS: readonly [table: string, col: string][] = [
   ["match_goals", "scorer_key"],
   ["match_goals", "assister_key"],
   ["match_goals", "toucher_key"],
+  ["match_moments", "player_key"],
   ["matches", "mvp_key"],
   ["matches", "camera_primary_id"],
   ["my_ids", "primary_id"],
@@ -204,7 +207,8 @@ export function pseudonymise(db: Database): Forbidden {
   const botNames = new Set(column(db, "SELECT DISTINCT name FROM match_players WHERE is_bot = 1").map((n) => n.toLowerCase()));
   // Oldest match first, so fake-1 is whoever showed up first; the order is otherwise meaningless.
   const ordered = column(db, "SELECT p.primary_id FROM match_players p JOIN matches m ON m.guid = p.match_guid WHERE p.is_bot = 0 ORDER BY m.started_at, p.rowid");
-  const others = ID_COLUMNS.flatMap(([t, c]) => column(db, `SELECT ${c} FROM ${t}`));
+  const idColumns = ID_COLUMNS.filter(([t]) => hasTable(db, t));
+  const others = idColumns.flatMap(([t, c]) => column(db, `SELECT ${c} FROM ${t}`));
   const ids = [...new Set([...ordered, ...others])].filter((id) => !id.startsWith("bot:") && !botIds.has(id));
   const realNames = [...new Set([...column(db, "SELECT name FROM match_players WHERE is_bot = 0"), ...column(db, "SELECT name FROM my_ids")])];
   const nicknames = [...new Set(column(db, "SELECT nickname FROM friends"))];
@@ -221,7 +225,7 @@ export function pseudonymise(db: Database): Forbidden {
     db.run("UPDATE match_players SET name = (SELECT name FROM idmap WHERE old = primary_id) WHERE is_bot = 0 AND primary_id IN (SELECT old FROM idmap)");
     db.run("UPDATE my_ids SET name = (SELECT name FROM idmap WHERE old = primary_id) WHERE name IS NOT NULL AND primary_id IN (SELECT old FROM idmap)");
     db.run("UPDATE friends SET nickname = (SELECT new FROM nickmap WHERE old = nickname) WHERE nickname IN (SELECT old FROM nickmap)");
-    for (const [t, c] of ID_COLUMNS) db.run(`UPDATE ${t} SET ${c} = (SELECT new FROM idmap WHERE old = ${c}) WHERE ${c} IN (SELECT old FROM idmap)`);
+    for (const [t, c] of idColumns) db.run(`UPDATE ${t} SET ${c} = (SELECT new FROM idmap WHERE old = ${c}) WHERE ${c} IN (SELECT old FROM idmap)`);
     const setFilter = db.prepare("UPDATE remark_picks SET filter = ? WHERE filter = ?");
     const idOf = new Map([...p.player].map(([real, fake]) => [real, fake.id]));
     for (const f of column(db, "SELECT DISTINCT filter FROM remark_picks")) {

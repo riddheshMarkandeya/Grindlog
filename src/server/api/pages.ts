@@ -156,7 +156,7 @@ export function createPages({ reader, logger, now }: { reader: QueryReader; logg
   function matchDetail(guid: string): MatchDetail | null {
     const m = reader.readMatch(guid);
     if (!m) return null;
-    return { ...m, goals: reader.readGoals([guid]), sessionKey: keyOf(index(), guid) };
+    return { ...m, goals: reader.readGoals([guid]), moments: reader.readMoments(guid), sessionKey: keyOf(index(), guid) };
   }
 
   /**

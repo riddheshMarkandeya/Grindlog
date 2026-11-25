@@ -106,6 +106,8 @@ const contributionSchema = z.object({
   defaultMode: z.enum(MODE_ORDER),
 }) satisfies z.ZodType<SessionContribution>;
 
+const clockSchema = z.object({ seconds: z.number(), overtime: z.boolean() });
+
 export const goalSchema = z.object({
   matchGuid: z.string(),
   idx: z.number(),
@@ -124,7 +126,22 @@ export const goalSchema = z.object({
   aerial: z.boolean(),
   ownGoal: z.boolean(),
   /** The last game-clock reading before the goal: time left in regulation, time played in overtime. Null until recompute. */
-  clock: z.object({ seconds: z.number(), overtime: z.boolean() }).nullable(),
+  clock: clockSchema.nullable(),
+});
+
+/** A moment's kind; the stored CHECK in match_moments lists the same. */
+export const MOMENT_KIND_IDS = ["shot", "save", "epic_save", "assist"] as const;
+export type MomentKind = (typeof MOMENT_KIND_IDS)[number];
+
+/** One Shot, Save, EpicSave or Assist statfeed, for the goal timeline. */
+export const momentSchema = z.object({
+  idx: z.number(),
+  kind: z.enum(MOMENT_KIND_IDS),
+  playerKey: z.string(),
+  /** As for a goal; before the first reading, the regulation length. Null joined in progress, with no regulation length or after a late first reading. */
+  clock: clockSchema.nullable(),
+  /** A shot that became that goal (its `idx`); null otherwise. */
+  goalIdx: z.number().nullable(),
 });
 
 /** A session as the picker and the header chip show it, counting only matches you played under the filter. */
@@ -214,9 +231,13 @@ export const matchDetailResponse = z.object({
     checkFlags: z.array(z.string()),
     /** The largest regulation clock reading, up to a whole minute; null until recompute or with no reading. */
     regulationSeconds: z.number().nullable(),
+    /** The last clock reading before the first Win statfeed, else the last; null until recompute or with no reading. */
+    endClock: clockSchema.nullable(),
   }),
   players: z.array(matchPlayerSchema),
   goals: z.array(goalSchema),
+  /** In match order; null when the match was stored before `timeline_moments` ran (not recomputed yet) or its extras threw. */
+  moments: z.array(momentSchema).nullable(),
   /** Yours; null when spectated or undecided. */
   result: result.nullable(),
   sessionKey: z.string().nullable(),
@@ -487,6 +508,7 @@ export type SseEvents = { [K in keyof typeof sseEvents]: z.infer<(typeof sseEven
 export type AggregateWire = z.infer<typeof aggregateSchema>;
 export type MyMatchWire = z.infer<typeof myMatchSchema>;
 export type Goal = z.infer<typeof goalSchema>;
+export type Moment = z.infer<typeof momentSchema>;
 export type SessionSummary = z.infer<typeof sessionSummarySchema>;
 export type SessionList = z.infer<typeof sessionsResponse>;
 export type LatestSession = z.infer<typeof latestResponse>;

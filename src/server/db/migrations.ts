@@ -182,6 +182,21 @@ export const trackerMigrations: readonly string[] = [
   ALTER TABLE match_goals ADD COLUMN clock_overtime INTEGER; -- that reading was in overtime
   ALTER TABLE matches ADD COLUMN regulation_seconds INTEGER; -- the largest regulation reading, up to a whole minute
   `,
+  // The goal timeline's moments, and each match's end clock; empty and null until recompute.
+  `
+  CREATE TABLE match_moments (
+    match_guid     TEXT NOT NULL,
+    idx            INTEGER NOT NULL, -- order in the match
+    kind           TEXT NOT NULL CHECK (kind IN ('shot', 'save', 'epic_save', 'assist')),
+    player_key     TEXT NOT NULL,
+    clock_seconds  INTEGER,          -- as for match_goals: time left in regulation, or time played in overtime
+    clock_overtime INTEGER,
+    goal_idx       INTEGER,          -- a shot that became that goal; null otherwise
+    PRIMARY KEY (match_guid, idx)
+  );
+  ALTER TABLE matches ADD COLUMN end_clock_seconds  INTEGER; -- the last reading before the first Win statfeed, else the last
+  ALTER TABLE matches ADD COLUMN end_clock_overtime INTEGER;
+  `,
 ];
 
 export const rawMigrations: readonly string[] = [

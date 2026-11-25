@@ -257,6 +257,7 @@ describe("readMatch", () => {
       mvpKey: ME,
       checkFlags: ["x"],
       regulationSeconds: 300,
+      endClock: { seconds: 0, overtime: false },
     });
     expect(m?.players.map((p) => [p.playerKey, p.isMe, p.isBot, p.presentAtEnd, p.hardestShotKmh, p.thirds])).toEqual([
       [ME, true, false, true, 101.5, [2, 2, 1]],
@@ -272,6 +273,34 @@ describe("readMatch", () => {
     writer.save(record("G", 1000, { goals: [goal(0, ME, { clock: { seconds: 14, overtime: true } })] }, { regulationSeconds: null }));
     expect(reader.readGoals(["G"])[0]?.clock).toEqual({ seconds: 14, overtime: true });
     expect(reader.readMatch("G")?.match.regulationSeconds).toBeNull();
+  });
+
+  test("moments read back in order once timeline_moments has run; before that they're null, not empty", () => {
+    const { writer, reader } = setup();
+    const moments = [
+      { kind: "shot" as const, key: ME, clock: { seconds: 121, overtime: false }, goalIdx: 0 },
+      { kind: "epic_save" as const, key: THEM, clock: { seconds: 15, overtime: true }, goalIdx: null },
+      { kind: "assist" as const, key: THEM, clock: null, goalIdx: null },
+    ];
+    writer.save(record("G", 1000, { moments }, { ruleVersions: { timeline_moments: 1 }, endClock: { seconds: 44, overtime: false } }));
+    expect(reader.readMoments("G")).toEqual([
+      { idx: 0, kind: "shot", playerKey: ME, clock: { seconds: 121, overtime: false }, goalIdx: 0 },
+      { idx: 1, kind: "epic_save", playerKey: THEM, clock: { seconds: 15, overtime: true }, goalIdx: null },
+      { idx: 2, kind: "assist", playerKey: THEM, clock: null, goalIdx: null },
+    ]);
+    expect(reader.readMatch("G")?.match.endClock).toEqual({ seconds: 44, overtime: false });
+    writer.save(record("Empty", 2000, {}, { ruleVersions: { timeline_moments: 1 } }));
+    expect(reader.readMoments("Empty")).toEqual([]);
+    // The extras threw: the rule version is stamped, but nothing was computed.
+    writer.save(record("Threw", 2500, {}, { ruleVersions: { timeline_moments: 1 }, checkFlags: ["extras_computed"] }));
+    expect(reader.readMoments("Threw")).toBeNull();
+    // Stored before the recompute: no rule version, no moments, no end clock.
+    writer.save(record("Old", 3000, {}, { ruleVersions: { winner: 1 }, endClock: null }));
+    expect(reader.readMoments("Old")).toBeNull();
+    expect(reader.readMatch("Old")?.match.endClock).toBeNull();
+    storage.tracker.run("UPDATE matches SET rule_versions = NULL WHERE guid = 'Old'");
+    expect(reader.readMoments("Old")).toBeNull();
+    expect(reader.readMoments("nope")).toBeNull();
   });
 
   test("two of your ids: only the picked one is you; spectated: nobody is", () => {

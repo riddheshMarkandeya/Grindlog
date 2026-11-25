@@ -178,6 +178,8 @@ describe("endpoints", () => {
     const detail = await get(sessionDetailResponse, "/api/sessions/A?filter=13");
     expect(detail.matches.map((m) => m.guid)).toEqual(["A", "B"]);
     expect((await get(matchDetailResponse, "/api/matches/B")).sessionKey).toBe("A");
+    // B was stored before timeline_moments ran.
+    expect((await get(matchDetailResponse, "/api/matches/B")).moments).toBeNull();
     expect((await get(periodResponse, "/api/period?kind=month&day=2026-10-01")).aggregate.matches).toBe(2);
     expect((await get(periodResponse, "/api/period?kind=season&season=3")).sessions).toBe(1);
     const month = await get(periodResponse, "/api/period?kind=month&day=2026-10-01");
@@ -546,6 +548,17 @@ describe("seasons changed", () => {
     expect(await events.next()).toEqual({ event: "seasons_changed", data: {} });
     expect(logger.lines.find((l) => l.event === "seasons_changed")?.fields).toEqual({ subscribers: 1 });
     await events.cancel();
+  });
+});
+
+describe("match detail moments", () => {
+  test("a match's moments and end clock come with its detail once timeline_moments ran", async () => {
+    const writer = createRecordWriter({ tracker: storage.tracker, logger: memoryLogger(), now: () => 1 });
+    const moments = [{ kind: "save" as const, key: THEM, clock: { seconds: 44, overtime: false }, goalIdx: null }];
+    writer.save(record("M", T0 + 20 * MIN, { moments }, { endedAt: T0 + 25 * MIN, ruleVersions: { timeline_moments: 1 }, endClock: { seconds: 44, overtime: false } }));
+    const m = await get(matchDetailResponse, "/api/matches/M");
+    expect(m.moments).toEqual([{ idx: 0, kind: "save", playerKey: THEM, clock: { seconds: 44, overtime: false }, goalIdx: null }]);
+    expect(m.match.endClock).toEqual({ seconds: 44, overtime: false });
   });
 });
 

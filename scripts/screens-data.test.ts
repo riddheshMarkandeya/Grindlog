@@ -168,6 +168,7 @@ function addMatch(db: Database, guid: string, startedAt: number, players: readon
     "INSERT INTO match_goals (match_guid, idx, team_num, scorer_key, assister_key, toucher_key, deflected, aerial, own_goal) VALUES (?, 0, 0, ?, ?, ?, 0, 0, 0)",
     [guid, players[0][0], players[1]?.[0] ?? null, players[0][0]],
   );
+  db.run("INSERT INTO match_moments (match_guid, idx, kind, player_key) VALUES (?, 0, 'save', ?)", [guid, players[1]?.[0] ?? players[0][0]]);
   db.run("INSERT INTO remark_picks (session_key, filter, mood_band, mood_line, picked_at) VALUES (?, 'everything', 'usual', 'usual-1', 0)", [guid]);
   db.run("INSERT INTO remark_shown (line_id, session_key, shown_at) VALUES ('usual-1', ?, 0)", [guid]);
 }
@@ -187,6 +188,7 @@ describe("trim", () => {
     expect(count(db, "match_players")).toBe(4);
     expect(count(db, "match_player_statfeed")).toBe(4);
     expect(count(db, "match_goals")).toBe(2);
+    expect(count(db, "match_moments")).toBe(2);
     expect(count(db, "remark_picks")).toBe(2);
     expect(count(db, "remark_shown")).toBe(2);
   });
@@ -206,6 +208,20 @@ describe("trim", () => {
   });
 });
 
+test("a dev DB from before the newest migrations trims and pseudonymises the tables it has", () => {
+  const db = new Database(":memory:");
+  // Version 10: no match_moments yet.
+  for (const sql of trackerMigrations.slice(0, 10)) db.run(sql);
+  db.run(
+    `INSERT INTO matches (guid, started_at, ended_at, end_kind, closed_via, joined_in_progress, overtime, mvp_key, camera_primary_id, check_flags)
+     VALUES ('g1', 1, 2, 'completed', 'destroyed', 0, 0, ?, ?, '[]')`,
+    [ME, ME],
+  );
+  expect(trim(db, { maxMatches: 1 })).toEqual({ dropped: 0 });
+  expect(pseudonymise(db).ids).toEqual([ME]);
+  expect(db.query("SELECT mvp_key FROM matches").get()).not.toEqual({ mvp_key: ME });
+});
+
 describe("pseudonymise + scanLeaks", () => {
   let db: Database;
   beforeEach(() => {
@@ -223,7 +239,7 @@ describe("pseudonymise + scanLeaks", () => {
     const forbidden = pseudonymise(db);
     expect(scanLeaks(db, forbidden)).toEqual([]);
     const dump = JSON.stringify(
-      ["matches", "match_players", "match_player_statfeed", "match_goals", "my_ids", "friends", "never_suggest", "remark_picks"].map((t) => db.query(`SELECT * FROM ${t}`).all()),
+      ["matches", "match_players", "match_player_statfeed", "match_goals", "match_moments", "my_ids", "friends", "never_suggest", "remark_picks"].map((t) => db.query(`SELECT * FROM ${t}`).all()),
     );
     for (const real of [ME, FRIEND, OPP, "Steam|ghost|0", "Rocinante_.", "DemoGodReal", "OldFriendName", "OppName", "Demogod"]) {
       expect(dump).not.toContain(real);
@@ -242,6 +258,7 @@ describe("pseudonymise + scanLeaks", () => {
     const keys = db.query("SELECT DISTINCT player_key AS k FROM match_players WHERE is_bot = 0 AND player_key <> primary_id").all();
     expect(keys).toEqual([]);
     expect(db.query("SELECT scorer_key AS s, assister_key AS a FROM match_goals WHERE match_guid = 'g1'").get()).toEqual({ s: me, a: friend });
+    expect(db.query("SELECT player_key AS k FROM match_moments WHERE match_guid = 'g1'").get()).toEqual({ k: friend });
   });
 
   test("keeps bots as they are", () => {

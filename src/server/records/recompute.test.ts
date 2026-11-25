@@ -25,7 +25,7 @@ afterEach(() => {
 
 const now = () => 42;
 const FIXTURES = ["completed", "early-end", "overtime-leavers", "joined-in-progress", "left-early", "left-countdown", "private-series"];
-const TABLES = ["matches", "match_players", "match_player_statfeed", "match_goals", "my_ids"];
+const TABLES = ["matches", "match_players", "match_player_statfeed", "match_goals", "match_moments", "my_ids"];
 
 /** Records the fixtures live, with the hook saving each match the way main does. Returns what each save did. */
 function recordLive(names: readonly string[], edit: (raw: string) => string = (raw) => raw): ReturnType<RecordWriter["save"]>[] {

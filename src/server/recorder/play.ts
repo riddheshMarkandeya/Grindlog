@@ -2,6 +2,7 @@
 // shots, woodwork, goals and car samples, each attributed to a roster key. Every extra stat reads
 // this view, so the live-window rule and the player resolution live in one place.
 import { GOAL_LINE_Y } from "../../shared/constants";
+import type { MomentKind } from "../../shared/schemas/responses";
 import { isObject, type Data } from "./envelope";
 import { playerKey, resolveTarget } from "./players";
 import type { StoredEvent } from "./store";
@@ -69,8 +70,36 @@ export interface Clock {
   overtime: boolean;
 }
 
+/** One Shot, Save, EpicSave or Assist statfeed, for the goal timeline. */
+export interface MomentPoint {
+  kind: MomentKind;
+  key: string;
+  /**
+   * The last ClockUpdatedSeconds reading before it, as for a goal. Before the first reading it's the
+   * regulation length when that reading is the start tick; joined in progress, with no regulation
+   * length, or after a late first reading, null.
+   */
+  clock: Clock | null;
+  /** A shot that became that goal (an index into `goals`); null otherwise. */
+  goalIdx: number | null;
+}
+
+export const MOMENT_KINDS: ReadonlyMap<string, MomentKind> = new Map([
+  ["Shot", "shot"],
+  ["Save", "save"],
+  ["EpicSave", "epic_save"],
+  ["Assist", "assist"],
+]);
+
 export interface Play {
   goals: GoalPoint[];
+  /** Every moment from the start until the first Win statfeed or MatchEnded, in order. */
+  moments: MomentPoint[];
+  /**
+   * The last ClockUpdatedSeconds reading before the first Win statfeed, else the last at all (left,
+   * orphaned); null with none. A forfeit resets the clock to 0 only after its Win, hence the cut there.
+   */
+  endClock: Clock | null;
   /** Counted touches by key, where the ball was: a player's hits merge as `TOUCH_MERGE_MS` says. */
   touches: Record<string, Touch[]>;
   /** The fastest shot by key, over each Shot statfeed's last touch and each goal's origin hit. */
@@ -96,6 +125,10 @@ export interface Play {
     goalsWithoutClock: number;
     /** ClockUpdatedSeconds readings whose bOvertime isn't a boolean; they're taken as regulation readings. */
     clockReadingsWithoutOvertimeFlag: number;
+    /** Moments left with a null clock: no reading before them, and joined in progress, no regulation length or a late first reading. */
+    momentsWithoutClock: number;
+    /** A Win statfeed came before MatchEnded, resolved or not. */
+    sawWin: boolean;
     /**
      * Player objects that matched no roster entry, by kind. A missing or non-object reference isn't
      * counted, except a hit's `Players` entry: the entry is a hitter who couldn't be identified.
@@ -143,6 +176,10 @@ interface Acc {
   aerialPending: Map<string, number>;
   /** The last ClockUpdatedSeconds reading. A state's own TimeSeconds can tick in a different order, so it isn't used. */
   clock: Clock | null;
+  /** The first ClockUpdatedSeconds reading, to tell a start tick from readings that went missing. */
+  firstClock: Clock | null;
+  /** `play.moments.length` at the last RoundStarted, where a goal's own shot is looked for. */
+  kickoffMoment: number;
   play: Play;
 }
 
@@ -255,6 +292,55 @@ function addGoal(acc: Acc, g: GoalInput): void {
   });
 }
 
+/**
+ * The scorer's last unpaired shot since the kickoff becomes this goal's. Not a time window: a goal's
+ * own shot can come over a minute before it, and some goals the game never counted as a shot.
+ */
+function pairShot(acc: Acc, scorerKey: string, goalIdx: number): void {
+  const moments = acc.play.moments;
+  for (let i = moments.length - 1; i >= acc.kickoffMoment; i--) {
+    const m = moments[i];
+    if (m?.kind === "shot" && m.key === scorerKey && m.goalIdx === null) {
+      m.goalIdx = goalIdx;
+      return;
+    }
+  }
+}
+
+function recordMoment(acc: Acc, name: string | null, target: unknown): void {
+  // After a Win, statfeeds aren't moments, and the end clock is already set.
+  if (acc.phase === "ended" || acc.play.facts.sawWin) return;
+  if (name === "Win") {
+    acc.play.facts.sawWin = true;
+    acc.play.endClock = acc.clock;
+    return;
+  }
+  const kind = name === null ? undefined : MOMENT_KINDS.get(name);
+  if (kind === undefined) return;
+  // An unresolved target is already counted by the summary's unresolvedStatfeed.
+  const key = resolve(acc, target);
+  if (key === null) return;
+  acc.play.moments.push({ kind, key, clock: acc.clock, goalIdx: null });
+}
+
+/**
+ * The game clock starts at the kickoff's first touch, and its first reading is often the tick after
+ * that, so a kickoff shot can come before any reading. In a match seen from the start the clock then
+ * showed the whole regulation length. Joined in progress, the first reading could be mid-match, and a
+ * first reading more than 2 s short of the length means early readings went missing, so then such a
+ * moment stays null and is counted.
+ */
+function clockBeforeFirstTick(play: Play, joinedInProgress: boolean, first: Clock | null): void {
+  const reg = play.regulationSeconds;
+  const fromStart = !joinedInProgress && reg !== null && first !== null && !first.overtime && first.seconds >= reg - 2;
+  const start = fromStart ? { seconds: reg, overtime: false } : null;
+  for (const m of play.moments) {
+    if (m.clock !== null) continue;
+    m.clock = start;
+    if (start === null) play.facts.momentsWithoutClock++;
+  }
+}
+
 type Handler = (acc: Acc, ev: StoredEvent) => void;
 
 const HANDLERS: Readonly<Record<string, Handler>> = {
@@ -264,6 +350,7 @@ const HANDLERS: Readonly<Record<string, Handler>> = {
   RoundStarted: (acc, ev) => {
     setPhase(acc, "play", ev.ts);
     acc.sinceKickoff = [];
+    acc.kickoffMoment = acc.play.moments.length;
     acc.sawKickoff = true;
     acc.aerialPending.clear();
   },
@@ -291,6 +378,7 @@ const HANDLERS: Readonly<Record<string, Handler>> = {
       speedKmh: num(ev.data.GoalSpeed),
       aerial: aerials > 0,
     });
+    pairShot(acc, scorerKey, acc.play.goals.length - 1);
   },
   MatchPaused: (acc, ev) => {
     if (acc.phase === "paused" || acc.phase === "ended") return;
@@ -310,6 +398,7 @@ const HANDLERS: Readonly<Record<string, Handler>> = {
     if (typeof ev.data.bOvertime !== "boolean") acc.play.facts.clockReadingsWithoutOvertimeFlag++;
     const overtime = ev.data.bOvertime === true;
     acc.clock = { seconds, overtime };
+    acc.firstClock ??= acc.clock;
     // A reading of 0 is the end-of-match reset; on its own (joined at the very end) it gives no length.
     if (!overtime && seconds > 0) acc.play.regulationSeconds = Math.max(Math.ceil(seconds / 60) * 60, acc.play.regulationSeconds ?? 0);
   },
@@ -338,6 +427,7 @@ const HANDLERS: Readonly<Record<string, Handler>> = {
   },
   StatfeedEvent: (acc, ev) => {
     const name = str(ev.data.EventName);
+    recordMoment(acc, name, ev.data.MainTarget);
     if (acc.phase !== "play" || (name !== "Shot" && name !== "AerialGoal")) return;
     if (name === "AerialGoal") {
       const k = resolve(acc, ev.data.MainTarget);
@@ -361,11 +451,11 @@ const HANDLERS: Readonly<Record<string, Handler>> = {
 };
 
 export function emptyPlay(): Play {
-  return { goals: [], touches: {}, hardestShot: {}, woodwork: {}, samples: [], regulationSeconds: null, facts: emptyFacts() };
+  return { goals: [], moments: [], endClock: null, touches: {}, hardestShot: {}, woodwork: {}, samples: [], regulationSeconds: null, facts: emptyFacts() };
 }
 
 export function emptyFacts(): Play["facts"] {
-  return { playMs: 0, shotsWithoutTouch: 0, lastTouchDisagrees: 0, droppedGoals: 0, goalsWithoutClock: 0, clockReadingsWithoutOvertimeFlag: 0, unresolved: { hit: 0, shot: 0, woodwork: 0, lastTouch: 0 } };
+  return { playMs: 0, shotsWithoutTouch: 0, lastTouchDisagrees: 0, droppedGoals: 0, goalsWithoutClock: 0, clockReadingsWithoutOvertimeFlag: 0, momentsWithoutClock: 0, sawWin: false, unresolved: { hit: 0, shot: 0, woodwork: 0, lastTouch: 0 } };
 }
 
 /** `events` are one match's events, deduped, in seq order. */
@@ -384,10 +474,14 @@ export function buildPlay(events: readonly StoredEvent[], summary: Pick<MatchSum
     lastWoodworkTs: null,
     aerialPending: new Map(),
     clock: null,
+    firstClock: null,
+    kickoffMoment: 0,
     play: emptyPlay(),
   };
   for (const ev of events) HANDLERS[ev.name]?.(acc, ev);
   // A match closed mid-play (left, orphaned) still counts its last stretch.
   setPhase(acc, "ended", events.at(-1)?.ts ?? 0);
+  if (!acc.play.facts.sawWin) acc.play.endClock = acc.clock;
+  clockBeforeFirstTick(acc.play, summary.joinedInProgress, acc.firstClock);
   return acc.play;
 }

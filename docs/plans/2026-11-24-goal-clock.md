@@ -175,6 +175,26 @@ One round, by the `plan-reviewer` agent (opus) on 2026-11-24. All 8 findings are
   for 2, null for 4 (the 2 joined at the very end, and 2 left before any reading). 0 matches flagged
   `goals_clocked`. Spot check: match `E340…` stores 280, 144 and 55 (overtime), the same as its raw readings.
 
+## Prototype verdict (step 9, 2026-11-24)
+Branch `prototype/goal-timeline`, committed as `897860b` (never merged). Four rounds on the recomputed copy.
+- **Chosen: H, players.** A row per player (you first, then teammates, then opponents; blue or orange row edge),
+  with the running score in its own row above the clock so it never clips. Goals, saves and assists are bare
+  icons (the app's ball, shield, handshake) in blue for your team and orange for opponents. Shots are small
+  dots. Marks that would touch step into another lane, at the real pixel width. Each mark's details show on
+  hover. The legend is just the two sides. Overtime is a shaded band labelled "OT".
+- **Forfeit or left:** the clock that wasn't played is hatched behind a dashed line labelled "Forfeit · 0:44"
+  (or "You left"). The end clock is the last clock reading before the end sequence (the first Win statfeed): a
+  forfeit resets the clock to 0 only after the vote. If the end time is unknown, a note sits under the timeline.
+- **Shots:** a shot that became a goal (the scorer's Shot statfeed up to 5 s before their Goal statfeed) is left
+  off, since the goal shows it. In 2 sample matches the shot dots came out 1 over the scoreboard (a goal's
+  shot not paired). The real build shows a short note under the timeline when the shot dots don't add up to
+  the scoreboard's shots.
+- **Rejected:** round 1's score worm and ticker; the strip and tracks layouts; discs with yours solid and a
+  teammate's hollow (D–G). The row already says whose mark it is, and the bare icons read better at 16 px.
+- **What the build needs** (next plan): recorded rules storing a clock for each save, assist and shot (new
+  table or columns) and a match end clock, plus a migration and recompute. Gate the timeline on
+  `joined_in_progress`, whose regulation length can read short.
+
 ## Review log
 Tier: Substantial by design (106 non-test code lines). Snapshot of the reviewed state: `35441ff`.
 

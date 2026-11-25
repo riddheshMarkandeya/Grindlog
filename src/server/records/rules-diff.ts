@@ -19,6 +19,7 @@ export const TABLES: readonly { name: string; key: readonly string[] }[] = [
   { name: "matches", key: ["guid"] },
   { name: "match_players", key: ["match_guid", "player_key"] },
   { name: "match_goals", key: ["match_guid", "idx"] },
+  { name: "match_moments", key: ["match_guid", "idx"] },
   { name: "match_player_statfeed", key: ["match_guid", "player_key", "event_name"] },
 ];
 
