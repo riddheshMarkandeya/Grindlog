@@ -23,6 +23,7 @@ import { createLogger } from "../../src/server/log";
 import { logsDir } from "../../src/server/paths";
 import type { MatchRecord } from "../../src/server/records/record";
 import { createRecordWriter } from "../../src/server/records/save";
+import { RECORDED_RULE_VERSIONS } from "../../src/server/rules/registry";
 import { openStorage } from "../../src/server/storage";
 import { ALT, freePort, goal, ME, player, readFixture, record, THEM } from "../../src/server/testing";
 import { dayStart, dayOf } from "../../src/shared/periods";
@@ -56,10 +57,34 @@ function logTail(dir: string, lines = 30): string {
 const HOUR = 60 * MIN;
 
 /** A match of ME's, won or lost, `start` ms after the local day's 4am start. */
-type MatchOver = Partial<Pick<MatchRecord["match"], "playlistId" | "checkFlags" | "scoreTeam0" | "scoreTeam1" | "endKind" | "winnerTeamNum" | "winnerSource" | "mvpSource" | "mvpKey" | "overtime">>;
+type MatchOver = Partial<Pick<MatchRecord["match"], "playlistId" | "checkFlags" | "scoreTeam0" | "scoreTeam1" | "endKind" | "winnerTeamNum" | "winnerSource" | "mvpSource" | "mvpKey" | "overtime" | "ruleVersions">>;
 const match = (guid: string, day: string, start: number, won: boolean, over: MatchOver = {}, rows: Parameters<typeof record>[2] = {}) => {
   const at = dayStart(day) + start;
   return record(guid, at, rows, { endedAt: at + 5 * MIN, scoreTeam0: won ? 2 : 1, scoreTeam1: won ? 1 : 2, winnerTeamNum: won ? 0 : 1, mvpKey: won ? ME : null, ...over });
+};
+
+const clock = (seconds: number) => ({ seconds, overtime: false });
+/**
+ * The goal timeline's match: 0–2 down, then your 3 goals. Its moments equal the scoreboard (2 shots
+ * each, the opponent's 1 save), so there's no count note. Three shots became goals; your last two
+ * goals weren't counted as shots, so drawn are 5 goals, your 1 other shot and the save.
+ */
+const FIRST_A: Parameters<typeof record>[2] = {
+  players: [player(ME, 0), player(THEM, 1, { saves: 1 })],
+  goals: [
+    goal(1, THEM, { clock: clock(280) }),
+    goal(1, THEM, { clock: clock(220) }),
+    goal(0, ME, { clock: clock(150) }),
+    goal(0, ME, { clock: clock(90) }),
+    goal(0, ME, { clock: clock(20) }),
+  ],
+  moments: [
+    { kind: "shot", key: THEM, clock: clock(280), goalIdx: 0 },
+    { kind: "shot", key: THEM, clock: clock(220), goalIdx: 1 },
+    { kind: "shot", key: ME, clock: clock(150), goalIdx: 2 },
+    { kind: "shot", key: ME, clock: clock(60), goalIdx: null },
+    { kind: "save", key: THEM, clock: clock(59), goalIdx: null },
+  ],
 };
 
 /**
@@ -196,9 +221,10 @@ function seed(dir: string, mode: Seed): void {
     for (let i = 0; i < 26; i++) {
       writer.save(match(`e2e-long-${String(i).padStart(2, "0")}`, day(1, 5), 10 * HOUR + i * 6 * MIN, i % 3 !== 0, i === 2 ? { playlistId: 11 } : i === 1 ? { scoreTeam0: 4 } : {}, i === 1 ? HAT_TRICK : {}));
     }
-    writer.save(match("e2e-private", day(1, 8), 14 * HOUR, true, { playlistId: 6 }));
+    // Rule versions stamped, so only its playlist (Private) keeps the goal timeline off.
+    writer.save(match("e2e-private", day(1, 8), 14 * HOUR, true, { playlistId: 6, ruleVersions: RECORDED_RULE_VERSIONS }));
     const scored = (teams: (0 | 1)[]) => ({ goals: teams.map((t) => (t === 0 ? goal(0, ME) : goal(1, THEM))) });
-    writer.save(match("e2e-first-a", day(1, 12), 8 * HOUR, true, { playlistId: 11, scoreTeam0: 3, scoreTeam1: 2 }, scored([1, 1, 0, 0, 0])));
+    writer.save(match("e2e-first-a", day(1, 12), 8 * HOUR, true, { playlistId: 11, scoreTeam0: 3, scoreTeam1: 2, ruleVersions: RECORDED_RULE_VERSIONS }, FIRST_A));
     writer.save(match("e2e-first-b", day(1, 12), 8 * HOUR + 10 * MIN, false, { playlistId: 11, checkFlags: ["mvp_count"], scoreTeam0: 2, scoreTeam1: 3 }, scored([0, 0, 1, 1, 1])));
     writer.save(match("e2e-first-c", day(1, 12), 8 * HOUR + 20 * MIN, false, { playlistId: 11, endKind: "left", winnerTeamNum: null, winnerSource: null }));
     writer.save(match("e2e-first-d", day(1, 12), 8 * HOUR + 30 * MIN, true, { playlistId: 11, mvpSource: "inferred" }));

@@ -482,6 +482,44 @@ test("a match outside the view: under another filter, in another session, or gon
   await expect(page.getByRole("heading", { name: "This match isn't here any more." })).toBeVisible();
 });
 
+const timeline = (page: Page) => page.getByRole("group", { name: "Each player's goals, saves, assists and shots along the match clock" });
+
+for (const width of [1024, 320]) {
+  test(`goal timeline at ${String(width)}px: a mark per goal, uncounted shot and save, and no count note`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/recap/e2e-first-a/match/e2e-first-a");
+    await scoreboardLoaded(page);
+    const tl = timeline(page);
+    await expect(page.getByRole("heading", { name: "How the match went" })).toBeVisible();
+    // The read-out, in clock order: three shots became goals, so they show only as those goals.
+    await expect(tl.getByRole("listitem")).toHaveText([
+      "4:40 · Goal · Epic|them|0 · 0–1",
+      "3:40 · Goal · Epic|them|0 · 0–2",
+      "2:30 · Goal · Epic|me|0 · 1–2",
+      "1:30 · Goal · Epic|me|0 · 2–2 · Not counted as a shot",
+      "1:00 · Shot · Epic|me|0",
+      "0:59 · Save · Epic|them|0",
+      "0:20 · Goal · Epic|me|0 · 3–2 · Not counted as a shot",
+    ]);
+    // Drawn: an icon per goal and the save, a dot for the shot (each mark has its hover circle too).
+    const svg = tl.locator("svg[width]").first();
+    await expect(svg.locator("foreignObject")).toHaveCount(6);
+    // Not the icons' own circles.
+    await expect(svg.locator("circle:not(foreignObject *)")).toHaveCount(6 + 2);
+    await expect(page.getByText(/^The scoreboard has/)).toHaveCount(0);
+    const box = await svg.boundingBox();
+    expect(box && box.x + box.width).toBeLessThanOrEqual(width);
+    expect(await page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")).toBe(0);
+  });
+}
+
+test("no goal timeline on a Private match", async ({ page }) => {
+  await page.goto("/recap/e2e-private/match/e2e-private?filter=private");
+  await scoreboardLoaded(page);
+  await expect(page.getByRole("heading", { name: "How the match went" })).toHaveCount(0);
+  await expect(timeline(page)).toHaveCount(0);
+});
+
 test("at 320px the new pages fit without a sideways scroll", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 700 });
   for (const path of ["/recap/e2e-long-00/matches", "/recap/e2e-long-00/match/e2e-long-01"]) {
@@ -499,6 +537,7 @@ for (const path of [
   "/recap/e2e-long-00/matches",
   "/recap/e2e-long-00/match/e2e-long-01",
   "/recap/e2e-first-a/match/e2e-first-c",
+  "/recap/e2e-first-a/match/e2e-first-a",
   "/recap/e2e-old",
   "/recap/e2e-seed-won?filter=private",
   "/recap?filter=17",

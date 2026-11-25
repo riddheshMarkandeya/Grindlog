@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { runChecks } from "./checks";
+import { HIDING_FLAGS } from "../../web/logic/goal-timeline";
+import { CHECK_IDS, runChecks } from "./checks";
 import type { ExtraValues } from "./extras";
 import { emptyFacts, type GoalPoint, type MomentPoint } from "./play";
 import type { MatchSummary, RosterEntry, TeamNum } from "./summary";
@@ -249,5 +250,12 @@ describe("runChecks", () => {
   test("score checks are skipped when no state was stored", () => {
     const s = { ...clean(), score: null, winner: null, facts: { ...clean().facts, sawMatchEnded: false } };
     expect(ids(s)).toEqual([]);
+  });
+});
+
+describe("the goal timeline's hiding flags", () => {
+  // The web module copies the ids; a renamed or split check would otherwise stop hiding untrustworthy matches.
+  test.each([...HIDING_FLAGS])("%s is a check id", (id) => {
+    expect(CHECK_IDS).toContain(id);
   });
 });

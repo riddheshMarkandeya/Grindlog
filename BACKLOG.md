@@ -130,6 +130,9 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   `src/shared/clutch.ts` already gives the casual/ranked/tournament rule and can be reused.
 
 ## Watch list
+- [ ] **[bug, Low, Standard]** Trigger: a match where a goal's scorer isn't on the team the goal counted for (an own
+  goal credited by the game to the scorer's opponents, say; none in 1,988 stored goals). The goal timeline hides
+  such a match; fit it once a real one shows how the game credits it. Record: `docs/plans/2026-11-24-goal-timeline.md`.
 - [ ] **[bug, Low, Standard]** Trigger: the first match flagged `goals_clocked` (a goal with no
   `ClockUpdatedSeconds` reading before it) or `clock_overtime_flagged` (a reading whose `bOvertime` isn't a boolean; none in 1,988 stored
   goals). Fit the `goal_clock` rule (and, for a bad `bOvertime`, `regulation_length`) to that match. Record: `docs/plans/2026-11-24-goal-clock.md`.

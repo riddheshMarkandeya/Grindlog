@@ -72,6 +72,12 @@ export const PLAYLISTS: Readonly<Record<number, Playlist>> = {
   70: p("Dropshot Rumble (2v2)", "ltm"),
 };
 
+/**
+ * Playlists the match page draws a goal timeline for: standard soccar, the tournament and Honor Duel.
+ * Other modes have their own rules (Hoops, Rumble, Heatseeker...) and private matches their own lengths.
+ */
+export const TIMELINE_PLAYLISTS: ReadonlySet<number> = new Set([1, 2, 3, 4, 10, 11, 12, 13, 34, 53]);
+
 // Not games: no match record is kept for these, and recompute removes one made before.
 export const IGNORED_PLAYLISTS: Readonly<Record<number, string>> = { 73: "Online Freeplay" };
 

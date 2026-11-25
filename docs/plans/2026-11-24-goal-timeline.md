@@ -205,8 +205,9 @@ ALTER TABLE matches ADD COLUMN end_clock_overtime INTEGER;
     Standard, Official Tournament and Honor Duel (ids 1–4, 10–13, 34 and 53);
   - Private, extra modes, LTMs and the rest are hidden;
 - `match.checkFlags` has any of `forfeit_end_clocked`, `moments_clocked`, `moments_match_statfeed`,
-  `goals_clocked`, `goals_placed` or `goals_per_team_equal_score` (a dropped goal would end the score row on the
-  wrong score);
+  `goals_clocked`, `goals_placed`, `goals_per_team_equal_score` (a dropped goal would end the score row on the
+  wrong score) or `clock_overtime_flagged` (added in WP2 review: an overtime mark would land in regulation);
+- a goal whose scorer's team isn't the team it counted for (added in WP2 review; none in the data);
 - any player has a null `teamNum` (no row colour);
 - joined in progress;
 - `regulationSeconds` is null;
@@ -214,7 +215,9 @@ ALTER TABLE matches ADD COLUMN end_clock_overtime INTEGER;
 - any goal or moment has a null clock;
 - no player is you (spectated);
 - `orphaned`;
-- `early_end` or `left` with a null end clock.
+- `early_end` or `left` with a null end clock;
+- a goal's scorer or a moment's player with no player row (added in WP2 step 1: such a mark would have no row
+  to sit in; not seen in the data, since moments only store roster players).
 
 ### WP2 steps
 1. **TDD in `src/web/logic/goal-timeline.test.ts`** (red first), then `src/web/logic/goal-timeline.ts`. All pure:
@@ -229,10 +232,18 @@ ALTER TABLE matches ADD COLUMN end_clock_overtime INTEGER;
      scoreboard has 11 shots; 12 shots were recorded." for each kind that's off. It says "recorded" because a goal
      the game didn't count as a shot is drawn, yet isn't one of the shots.
    - Expected values are worked by hand from small details built in the test.
+   - **Done (2026-11-24):** `TIMELINE_PLAYLISTS` plus its test; `goal-timeline.ts` exports `timelineFor` (rows,
+     marks, `scores`, `ticks`, `end`, `stop`), `pack` and `countNote`, with 40 tests. `bun run check` green
+     (2127 passed, 1 skipped).
 2. **`src/web/components/GoalTimeline.tsx` plus `.module.css`:** the SVG, rewritten from the prototype's `Players`,
    `Mark`, `ScoreRow` and `Legend` under the project's tokens (`var(--blue)`, `var(--orange)`), with the `Icon`
    component through foreignObject as in the prototype. Mount it in `MatchView.tsx` directly under `<Scoreboard>`,
    from the same `useMatchDetail`.
+   - **Done (2026-11-25):** `GoalTimeline` (section "How the match went", legend, count note) and `TimelineChart`
+     (`useWidth` box on first render, `role="group"`, visually hidden `<ol>` of the marks in time order, the SVG
+     `aria-hidden`). `MatchTimeline` in `MatchView.tsx` mounts it. Layout additions over the prototype: the
+     name gutter narrows to 28% of the width (72–132 px) on a phone, and tick labels skip when under 36 px
+     apart. `bun run check` green (2127 passed, 1 skipped). Not yet seen rendered: steps 3 and 4 cover that.
 3. **e2e** in `test/e2e/recap.spec.ts`:
    - **Seed:** `record()` in `src/server/testing.ts:98` defaults to `ruleVersions: {}`, which would hide every seeded
      timeline, and its default `player()` has `shots: 2`. So the seed match `e2e-first-a` (playlist 11, 3–2,
@@ -242,12 +253,42 @@ ALTER TABLE matches ADD COLUMN end_clock_overtime INTEGER;
    - `e2e-private` (playlist 6, `stack.ts:199`) has no timeline;
    - no console errors;
    - also run at 320 px.
+   - **Done (2026-11-25):**
+     - **Seed:** `FIRST_A` in `stack.ts` is a 0–2 comeback to 3–2:
+       - goal clocks at 4:40, 3:40, 2:30, 1:30 and 0:20;
+       - 4 shot moments (3 of them became goals) and the opponent's 1 save, which equal the scoreboard
+         (`saves: 1` on the opponent's row);
+       - `RECORDED_RULE_VERSIONS` on it and on `e2e-private`, so only the Private playlist hides that one.
+     - **Tests** in `recap.spec.ts`:
+       - at 1024 and 320 px: the hidden read-out's 7 lines in clock order, 6 icons, 8 circles (1 dot and
+         7 hover circles), no count note, no sideways scroll;
+       - no timeline on `e2e-private`;
+       - the match page joins the axe loop.
+     - **Red check:** the Private test fails (1 timeline, expected 0) with playlist 6 added to
+       `TIMELINE_PLAYLISTS`.
+     - **Results:** `bun run check` green (2127 passed, 1 skipped); `bun run e2e` green (161 passed).
 4. **Real browser,** via `/run` and Chrome, on a fresh recompute of the `%TEMP%\grindlog-proto-clock` copy:
    - matches: forfeit `E10448E6…`, the 13-goal `8379F212…`, Honor Duel 180 s `4F38F98A…`, overtime `AA5DF654…`,
      comeback `82A202E8…`, the shots-mismatch match, a joined match (hidden), and a Hoops match (hidden);
    - each at 320, 768, 1024 and 1440 px, keyboard-only, and in dark mode if the app has one.
    Hand the visual check to the user.
-5. Analytics map row C changes to "Built: goal timeline". Compact point, then `independent-review-pass`, then ask
+   - **Done (2026-11-25):**
+     - **Setup:** recompute of the copy, 360 written and 0 failed. The dashboard ran on it at port 49111 (the
+       installed dev tracker holds 49102), with `GRINDLOG_STATIC_DIR` set to the fresh `dist`.
+     - **Sweep:** each match loaded at 320, 768, 1024 and 1440 px in a same-origin iframe of that exact width.
+       - The five drawn matches showed, with no sideways scroll at any width. Score labels, tick labels, row
+         names and icons had no overlaps.
+       - The joined `32E30E10…` and Hoops `F85A7AF2…` matches showed their scoreboard and no timeline.
+       - No console errors on a fresh load of all seven.
+     - **Keyboard:** the chart has nothing focusable (passive by design); screen readers get the hidden
+       read-out.
+     - **Fixed:** at 320 px a mark at kickoff (the Honor Duel's first goal) covered the row's edge bar. The
+       clock now starts `PAD` (half an icon plus 2 px) into the track.
+     - **Not seen:** the count note. No drawn match in the copy has a mismatch (the only one is playlist 29,
+       which isn't drawn). Unit tests and the e2e cover the note.
+     - **Results:** `bun run check` green (2127 passed, 1 skipped); the timeline e2e passed (4 tests).
+     - **Handed to the user:** the visual check.
+5. Analytics map row C changes to "Built: goal timeline" (done 2026-11-25). Compact point, then `independent-review-pass`, then ask
    the user to commit. After that, `bun run deploy` (it recomputes) is the user's call.
 
 ## Verification
@@ -348,3 +389,59 @@ Passes: `correctness-reviewer`, `arch-reviewer` (sonnet), `security-reviewer`. E
 without regressions. Two nits: the `moments_clocked` detail read ambiguously → [Fixed] wording; this entry was
 missing → added, noting that the `timeline_moments` rule text changed while it stays at version 1, which is fine
 because the rule hasn't shipped yet. Review closed.
+
+### WP2 round 1 (2026-11-25), snapshot `88d597f`
+Passes: `/code-review high`, `arch-reviewer` (opus), `security-reviewer`, `/simplify`. Substantial by design tier
+(452 non-test lines).
+- security: no findings.
+- code-review (important): a match flagged `clock_overtime_flagged` was still drawn, and an overtime goal would
+  land in regulation. [Fixed] Added to `HIDING_FLAGS` and to the hide cases, with a test.
+- code-review: a goal whose scorer is on the other team would draw one side's icon while the score counts it for
+  the other. None of 1,988 goals in the data. [Fixed] `timelineFor` hides such a match, with a test, and BACKLOG
+  has a Watch item.
+- code-review: marks at the same second read in row order, so an assist could read before its goal. [Fixed]
+  `readOut` puts goals first at a second, with a test.
+- code-review + arch: the read-out never said where a forfeit or "You left" stopped play, or that overtime began.
+  [Fixed] `readOut` adds both in time order, with tests.
+- code-review: row names were cut through an emoji's surrogate pair. [Fixed] `shortName` cuts by grapheme
+  (`Intl.Segmenter`), with a test. Wide (CJK) names may still overrun the 7 px guess; the full name is in the hover. [Verified, no fix
+  needed] At 320 px they're cut to 8 characters, and there are none in the data.
+- code-review: skipped tick labels could drop the end-of-regulation label. [Fixed] They're counted from the end.
+- code-review: the score format was written twice. [Fixed] `scoreText` is exported from `goal-timeline.ts`.
+- arch (risk): `HIDING_FLAGS` held untested copies of the server's check ids. [Fixed] `checks.test.ts` checks each
+  one against `CHECK_IDS`.
+- arch (q): row C's "Built" status hid the Trends lines and the late-winner badge. [Fixed] The status now names them
+  as next.
+
+- simplify (4 angles):
+  - [Fixed] the `Intl.Segmenter` is built once, with a fast path for short names;
+  - [Fixed] `useMemo` for `timelineFor` and the read-out (the React Compiler isn't in the build, only its lint
+    rules), so a resize doesn't rebuild them;
+  - [Fixed] one player map in `checked`;
+  - [Fixed] marks are pushed, not copied per add;
+  - [Fixed] `yours` is computed once per goal;
+  - [Fixed] the tick-gap ternary is gone;
+  - [Fixed] `Mark`'s hover circle is written once.
+  - Skipped, behaviour or scope:
+    - `pack` returning items with their lanes, and slimming `Row`'s props: a refactor of tested, working code;
+    - `HIDING_FLAGS` as a shared union, or a server `timelineTrustworthy` flag: the `CHECK_IDS` test covers the
+      drift, and a server field needs a recompute;
+    - deriving `TIMELINE_PLAYLISTS` from the pitch list: they mean different things (Private uses a standard
+      pitch but is hidden);
+    - text-width guesses: measuring is out of proportion;
+    - overtime from marks past regulation: no such data;
+    - the shared "A–B" helper with `recordText`: it adds digit grouping;
+    - fixture literals in `stack.ts`: they read better spelled out.
+- `bun run check`: green apart from the known flaky `tray.test.ts` timing test (BACKLOG), which passes on a rerun
+  (2141 passed). The timeline e2e passed (4 tests).
+
+### WP2 round 2 (delta `git diff 88d597f`)
+Passes: `correctness-reviewer`, `arch-reviewer` (sonnet), `security-reviewer`. Every round-1 fix was confirmed closed.
+- arch, security: no findings.
+- correctness (risk): a regulation goal at 0:00 and an overtime mark at +0:00 share `t = regulation`, so a buzzer-beater
+  would read after "Overtime". [Fixed] `TimelineMark` carries `overtime`; `readOut` puts regulation marks, then
+  "Overtime", then the overtime clock's marks, then the stop. A test covers it. `bun run check` green (2142 passed).
+
+### WP2 round 3 (delta: the unstaged `git diff` after round 2)
+Passes: `correctness-reviewer`, `security-reviewer`. No findings: the round-2 fix is closed, and the new `overtime`
+field breaks no consumer. The review is done.

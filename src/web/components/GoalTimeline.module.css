@@ -1,0 +1,38 @@
+.svg { display: block; overflow: visible; }
+
+/* Your side and the other side: icons take the colour, shot dots fill with it. */
+.us { color: var(--blue); }
+.them { color: var(--orange); }
+.dot { fill: currentColor; }
+.fo { pointer-events: none; overflow: visible; }
+.ico { display: block; width: 16px; height: 16px; }
+.hit { fill: transparent; cursor: default; }
+
+.grid { stroke: var(--grid); stroke-width: 1; }
+.tick { fill: var(--muted); font-size: 12px; text-anchor: middle; font-variant-numeric: tabular-nums; }
+.otBand { fill: color-mix(in srgb, var(--ink) 6%, transparent); }
+.otText { fill: var(--muted); font-size: 11px; letter-spacing: .06em; }
+
+.track { fill: color-mix(in srgb, var(--ink) 3%, transparent); }
+.edgeUs { fill: var(--blue); }
+.edgeThem { fill: var(--orange); }
+.rowLabel { fill: var(--muted); font-size: 12px; text-anchor: end; }
+.rowMe { fill: var(--ink); font-weight: 700; }
+
+/* The running score: the side that scored is in bold, underlined in its colour. */
+.score { fill: var(--muted); font-size: 13px; text-anchor: middle; font-variant-numeric: tabular-nums; cursor: default; }
+.scorer { fill: var(--ink); font-weight: 700; }
+.underUs { stroke: var(--blue); stroke-width: 2; }
+.underThem { stroke: var(--orange); stroke-width: 2; }
+
+/* A forfeit or a match you left: a dashed line where play stopped, the unplayed clock hatched. */
+.hatch { stroke: var(--muted); stroke-width: 1.5; opacity: .35; }
+.stopLine { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.stopText { fill: var(--ink2); font-size: 12px; font-weight: 600; paint-order: stroke; stroke: var(--surf); stroke-width: 4px; }
+.endAnchor { text-anchor: end; }
+
+.legend { list-style: none; margin: var(--s2) 0 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s4); font-size: 12px; color: var(--muted); }
+.legend li { display: flex; align-items: center; gap: 4px; }
+.legendIco { width: 16px; height: 16px; }
+
+.note { margin: var(--s2) 0 0; font-size: 12px; color: var(--muted); }

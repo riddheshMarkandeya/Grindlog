@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { playlistInfo } from "./playlists";
+import { PLAYLISTS, TIMELINE_PLAYLISTS, playlistInfo } from "./playlists";
 
 describe("playlistInfo", () => {
   test("known ids", () => {
@@ -30,5 +30,12 @@ describe("playlistInfo", () => {
   test("menu states are not playlists", () => {
     expect(playlistInfo(0).group).toBeNull();
     expect(playlistInfo(-2).group).toBeNull();
+  });
+});
+
+describe("TIMELINE_PLAYLISTS", () => {
+  test("the standard soccar playlists and Honor Duel, each a known playlist", () => {
+    expect([...TIMELINE_PLAYLISTS].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 10, 11, 12, 13, 34, 53]);
+    for (const id of TIMELINE_PLAYLISTS) expect(PLAYLISTS[id]).toBeDefined();
   });
 });

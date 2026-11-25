@@ -11,6 +11,7 @@ import type { MatchDetail, MyMatchWire, SessionDetail } from "../../../shared/sc
 import { ApiError } from "../../api";
 import { cx } from "../../components/cx";
 import { GoalMap } from "../../components/GoalMap";
+import { GoalTimeline } from "../../components/GoalTimeline";
 import { Icon, IconLabel } from "../../components/Icon";
 import { Section } from "../../components/Section";
 import { TouchThirds } from "../../components/TouchThirds";
@@ -117,6 +118,7 @@ function Match({ detail, m, n }: { detail: SessionDetail; m: MyMatchWire; n: num
         </div>
       )}
       <Scoreboard guid={m.guid} />
+      <MatchTimeline guid={m.guid} />
       {standardPitch(m.playlistId) && <MatchTouches guid={m.guid} />}
       {goals.length > 0 && (
         <Section title="Where the goals came from" className={styles.tight}>
@@ -188,6 +190,12 @@ function PlayerRow({ p }: { p: MatchDetail["players"][number] }) {
       <td>{whole(p.score)}</td><td>{p.goals}</td><td>{p.assists}</td><td>{p.saves}</td><td>{p.shots}</td>
     </tr>
   );
+}
+
+/** The goal timeline, from the scoreboard's query; nothing until it has loaded (the scoreboard shows the wait). */
+function MatchTimeline({ guid }: { guid: string }) {
+  const { data } = useMatchDetail(guid);
+  return data ? <GoalTimeline detail={data} className={styles.tight} /> : null;
 }
 
 /** Each player's touches by third, from the scoreboard's query; nothing until it has loaded (the scoreboard shows the wait). */
