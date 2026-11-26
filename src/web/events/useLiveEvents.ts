@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { subscribe } from "./client";
-import { staleAfterLive } from "../logic/invalidation";
+import { invalidateFresh, staleAfterLive } from "../logic/invalidation";
 import { createVersionWatch } from "../logic/version-watch";
 import { live } from "./live";
 
@@ -26,17 +26,17 @@ export function useLiveEvents(): void {
             live.set(open ? { link: "open", stopped: false } : { link: message.link });
             // Events sent while the stream was down are lost, and a query that failed on the
             // startup 503 stays failed under staleTime Infinity: refetch everything on reconnect.
-            if (open && wasDown) void queryClient.invalidateQueries();
+            if (open && wasDown) void invalidateFresh(queryClient);
             break;
           }
           case "match_ended":
           case "session_break":
-            void queryClient.invalidateQueries({ predicate: staleAfterLive });
+            void invalidateFresh(queryClient, staleAfterLive);
             break;
           case "records_recomputed":
           case "seasons_changed":
             // A background recompute may have changed any record, and a season change any season period.
-            void queryClient.invalidateQueries();
+            void invalidateFresh(queryClient);
             break;
           case "version": {
             // The tracker restarted as another release (an update or a rollback): this tab's JS

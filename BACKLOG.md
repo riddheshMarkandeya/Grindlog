@@ -3,14 +3,6 @@
 Tags: `[type, priority, effort]` — type bug/refactor/feature/performance/test-coverage/design/misc;
 priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
 
-- [ ] **[test-coverage, Med, Standard]** `test/e2e/season-file.spec.ts:8` is flaky and blocks `bun run deploy`:
-  the S25 row never appears within 15 s. It failed 2 of 2 deploys and 1 of 2 solo runs on 2026-11-24 (at commit
-  4416217, which only changed Clutch display strings). It then passed 8 of 8 solo runs (`--repeat-each 8`) and a
-  full run (157 passed). On a failing run, the tracker log showed S25 added and `seasons_changed` published to 1
-  subscriber. Lead: the page's seasons read races the sync (`GRINDLOG_SEASONS_DELAY_MS=1000`), or the refetch after
-  the event misses the row. Not yet reproduced on demand; first step is a loop with a higher repro rate (e.g. the
-  full `bun run deploy` sequence, `GRINDLOG_E2E_KEEP=1`, trace on).
-
 - [ ] **[misc, Med, Trivial]** v1 roadmap (`docs/plans/2026-10-16-v1-roadmap.md`): every work package
   is deployed (WP9, the last, on 2026-11-02). Open items from the work packages:
   - **[design, Low, Trivial]** (from public release map step 8) Add back the themes midnight, dusk, steel and daylight (values in the
@@ -97,10 +89,6 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   downloads (SignPath wants a track record; Azure's option is US/Canada only). The Reddit post (2026-11-20) drew 0
   comments and v0.1.6 had 4 installer downloads on 2026-11-22. Trigger: around 2026-12-22, check the release
   download counts (`gh api repos/riddheshMarkandeya/Grindlog/releases`); start only if they've picked up.
-- [ ] **[test-coverage, Low, Standard]** `season-file.spec.ts` "a season in the file shows up in Settings" timed out
-  (S25 not listed within 15 s) once in a full `bun run e2e` on 2026-11-22; it passed 4 of 4 runs alone. Repeated the
-  same way in a full run on 2026-11-24 (Tilt build; passed alone right after): the repeat is in, so the first sync's
-  timing under load is next to look at.
 - [ ] **[test-coverage, Med, Standard]** `tray.test.ts` "goes red within ~5 s of the tracker stopping" is flaky under
   the full suite: on 2026-11-19, 3 of 10 local `bun run test` runs took 7.6–8.3 s against its 6.5 s bound. It was
   already there before the 0.1.6 icon change (1 of 5 at `9a0fccf`), though that change's `bun build --compile` test
@@ -138,6 +126,10 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   note then. Record: `docs/plans/2026-11-25-late-goals.md` (review round 1).
 
 ## Watch list
+- [ ] **[bug (latent), Low, Standard]** Trigger: a `seasons_changed` or `match_ended` log with `subscribers: 0` while a
+  tab was loading, or a page that stays stale after a fresh load. An event published before a tab's first stream `open`
+  is lost: that open doesn't invalidate, since `wasDown` is false while connecting (`src/web/events/live.ts:13`).
+  Record: `git log --grep=invalidateFresh`.
 - [ ] **[bug, Low, Standard]** Trigger: the first match in the `clutch` log's `skippedClockGuids` whose clock runs
   backwards (a later goal with more regulation time left, or less overtime played; none in 2,061 stored goals).
   `clockChecked` leaves it out of the goal-clock stats; fit the rule to it. Record: `docs/plans/2026-11-25-late-goals.md`.

@@ -34,7 +34,7 @@ import { DEFAULT_SETTINGS, settingsSchema, type Settings, type SettingsPatch } f
 import type { IdAnswer, SeasonInput } from "../shared/schemas/tables";
 import { codeOf, getJson, postJson } from "./api";
 import { namedPairs } from "./logic/friends";
-import { staleAfterTables, type CachedQuery } from "./logic/invalidation";
+import { invalidateFresh, staleAfterTables, type CachedQuery } from "./logic/invalidation";
 import { keepDetailWhileWithChanges } from "./logic/recap";
 import { patchQuery } from "./logic/settings";
 import { periodQuery } from "./logic/trends";
@@ -232,7 +232,7 @@ function useWholeWrite<V, T>(
       queryClient.setQueryData(key, data);
       alsoSet?.(queryClient, v);
       // Never its own key: the answer just put there is whole.
-      if (stale) void queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] !== key[0] && stale(q) });
+      if (stale) void invalidateFresh(queryClient, (q) => q.queryKey[0] !== key[0] && stale(q));
     },
   });
 }
@@ -328,7 +328,7 @@ export function useSaveAccount(leaveSession: () => void) {
           if (queryClient.getQueryData<Settings>(SETTINGS_KEY)?.account === shown) return;
           queryClient.removeQueries({ queryKey: LATEST_SESSION_KEY });
           leaveSession();
-          void queryClient.invalidateQueries({ predicate: staleAfterTables });
+          void invalidateFresh(queryClient, staleAfterTables);
         },
       },
     );
