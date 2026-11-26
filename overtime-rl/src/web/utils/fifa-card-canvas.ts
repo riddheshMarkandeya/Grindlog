@@ -313,45 +313,23 @@ export function drawFifaShieldOnCanvas(
   ctx.font = `800 ${Math.round(17 * sx)}px system-ui`;
   ctx.fillText(card.position, colX, y + 106 * sy);
 
-  // Rule 1
+  // Divider Rule & Mode / Club Crest Emblem (2V2 / 3V3 / ORL — no flag)
   ctx.strokeStyle = spec.divider;
   ctx.lineWidth = Math.max(1, 1.2 * sx);
   ctx.beginPath();
-  ctx.moveTo(colX - 18 * sx, y + 116 * sy);
-  ctx.lineTo(colX + 18 * sx, y + 116 * sy);
+  ctx.moveTo(colX - 18 * sx, y + 118 * sy);
+  ctx.lineTo(colX + 18 * sx, y + 118 * sy);
   ctx.stroke();
 
-  // Visual Blue/Silver/Orange Rocket League Stadium Flag
-  const fx = colX - 15 * sx;
-  const fy = y + 124 * sy;
-  const fw = 30 * sx;
-  const fh = 18 * sy;
-  ctx.fillStyle = '#0284c7';
-  ctx.fillRect(fx, fy, fw, fh / 3);
-  ctx.fillStyle = '#f8fafc';
-  ctx.fillRect(fx, fy + fh / 3, fw, fh / 3);
-  ctx.fillStyle = '#ea580c';
-  ctx.fillRect(fx, fy + (2 * fh) / 3, fw, fh / 3);
-  ctx.strokeStyle = spec.divider;
-  ctx.lineWidth = Math.max(0.8, 0.9 * sx);
-  ctx.strokeRect(fx, fy, fw, fh);
-
-  // Rule 2
-  ctx.beginPath();
-  ctx.moveTo(colX - 18 * sx, y + 150 * sy);
-  ctx.lineTo(colX + 18 * sx, y + 150 * sy);
-  ctx.stroke();
-
-  // Mode / Club Crest Emblem (2V2 / 3V3 / ORL)
   ctx.strokeStyle = spec.textMain;
   ctx.lineWidth = Math.max(1.2, 1.5 * sx);
   ctx.beginPath();
-  ctx.arc(colX, y + 174 * sy, 14 * sx, 0, Math.PI * 2);
+  ctx.arc(colX, y + 146 * sy, 15 * sx, 0, Math.PI * 2);
   ctx.stroke();
   ctx.fillStyle = spec.textMain;
-  ctx.font = `900 ${Math.round(8.5 * sx)}px system-ui`;
+  ctx.font = `900 ${Math.round(9 * sx)}px system-ui`;
   const crestText = card.mode === '2s' ? '2V2' : card.mode === '3s' ? '3V3' : 'ORL';
-  ctx.fillText(crestText, colX, y + 177 * sy);
+  ctx.fillText(crestText, colX, y + 149.5 * sy);
 
   // Hero Car Artwork (Upper Right Portrait Slot)
   if (carImg && carImg.naturalWidth > 0) {

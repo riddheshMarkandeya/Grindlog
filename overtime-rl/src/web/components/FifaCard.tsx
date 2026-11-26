@@ -220,23 +220,15 @@ export const FifaCard: React.FC<FifaCardProps> = ({
               {card.position}
             </text>
 
-            <line x1="38" y1="115" x2="74" y2="115" stroke={spec.divider} strokeWidth="1.2" />
+            <line x1="38" y1="118" x2="74" y2="118" stroke={spec.divider} strokeWidth="1.2" />
 
-            {/* Visual Rocket League Blue-White-Orange Flag (replacing text clutter) */}
-            <rect x="41" y="124" width="30" height="6" fill="#0284c7" />
-            <rect x="41" y="130" width="30" height="6" fill="#f8fafc" />
-            <rect x="41" y="136" width="30" height="6" fill="#ea580c" />
-            <rect x="41" y="124" width="30" height="18" fill="none" stroke={spec.divider} strokeWidth="1" />
-
-            <line x1="38" y1="150" x2="74" y2="150" stroke={spec.divider} strokeWidth="1.2" />
-
-            <circle cx="56" cy="174" r="14" fill="none" stroke={spec.textMain} strokeWidth="1.6" />
+            <circle cx="56" cy="146" r="15" fill="none" stroke={spec.textMain} strokeWidth="1.6" />
             <text
               x="56"
-              y="177"
+              y="149.5"
               textAnchor="middle"
               fill={spec.textMain}
-              fontSize="8.5"
+              fontSize="9"
               fontWeight="900"
               letterSpacing="0.6"
               fontFamily="system-ui, sans-serif"
