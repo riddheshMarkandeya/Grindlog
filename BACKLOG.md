@@ -3,6 +3,24 @@
 Tags: `[type, priority, effort]` — type bug/refactor/feature/performance/test-coverage/design/misc;
 priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
 
+## Next up
+
+Order agreed with the user on 2026-11-26; each step is an item below. Take them in order.
+
+1. The own goal credited to the wrong team (bug).
+2. Release v0.1.7 (`docs/releasing.md`): Clutch, Tilt, the goal clock and timeline, the account picker and the
+   dropdowns are unreleased since v0.1.6. The flaky `tray.test.ts` can fail the tag's `bun run check`; re-run it.
+3. Playlist scope (`/wayfinder`).
+4. Demo stats.
+5. Boost pickup stats.
+6. The stats honesty audit.
+7. Season recap (`/wayfinder`). S25 starts 2026-12-09, so S24's recap is the first; landing near then is nice,
+   not required.
+8. Release v0.1.8.
+9. Replay analysis feasibility test (separate repo, time-boxed). Nothing in 3–8 waits on it, so it can move up.
+
+## Items
+
 - [ ] **[misc, Med, Trivial]** v1 roadmap (`docs/plans/2026-10-16-v1-roadmap.md`): every work package
   is deployed (WP9, the last, on 2026-11-02). Open items from the work packages:
   - **[design, Low, Trivial]** (from public release map step 8) Add back the themes midnight, dusk, steel and daylight (values in the
@@ -13,7 +31,8 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   - **[design, Low, Trivial]** Around 2026-12-27, check the "What stood out" threshold
     (`STOOD_OUT_MIN_PCT`, 10%). On 2026-10-27, the 5 sessions that had a baseline had 4–6 stats past
     ±10% (3–5 past ±20%). Every baseline was under a month old (13–65 matches), so swings ran
-    large. Re-run that table against full 30-day baselines and pick the number then. Record:
+    large. Re-run that table against full 30-day baselines and pick the number then, unless the stats
+    honesty audit has replaced the flat threshold by then. Record:
     `docs/plans/2026-10-27-wp6a-b-overview-sections.md`.
   - **[feature, Low, Standard]** Per-tier and per-trigger remark switches: deferred from v1
     (user, 2026-10-28, simplest settings first). WP8a ships only the master and mood-line
@@ -113,14 +132,71 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   credited team isn't the scorer's", with no scorer credit or point. One rule at a time with version bumps,
   `rules-diff`, then `release-recompute` moves it. Clutch already leaves this match out of goal-order stats (goals
   per team ≠ score), so it doesn't wait on the fix. Seen 1 time in ~1,931 goals.
-- [ ] **[design, Med, Substantial]** (user, 2026-11-25) Deep review of the whole Trends Clutch and Tilt sections
-  for ambiguity in the data: every tile, ladder rung and chart, checked for what it counts (team vs you, which
-  matches, forfeits and left matches, overtime, a joined-in-progress match), whether the wording says so, and
-  where the stored data can't tell cases apart. Prompted by the late-goals prototype, where "yours" read as
-  your own goals rather than your team's. Record: `docs/plans/2026-11-25-late-goals.md`.
-- [ ] **[design, Low, Standard]** (from analytics step A, the user's future task) Drop support for unknown and
-  limited-time playlists: they'd stop showing in the playlist filter and the stats. `clutchCounts` in
-  `src/shared/clutch.ts` already gives the casual/ranked/tournament rule and can be reused.
+- [ ] **[design, Med, Substantial]** Stats honesty audit (user, 2026-11-25, widened 2026-11-26): every stat on
+  the dashboard checked for noise and for misleading results, then kept, reworded, given a noise check (as Tilt
+  has its standard-error bar) or dropped. Plan it with `research` (methods) and a prototype on real data, as Tilt
+  was. Covers:
+  - Trends Clutch and Tilt: every tile, ladder rung and chart, checked for what it counts (team vs you, which
+    matches, forfeits and left matches, overtime, a joined-in-progress match), whether the wording says so, and
+    where the stored data can't tell cases apart. Prompted by the late-goals prototype, where "yours" read as
+    your own goals rather than your team's. Record: `docs/plans/2026-11-25-late-goals.md`.
+  - "What stood out": a flat ±10% on baselines of 13–65 matches; a noise-aware rule would replace the dated
+    `STOOD_OUT_MIN_PCT` check in the v1 roadmap item.
+  - Clutch tiles on a handful of matches (comebacks, blown leads), Contribution shares and the Trends lines over
+    short periods, and remark triggers that can fire on noise.
+  - New: win % by demo difference and by boost steal difference.
+- [ ] **[design, Med, Substantial]** Playlist scope (user, 2026-11-26; replaces "drop unknown and limited-time
+  playlists" from analytics step A). Decided: record every match as today, but stats count only chosen playlists,
+  and nothing is deleted: a read-side filter, so a correction to `src/shared/playlists.ts` still reaches past
+  matches. Ranked counts only standard 1v1, 2v2 and 3v3; extra modes (ranked or casual Hoops, Rumble, Dropshot,
+  Snow Day, Heatseeker) and limited-time modes stay out of stats, in their own group if shown at all. 1v1 leaves
+  the default stats or gets its own view: duels score more and swing more (kickoff goals, one mistake is a goal),
+  so pooled they skew Clutch and the goal clock. Open, for `/wayfinder` with `research` and `grill-me`: the
+  tournament ids (34 Official, 22 Custom, any others) and ids not yet played; Ranked Solo Standard (12), casual
+  Quads (4) and Honor Duel (53); whether Tilt pools across modes (it measures you, not the game); how the
+  playlist filter shows the groups. `clutchCounts` in `src/shared/clutch.ts` has today's
+  casual/ranked/tournament rule.
+- [ ] **[feature, Med, Standard]** Demo stats (user, 2026-11-26). The `Demolish` statfeed names the attacker
+  (`MainTarget`) and the victim (`SecondaryTarget`) by name, shortcut and team; its seq gives a clock time.
+  Build: demos taken (a new rule; `src/server/remarks/copy.ts` notes the gap), given, taken and the difference
+  on Recap and Trends, a Demos row in Contribution, and two counts with a "near, not necessarily the cause" note:
+  your demo within N s before your team's goal, and being demoed within N s before a concede (N chosen by
+  prototyping; drop a count if nearly every demo lands in the window). Revenge (demoing whoever demoed you within
+  N s) as a remark. Check that names and shortcuts map to accounts reliably. Not doing: demo marks on the goal
+  timeline (noise). Later: demos between you and a friend on the Friends page.
+- [ ] **[feature, Med, Standard]** Boost pickup stats (user, 2026-11-26), from `BoostPickup` events: both teams,
+  never thinned (retention deletes only UpdateStates). Each has the player, the pad's `Location` and
+  `BoostType_Pad` (small) or `BoostType_Pill` (big); `BoostAmount` is unusable (0.12 and 9999 in captures), so
+  count 12 and 100. Build: big vs small pickups per player (your small-pad share), steals (big pads in the
+  opponents' half) and pickups against the opponents. Check raw.db first: only one capture has the events, so
+  older matches may lack them. Not doing for now: a boost row in Contribution, full-tank waste, boost used per
+  minute, your boost when they scored (car state exists only for your own team and older matches are thinned).
+- [ ] **[feature, Med, Substantial]** Season recap (user, 2026-11-26): a recap of a finished season that
+  highlights its stats, shown once the season ends and passes a minimum (such as N matches in it). Uses the
+  seasons table (`src/server/seasons.ts`, synced from `seasons.json`), the playlist scope and the audited stats,
+  hence it comes after them. Needs `/wayfinder` with `research`, `grill-me` and a `prototype`; set the gate from
+  the real S24 count.
+- [ ] **[idea, Low, Substantial]** Replay analysis (user, 2026-11-26): positional insights (rotation and position
+  mistakes, open-net misses, missed saves) that the Stats API can't give, since it has no car positions (car
+  state is your own team only, and only the ball's spot at hits and pads at pickups are located). Replay files hold
+  every car's position, rotation, velocity and boost, and open-source parsers exist (boxcars/rrrocket,
+  carball, subtr-actor). First a time-boxed test in a separate repo: parse 3–5 saved replays, check the positions
+  are there and whether a replay can be tied to the `MatchGuid`, and try one heuristic (such as an open-net miss).
+  The biggest risk is getting replays, not the analysis: the game writes one only when you save it. If it holds,
+  `/wayfinder` and `/research` on:
+  - comparing the user to nearby ranks from a ballchasing replay set (check its API terms and rate limits);
+  - basic mistakes that hold at any rank first (double commits, open-net misses, the last player back
+    committing);
+  - a saved-replay icon on match cards;
+  - training packs from your missed shots and saves (likely needs BakkesMod);
+  - the Stats API's replay commands;
+  - ML only if a question needs it.
+
+  The user's own notes on this are local, not in the repo.
+- [ ] **[idea, Low, TBD]** Kickoffs (suggested 2026-11-26, no replay needed): who reaches the ball first at
+  kickoff, from the first ball hits after one, and goals within a few seconds of a kickoff.
+- [ ] **[idea, Low, TBD]** A focus per session (suggested 2026-11-26): pick one habit to work on (say, small pads)
+  and have the recap track it.
 - [ ] **[design, Low, Trivial]** Trigger: the Scored / Conceded right back note passing 44 characters (two tile
   lines), around 1,000 answered goals; "within 15 s, after 104 of their 1,009 goals" is 43 today. Shorten the
   note then. Record: `docs/plans/2026-11-25-late-goals.md` (review round 1).
