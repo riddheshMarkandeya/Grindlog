@@ -249,6 +249,8 @@ of Plans in [`PROJECT_INDEX_ARCHIVE.md`](PROJECT_INDEX_ARCHIVE.md).
   and each one's status. Start here for what's next.
 
 ## Research
+- `docs/overtime-rl/2026-11-26-round-1.md`: review of a friend's separate app (OvertimeRL) for features to adopt;
+  most rejected (car positions guessed from ball hits), 4 adopted. Later rounds get a new file in that folder.
 - `docs/research/2026-11-17-ui-motion.md`: what motion to add and how (tokens, springs, reduced motion); its
   "Prototype verdict" section is the motion build's spec.
 - `docs/research/2026-11-17-route-view-transitions.md`: page-transition mechanisms for React Router, ranked.

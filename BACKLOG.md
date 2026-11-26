@@ -176,6 +176,11 @@ Order agreed with the user on 2026-11-26; each step is an item below. Take them 
   seasons table (`src/server/seasons.ts`, synced from `seasons.json`), the playlist scope and the audited stats,
   hence it comes after them. Needs `/wayfinder` with `research`, `grill-me` and a `prototype`; set the gate from
   the real S24 count.
+- [ ] **[feature, Low, TBD]** OvertimeRL adoptable features (user, 2026-11-26): build the "Adopt" list from
+  round 1 of the review of a friend's separate app: saved-shot locations on the goal map, a raw double-commit
+  count, assists between friends on the pair page, and epic vs routine saves. Each item is its own Standard
+  task. Prototype the "Maybe" list first. Later rounds get their own file in `docs/overtime-rl/`. Record:
+  `docs/overtime-rl/2026-11-26-round-1.md`.
 - [ ] **[idea, Low, Substantial]** Replay analysis (user, 2026-11-26): positional insights (rotation and position
   mistakes, open-net misses, missed saves) that the Stats API can't give, since it has no car positions (car
   state is your own team only, and only the ball's spot at hits and pads at pickups are located). Replay files hold
