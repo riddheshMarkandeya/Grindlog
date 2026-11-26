@@ -321,18 +321,28 @@ export function drawFifaShieldOnCanvas(
   ctx.lineTo(colX + 18 * sx, y + 116 * sy);
   ctx.stroke();
 
-  // Mode Shield Crest
-  ctx.fillStyle = spec.textMain;
-  ctx.font = `900 ${Math.round(11 * sx)}px system-ui`;
-  ctx.fillText('RL 3v3', colX, y + 138 * sy);
+  // Visual Blue/Silver/Orange Rocket League Stadium Flag
+  const fx = colX - 15 * sx;
+  const fy = y + 124 * sy;
+  const fw = 30 * sx;
+  const fh = 18 * sy;
+  ctx.fillStyle = '#0284c7';
+  ctx.fillRect(fx, fy, fw, fh / 3);
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(fx, fy + fh / 3, fw, fh / 3);
+  ctx.fillStyle = '#ea580c';
+  ctx.fillRect(fx, fy + (2 * fh) / 3, fw, fh / 3);
+  ctx.strokeStyle = spec.divider;
+  ctx.lineWidth = Math.max(0.8, 0.9 * sx);
+  ctx.strokeRect(fx, fy, fw, fh);
 
   // Rule 2
   ctx.beginPath();
-  ctx.moveTo(colX - 18 * sx, y + 148 * sy);
-  ctx.lineTo(colX + 18 * sx, y + 148 * sy);
+  ctx.moveTo(colX - 18 * sx, y + 150 * sy);
+  ctx.lineTo(colX + 18 * sx, y + 150 * sy);
   ctx.stroke();
 
-  // Squad / Club Mini Shield
+  // Mode / Club Crest Emblem (2V2 / 3V3 / ORL)
   ctx.strokeStyle = spec.textMain;
   ctx.lineWidth = Math.max(1.2, 1.5 * sx);
   ctx.beginPath();
@@ -340,7 +350,8 @@ export function drawFifaShieldOnCanvas(
   ctx.stroke();
   ctx.fillStyle = spec.textMain;
   ctx.font = `900 ${Math.round(8.5 * sx)}px system-ui`;
-  ctx.fillText('ORL', colX, y + 177 * sy);
+  const crestText = card.mode === '2s' ? '2V2' : card.mode === '3s' ? '3V3' : 'ORL';
+  ctx.fillText(crestText, colX, y + 177 * sy);
 
   // Hero Car Artwork (Upper Right Portrait Slot)
   if (carImg && carImg.naturalWidth > 0) {

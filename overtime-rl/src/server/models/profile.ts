@@ -576,6 +576,23 @@ export function buildPlayerProfile(
     playerName,
     cache,
     analyzer,
+    mode: 'all',
+  });
+  const fifaCard2s = buildPlayerFifaCard({
+    reader,
+    primaryId: resolvedPrimaryId,
+    playerName,
+    cache,
+    analyzer,
+    mode: '2s',
+  });
+  const fifaCard3s = buildPlayerFifaCard({
+    reader,
+    primaryId: resolvedPrimaryId,
+    playerName,
+    cache,
+    analyzer,
+    mode: '3s',
   });
 
   return {
@@ -594,6 +611,8 @@ export function buildPlayerProfile(
     lowest_rating: lowestRating,
     radar,
     fifa_card: fifaCard ?? undefined,
+    fifa_card_2s: fifaCard2s ?? undefined,
+    fifa_card_3s: fifaCard3s ?? undefined,
     attributes: {
       total_goals: totalGoals,
       goals_per_game: gpg,

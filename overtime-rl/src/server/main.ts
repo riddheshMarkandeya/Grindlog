@@ -375,12 +375,15 @@ const server = http.createServer((req, res) => {
           return;
         }
         const saved = cache.upsertCardPrefs(validated.data);
+        const rawMode = parsedJson?.mode === '2s' || parsedJson?.mode === '3s' ? parsedJson.mode : 'all';
+        const rawCycle = Number(parsedJson?.cycle) || DEFAULT_CARD_CYCLE_SIZE;
         const refreshed = buildPlayerFifaCard({
           reader,
           primaryId: saved.primary_id,
           cache,
           analyzer,
-          cycleSize: DEFAULT_CARD_CYCLE_SIZE,
+          cycleSize: rawCycle,
+          mode: rawMode,
           prefsOverride: saved,
         });
         sendJson(res, 200, { prefs: saved, card: refreshed });
@@ -395,12 +398,15 @@ const server = http.createServer((req, res) => {
     try {
       const targetId = decodeURIComponent(pathname.replace('/api/card/', '').trim());
       const cycleParam = Number(url.searchParams.get('cycle')) || DEFAULT_CARD_CYCLE_SIZE;
+      const modeParamRaw = url.searchParams.get('mode');
+      const modeParam = modeParamRaw === '2s' || modeParamRaw === '3s' ? modeParamRaw : 'all';
       const card = buildPlayerFifaCard({
         reader,
         primaryId: targetId,
         cache,
         analyzer,
         cycleSize: cycleParam,
+        mode: modeParam,
       });
       if (!card) {
         sendJson(res, 404, { error: `Card not found for ${targetId}` });

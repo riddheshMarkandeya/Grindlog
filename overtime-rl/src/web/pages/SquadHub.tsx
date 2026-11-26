@@ -30,6 +30,7 @@ export const SquadHubView: React.FC<SquadHubProps> = ({ onSelectMatch, onOpenPro
   const [loadingTrio, setLoadingTrio] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'pinned' | 'high_syn' | 'high_dc' | 'winners' | 'frequent'>('pinned');
+  const [cardModeFilter, setCardModeFilter] = useState<'all' | '2s' | '3s'>('all');
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(initialFriendId);
   const [dossier, setDossier] = useState<DuoFriendDossier | null>(null);
   const [loadingDossier, setLoadingDossier] = useState<boolean>(false);
@@ -640,7 +641,33 @@ export const SquadHubView: React.FC<SquadHubProps> = ({ onSelectMatch, onOpenPro
               width: '220px',
             }}
           />
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
+            {/* Mode Filter for Partner FIFA Cards */}
+            <div style={{ display: 'inline-flex', backgroundColor: '#0c121e', border: '1px solid #233252', borderRadius: '14px', padding: '2px', gap: '2px', marginRight: '6px' }}>
+              {([
+                { id: 'all', label: 'All Cards' },
+                { id: '2s', label: '2v2 Cards' },
+                { id: '3s', label: '3v3 Cards' },
+              ] as const).map(m => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setCardModeFilter(m.id)}
+                  style={{
+                    backgroundColor: cardModeFilter === m.id ? '#0284c7' : 'transparent',
+                    color: cardModeFilter === m.id ? '#ffffff' : '#94a3b8',
+                    border: 'none',
+                    padding: '3px 9px',
+                    borderRadius: '12px',
+                    fontSize: '10px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
             {[
               { id: 'all', label: 'All' },
               { id: 'pinned', label: '⭐ Friends Only' },
@@ -686,6 +713,12 @@ export const SquadHubView: React.FC<SquadHubProps> = ({ onSelectMatch, onOpenPro
           {filteredFriends.map(friend => {
             const isHighDc = friend.double_commits_per_game >= 0.70;
             const isGoodChemistry = friend.chemistry_score >= 70;
+            const displayedCard =
+              cardModeFilter === '2s'
+                ? friend.fifa_card_2s
+                : cardModeFilter === '3s'
+                ? friend.fifa_card_3s
+                : friend.fifa_card;
 
             return (
               <div
@@ -719,10 +752,10 @@ export const SquadHubView: React.FC<SquadHubProps> = ({ onSelectMatch, onOpenPro
               >
                 <div>
                   {/* Compact FIFA Ultimate Card Showcase when available */}
-                  {friend.fifa_card && (
+                  {displayedCard && (
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
                       <FifaCard
-                        card={friend.fifa_card}
+                        card={displayedCard}
                         size="sm"
                         editable
                         showShare
@@ -730,7 +763,14 @@ export const SquadHubView: React.FC<SquadHubProps> = ({ onSelectMatch, onOpenPro
                         onCardUpdated={nextCard =>
                           setFriends(prev =>
                             prev.map(item =>
-                              item.primary_id === friend.primary_id ? { ...item, fifa_card: nextCard } : item
+                              item.primary_id === friend.primary_id
+                                ? {
+                                    ...item,
+                                    fifa_card: nextCard.mode === 'all' ? nextCard : item.fifa_card ? { ...item.fifa_card, car_body: nextCard.car_body, display_name: nextCard.display_name, card_title: nextCard.card_title } : item.fifa_card,
+                                    fifa_card_2s: nextCard.mode === '2s' ? nextCard : item.fifa_card_2s ? { ...item.fifa_card_2s, car_body: nextCard.car_body, display_name: nextCard.display_name, card_title: nextCard.card_title } : item.fifa_card_2s,
+                                    fifa_card_3s: nextCard.mode === '3s' ? nextCard : item.fifa_card_3s ? { ...item.fifa_card_3s, car_body: nextCard.car_body, display_name: nextCard.display_name, card_title: nextCard.card_title } : item.fifa_card_3s,
+                                  }
+                                : item
                             )
                           )
                         }

@@ -163,6 +163,27 @@ export function buildSquadFriendsStats(
             playerName: t.name,
             cache,
             analyzer: resolvedAnalyzer,
+            mode: 'all',
+          })
+        : null;
+      const fifaCard2s = buildFriendCard
+        ? buildPlayerFifaCard({
+            reader,
+            primaryId: t.primary_id,
+            playerName: t.name,
+            cache,
+            analyzer: resolvedAnalyzer,
+            mode: '2s',
+          })
+        : null;
+      const fifaCard3s = buildFriendCard
+        ? buildPlayerFifaCard({
+            reader,
+            primaryId: t.primary_id,
+            playerName: t.name,
+            cache,
+            analyzer: resolvedAnalyzer,
+            mode: '3s',
           })
         : null;
 
@@ -184,6 +205,8 @@ export function buildSquadFriendsStats(
         chemistry_verdict: chemistryVerdict,
         last_played: t.last_played,
         fifa_card: fifaCard ?? undefined,
+        fifa_card_2s: fifaCard2s ?? undefined,
+        fifa_card_3s: fifaCard3s ?? undefined,
       });
     }
 
@@ -927,6 +950,7 @@ export function buildTrioSquadDossier(
             playerName: 'Swapo_o',
             cache,
             analyzer: resolvedAnalyzer,
+            mode: '3s',
           }) ?? undefined,
       },
       {
@@ -954,6 +978,7 @@ export function buildTrioSquadDossier(
             playerName: 'Mechless Madness',
             cache,
             analyzer: resolvedAnalyzer,
+            mode: '3s',
           }) ?? undefined,
       },
       {
@@ -981,6 +1006,7 @@ export function buildTrioSquadDossier(
             playerName: 'Rocinante_.',
             cache,
             analyzer: resolvedAnalyzer,
+            mode: '3s',
           }) ?? undefined,
       },
     ];

@@ -417,8 +417,12 @@ export const PlayStyleBadgeSchema = z.object({
 });
 export type PlayStyleBadge = z.infer<typeof PlayStyleBadgeSchema>;
 
+export const CardModeSchema = z.enum(['all', '2s', '3s']);
+export type CardMode = z.infer<typeof CardModeSchema>;
+
 export const FifaCardDataSchema = z.object({
   primary_id: z.string(),
+  mode: CardModeSchema.optional().default('all'),
   player_name: z.string(),
   display_name: z.string(),
   card_title: z.string(),
@@ -481,6 +485,8 @@ export const PlayerProfileSchema = z.object({
   lowest_rating: z.number(),
   radar: RadarProfileSchema,
   fifa_card: FifaCardDataSchema.optional(),
+  fifa_card_2s: FifaCardDataSchema.optional(),
+  fifa_card_3s: FifaCardDataSchema.optional(),
   attributes: z.object({
     total_goals: z.number(),
     goals_per_game: z.number(),
@@ -527,6 +533,8 @@ export const SquadFriendStatsSchema = z.object({
   chemistry_verdict: z.string(),
   last_played: z.number().nullable(),
   fifa_card: FifaCardDataSchema.optional(),
+  fifa_card_2s: FifaCardDataSchema.optional(),
+  fifa_card_3s: FifaCardDataSchema.optional(),
 });
 export type SquadFriendStats = z.infer<typeof SquadFriendStatsSchema>;
 

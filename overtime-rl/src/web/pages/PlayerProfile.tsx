@@ -29,23 +29,70 @@ export const PlayerProfileView: React.FC<PlayerProfileProps> = ({
   const [squadPlayers, setSquadPlayers] = useState<FriendSwitcherItem[]>([]);
   const [userBaselineRadar, setUserBaselineRadar] = useState<RadarProfile | null>(null);
   const [cardCycleSize, setCardCycleSize] = useState<10 | 15 | 20>(15);
-  const [cardData, setCardData] = useState<FifaCardData | undefined>(profile.fifa_card);
+  const [cardModeTab, setCardModeTab] = useState<'both' | '2s' | '3s' | 'all'>('both');
+  const [focusMode, setFocusMode] = useState<'2s' | '3s' | 'all'>('2s');
+  const [cardAll, setCardAll] = useState<FifaCardData | undefined>(profile.fifa_card);
+  const [card2s, setCard2s] = useState<FifaCardData | undefined>(profile.fifa_card_2s);
+  const [card3s, setCard3s] = useState<FifaCardData | undefined>(profile.fifa_card_3s);
 
   useEffect(() => {
-    setCardData(profile.fifa_card);
+    setCardAll(profile.fifa_card);
+    setCard2s(profile.fifa_card_2s);
+    setCard3s(profile.fifa_card_3s);
     setCardCycleSize(15);
+    if (profile.fifa_card_2s && profile.fifa_card_3s) {
+      setCardModeTab('both');
+      setFocusMode('2s');
+    } else if (profile.fifa_card_2s) {
+      setCardModeTab('2s');
+      setFocusMode('2s');
+    } else if (profile.fifa_card_3s) {
+      setCardModeTab('3s');
+      setFocusMode('3s');
+    } else {
+      setCardModeTab('all');
+      setFocusMode('all');
+    }
   }, [profile]);
 
   const handleCycleChange = async (nextCycle: 10 | 15 | 20) => {
     setCardCycleSize(nextCycle);
+    const pid = encodeURIComponent(profile.primary_id);
     try {
-      const next = await fetch(`/api/card/${encodeURIComponent(profile.primary_id)}?cycle=${nextCycle}`).then(r =>
-        r.json()
-      );
-      if (next && next.primary_id) {
-        setCardData(next);
-      }
+      const [rAll, r2s, r3s] = await Promise.all([
+        fetch(`/api/card/${pid}?cycle=${nextCycle}&mode=all`).then(r => (r.ok ? r.json() : null)),
+        fetch(`/api/card/${pid}?cycle=${nextCycle}&mode=2s`).then(r => (r.ok ? r.json() : null)),
+        fetch(`/api/card/${pid}?cycle=${nextCycle}&mode=3s`).then(r => (r.ok ? r.json() : null)),
+      ]);
+      if (rAll?.primary_id) setCardAll(rAll);
+      if (r2s?.primary_id) setCard2s(r2s);
+      if (r3s?.primary_id) setCard3s(r3s);
     } catch {}
+  };
+
+  const syncUpdatedCard = (updated: FifaCardData) => {
+    const syncIdentity = (prev?: FifaCardData): FifaCardData | undefined =>
+      prev
+        ? {
+            ...prev,
+            car_body: updated.car_body,
+            display_name: updated.display_name,
+            card_title: updated.card_title,
+          }
+        : undefined;
+    if (updated.mode === '2s') {
+      setCard2s(updated);
+      setCard3s(prev => syncIdentity(prev));
+      setCardAll(prev => syncIdentity(prev));
+    } else if (updated.mode === '3s') {
+      setCard3s(updated);
+      setCard2s(prev => syncIdentity(prev));
+      setCardAll(prev => syncIdentity(prev));
+    } else {
+      setCardAll(updated);
+      setCard2s(prev => syncIdentity(prev));
+      setCard3s(prev => syncIdentity(prev));
+    }
   };
 
   useEffect(() => {
@@ -393,44 +440,115 @@ export const PlayerProfileView: React.FC<PlayerProfileProps> = ({
         </div>
       </div>
 
-      {/* 1.5 FIFA Ultimate Card & 15-Game Rating Cycle Showcase */}
-      {cardData && (
-        <div
-          className="surface-card"
-          style={{
-            padding: '24px',
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '24px',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'center', flex: '0 0 auto', margin: '0 auto' }}>
-            <FifaCard
-              card={cardData}
-              size="md"
-              editable
-              showShare
-              showCycleBar
-              onCardUpdated={setCardData}
-            />
-          </div>
+      {/* 1.5 FIFA Ultimate Card Showcase (Dedicated 2s & 3s Cards + 15-Game Lock) */}
+      {(card2s || card3s || cardAll) && (() => {
+        const focusedCard =
+          cardModeTab === 'both'
+            ? focusMode === '3s'
+              ? card3s || card2s || cardAll
+              : card2s || card3s || cardAll
+            : cardModeTab === '2s'
+            ? card2s || cardAll
+            : cardModeTab === '3s'
+            ? card3s || cardAll
+            : cardAll || card2s || card3s;
 
-          <div style={{ flex: '1 1 360px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-              <div>
-                <div style={{ fontSize: '11px', fontWeight: 800, color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  FIFA+RL Ultimate Card Edition
-                </div>
-                <h3 style={{ fontSize: '20px', fontWeight: 900, color: '#f8fafc', margin: '2px 0 0 0' }}>
-                  {cardData.cycle.is_provisional
-                    ? `Provisional Debut (${cardData.cycle.total_matches}/${cardData.cycle.cycle_size} Matches)`
-                    : `Locked Cycle #${cardData.cycle.current_cycle} · Matches #${cardData.cycle.window_start_match}–#${cardData.cycle.window_end_match}`}
-                </h3>
+        return (
+          <div
+            className="surface-card"
+            style={{
+              padding: '24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px',
+            }}
+          >
+            {/* Header Bar: Card Mode Switcher + 10G/15G/20G Cycle Selector */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                {card2s && card3s && (
+                  <button
+                    type="button"
+                    onClick={() => setCardModeTab('both')}
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      padding: '5px 12px',
+                      borderRadius: '8px',
+                      border: cardModeTab === 'both' ? '1px solid #38bdf8' : '1px solid #1c273e',
+                      backgroundColor: cardModeTab === 'both' ? '#0284c7' : '#0c121e',
+                      color: '#ffffff',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    2s & 3s Cards
+                  </button>
+                )}
+                {card2s && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCardModeTab('2s');
+                      setFocusMode('2s');
+                    }}
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      padding: '5px 12px',
+                      borderRadius: '8px',
+                      border: cardModeTab === '2s' ? '1px solid #38bdf8' : '1px solid #1c273e',
+                      backgroundColor: cardModeTab === '2s' ? '#0284c7' : '#0c121e',
+                      color: cardModeTab === '2s' ? '#ffffff' : '#94a3b8',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    2v2 Doubles ({card2s.ovr})
+                  </button>
+                )}
+                {card3s && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCardModeTab('3s');
+                      setFocusMode('3s');
+                    }}
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      padding: '5px 12px',
+                      borderRadius: '8px',
+                      border: cardModeTab === '3s' ? '1px solid #38bdf8' : '1px solid #1c273e',
+                      backgroundColor: cardModeTab === '3s' ? '#0284c7' : '#0c121e',
+                      color: cardModeTab === '3s' ? '#ffffff' : '#94a3b8',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    3v3 Standard ({card3s.ovr})
+                  </button>
+                )}
+                {cardAll && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCardModeTab('all');
+                      setFocusMode('all');
+                    }}
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      padding: '5px 12px',
+                      borderRadius: '8px',
+                      border: cardModeTab === 'all' ? '1px solid #38bdf8' : '1px solid #1c273e',
+                      backgroundColor: cardModeTab === 'all' ? '#0284c7' : '#0c121e',
+                      color: cardModeTab === 'all' ? '#ffffff' : '#94a3b8',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Overall ({cardAll.ovr})
+                  </button>
+                )}
               </div>
 
-              {/* Configurable 10 / 15 / 20 Game Lock Cycle Switcher */}
               <div style={{ display: 'inline-flex', backgroundColor: '#0c121e', border: '1px solid #1c273e', borderRadius: '8px', padding: '3px', gap: '4px' }}>
                 {([10, 15, 20] as const).map(sz => (
                   <button
@@ -454,75 +572,159 @@ export const PlayerProfileView: React.FC<PlayerProfileProps> = ({
               </div>
             </div>
 
-            <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
-              Your card locks onto the most recent completed <strong style={{ color: '#e2e8f0' }}>{cardData.cycle.cycle_size}-match</strong> block so individual outlier matches never skew your rating.{' '}
-              {cardData.cycle.is_provisional
-                ? `Play ${cardData.cycle.matches_until_refresh} more match${cardData.cycle.matches_until_refresh === 1 ? '' : 'es'} to unlock Cycle #1.`
-                : `Progress: ${cardData.cycle.progress_in_cycle}/${cardData.cycle.cycle_size} matches toward Cycle #${cardData.cycle.current_cycle + 1} (${cardData.cycle.matches_until_refresh} remaining).`}
-            </p>
-
-            {/* Cycle Performance & Delta Chips */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px' }}>
-              <div className="surface-sub" style={{ padding: '10px 12px' }}>
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 800 }}>CYCLE OVR</div>
-                <div style={{ fontSize: '20px', fontWeight: 900, color: cardData.accent_color, fontFamily: 'var(--font-mono)' }}>
-                  {cardData.ovr}{' '}
-                  {cardData.stat_deltas.ovr !== 0 && (
-                    <span style={{ fontSize: '12px', color: cardData.stat_deltas.ovr > 0 ? '#34d399' : '#f87171' }}>
-                      ({cardData.stat_deltas.ovr > 0 ? `+${cardData.stat_deltas.ovr}` : cardData.stat_deltas.ovr})
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="surface-sub" style={{ padding: '10px 12px' }}>
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 800 }}>CYCLE WIN RATE</div>
-                <div style={{ fontSize: '20px', fontWeight: 900, color: cardData.cycle.win_rate >= 50 ? '#34d399' : '#f87171', fontFamily: 'var(--font-mono)' }}>
-                  {cardData.cycle.win_rate}%
-                </div>
-              </div>
-              <div className="surface-sub" style={{ padding: '10px 12px' }}>
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 800 }}>CYCLE RATING</div>
-                <div style={{ fontSize: '20px', fontWeight: 900, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
-                  {cardData.cycle.avg_rating.toFixed(1)}★
-                </div>
-              </div>
-            </div>
-
-            {/* PlayStyles+ Earned Details */}
-            {cardData.playstyles.length > 0 && (
-              <div>
-                <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
-                  Active PlayStyles+ (Earned From Cycle Telemetry)
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  {cardData.playstyles.map(ps => (
-                    <div
-                      key={ps.id}
-                      className="surface-sub"
+            {/* Card Visual Row + Cycle Diagnostics */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', alignItems: 'flex-start', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'center', alignItems: 'flex-start' }}>
+                {cardModeTab === 'both' && card2s && (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                    <span
                       style={{
-                        padding: '6px 10px',
-                        border: ps.tier === 'plus' ? '1px solid #fbbf24' : '1px solid var(--border-hairline)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
+                        fontSize: '10px',
+                        fontWeight: 900,
+                        letterSpacing: '0.1em',
+                        color: focusMode === '2s' ? '#38bdf8' : '#64748b',
+                        textTransform: 'uppercase',
                       }}
                     >
-                      <span>{ps.icon}</span>
-                      <span style={{ fontSize: '12px', fontWeight: 800, color: ps.tier === 'plus' ? '#fbbf24' : '#e2e8f0' }}>
-                        {ps.name}
-                        {ps.tier === 'plus' ? '+' : ''}
-                      </span>
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                        {ps.metric_label}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                      2v2 Doubles Card
+                    </span>
+                    <FifaCard
+                      card={card2s}
+                      size="md"
+                      editable
+                      showShare
+                      showCycleBar
+                      onClick={() => setFocusMode('2s')}
+                      onCardUpdated={syncUpdatedCard}
+                    />
+                  </div>
+                )}
+
+                {cardModeTab === 'both' && card3s && (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        fontWeight: 900,
+                        letterSpacing: '0.1em',
+                        color: focusMode === '3s' ? '#38bdf8' : '#64748b',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      3v3 Standard Card
+                    </span>
+                    <FifaCard
+                      card={card3s}
+                      size="md"
+                      editable
+                      showShare
+                      showCycleBar
+                      onClick={() => setFocusMode('3s')}
+                      onCardUpdated={syncUpdatedCard}
+                    />
+                  </div>
+                )}
+
+                {cardModeTab !== 'both' && focusedCard && (
+                  <FifaCard
+                    card={focusedCard}
+                    size="md"
+                    editable
+                    showShare
+                    showCycleBar
+                    onCardUpdated={syncUpdatedCard}
+                  />
+                )}
               </div>
-            )}
+
+              {focusedCard && (
+                <div style={{ flex: '1 1 320px', display: 'flex', flexDirection: 'column', gap: '16px', paddingTop: '12px' }}>
+                  <div>
+                    <div style={{ fontSize: '11px', fontWeight: 800, color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                      {focusedCard.mode === '2s'
+                        ? '2v2 Doubles Rating Cycle'
+                        : focusedCard.mode === '3s'
+                        ? '3v3 Standard Rating Cycle'
+                        : 'Overall Rating Cycle'}{' '}
+                      · {focusedCard.promo_edition}
+                    </div>
+                    <h3 style={{ fontSize: '20px', fontWeight: 900, color: '#f8fafc', margin: '2px 0 0 0' }}>
+                      {focusedCard.cycle.is_provisional
+                        ? `Provisional Debut (${focusedCard.cycle.total_matches}/${focusedCard.cycle.cycle_size} Matches)`
+                        : `Locked Cycle #${focusedCard.cycle.current_cycle} · Matches #${focusedCard.cycle.window_start_match}–#${focusedCard.cycle.window_end_match}`}
+                    </h3>
+                  </div>
+
+                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
+                    Locks onto the most recent completed <strong style={{ color: '#e2e8f0' }}>{focusedCard.cycle.cycle_size}-match</strong> block in this playlist so individual matches never skew your card.{' '}
+                    {focusedCard.cycle.is_provisional
+                      ? `Play ${focusedCard.cycle.matches_until_refresh} more match${focusedCard.cycle.matches_until_refresh === 1 ? '' : 'es'} to unlock Cycle #1.`
+                      : `Progress: ${focusedCard.cycle.progress_in_cycle}/${focusedCard.cycle.cycle_size} matches toward Cycle #${focusedCard.cycle.current_cycle + 1} (${focusedCard.cycle.matches_until_refresh} remaining).`}
+                  </p>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(115px, 1fr))', gap: '10px' }}>
+                    <div className="surface-sub" style={{ padding: '10px 12px' }}>
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 800 }}>CYCLE OVR</div>
+                      <div style={{ fontSize: '20px', fontWeight: 900, color: focusedCard.accent_color, fontFamily: 'var(--font-mono)' }}>
+                        {focusedCard.ovr}{' '}
+                        {focusedCard.stat_deltas.ovr !== 0 && (
+                          <span style={{ fontSize: '12px', color: focusedCard.stat_deltas.ovr > 0 ? '#34d399' : '#f87171' }}>
+                            ({focusedCard.stat_deltas.ovr > 0 ? `+${focusedCard.stat_deltas.ovr}` : focusedCard.stat_deltas.ovr})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="surface-sub" style={{ padding: '10px 12px' }}>
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 800 }}>CYCLE WIN RATE</div>
+                      <div style={{ fontSize: '20px', fontWeight: 900, color: focusedCard.cycle.win_rate >= 50 ? '#34d399' : '#f87171', fontFamily: 'var(--font-mono)' }}>
+                        {focusedCard.cycle.win_rate}%
+                      </div>
+                    </div>
+                    <div className="surface-sub" style={{ padding: '10px 12px' }}>
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 800 }}>CYCLE RATING</div>
+                      <div style={{ fontSize: '20px', fontWeight: 900, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
+                        {focusedCard.cycle.avg_rating.toFixed(1)}★
+                      </div>
+                    </div>
+                  </div>
+
+                  {focusedCard.playstyles.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                        Earned PlayStyles+
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {focusedCard.playstyles.map(ps => (
+                          <div
+                            key={ps.id}
+                            className="surface-sub"
+                            style={{
+                              padding: '6px 10px',
+                              border: ps.tier === 'plus' ? '1px solid #fbbf24' : '1px solid var(--border-hairline)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                            }}
+                          >
+                            <span>{ps.icon}</span>
+                            <span style={{ fontSize: '12px', fontWeight: 800, color: ps.tier === 'plus' ? '#fbbf24' : '#e2e8f0' }}>
+                              {ps.name}
+                              {ps.tier === 'plus' ? '+' : ''}
+                            </span>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                              {ps.metric_label}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 2. Tactical Radar & AI Career Diagnostics */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px' }}>

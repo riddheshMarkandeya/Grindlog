@@ -1,5 +1,6 @@
 import type {
   CarBodyType,
+  CardMode,
   FifaCardData,
   MatchPlayerAnalysis,
   PlayerCardPrefs,
@@ -340,6 +341,19 @@ function resolveDefaultCardName(rawName: string): string {
 }
 
 /**
+ * Classifies a player match row cleanly into 2s vs 3s using playlist_id and actual non-bot team size.
+ */
+export function classifyRowGameMode(row: { playlist_id?: number | null; team_size?: number }): '2s' | '3s' | 'other' {
+  const pid = row.playlist_id ?? 0;
+  const ts = row.team_size ?? 0;
+  if (pid === 2 || pid === 11) return '2s';
+  if (pid === 1 || pid === 12 || pid === 13) return '3s';
+  if (ts === 2) return '2s';
+  if (ts === 3) return '3s';
+  return 'other';
+}
+
+/**
  * Builds the player's shareable FUT-style FIFA+RL Card locked to completed 15-game Rating Cycles.
  */
 export function buildPlayerFifaCard(params: {
@@ -349,13 +363,26 @@ export function buildPlayerFifaCard(params: {
   cache?: OvertimeDBCache;
   analyzer?: MatchAnalyzer;
   cycleSize?: number;
+  mode?: CardMode;
   prefsOverride?: PlayerCardPrefs | null;
 }): FifaCardData | null {
-  const { reader, primaryId, playerName, cache, analyzer, cycleSize = DEFAULT_CARD_CYCLE_SIZE, prefsOverride } = params;
-  const rows = reader.getPlayerMatches(primaryId);
+  const {
+    reader,
+    primaryId,
+    playerName,
+    cache,
+    analyzer,
+    cycleSize = DEFAULT_CARD_CYCLE_SIZE,
+    mode = 'all',
+    prefsOverride,
+  } = params;
+  const allRows = reader.getPlayerMatches(primaryId);
+  if (allRows.length === 0) return null;
+
+  const rows = mode === 'all' ? allRows : allRows.filter(r => classifyRowGameMode(r) === mode);
   if (rows.length === 0) return null;
 
-  const resolvedName = playerName || rows[0].name || 'Unknown Pilot';
+  const resolvedName = playerName || rows[0].name || allRows[0].name || 'Unknown Pilot';
   const resolvedPid = rows[0].primary_id || primaryId;
   const window = sliceCardCycleMatches(rows, cycleSize);
 
@@ -377,6 +404,7 @@ export function buildPlayerFifaCard(params: {
 
   return {
     primary_id: resolvedPid,
+    mode,
     player_name: resolvedName,
     display_name: displayName,
     card_title: cardTitle,

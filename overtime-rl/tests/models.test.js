@@ -12,7 +12,7 @@ import { getPlayerMatchTitles } from '../src/shared/awards.ts';
 import { calculateTacticalOvr } from '../src/shared/ovr.ts';
 import { buildSessionPodium, computeSessionTeamTotals } from '../src/server/models/session.ts';
 import { extractFifaPlayMetrics, evaluateConcededGoalChains } from '../src/server/models/fifa-telemetry.ts';
-import { sliceCardCycleMatches, resolveCardPosition, resolvePromoEdition, extractCardPlayStyles } from '../src/server/models/fifa-card.ts';
+import { sliceCardCycleMatches, resolveCardPosition, resolvePromoEdition, extractCardPlayStyles, classifyRowGameMode } from '../src/server/models/fifa-card.ts';
 import { OvertimeDBCache } from '../src/server/db/cache.ts';
 test('calculateXG - tap in should have high xG and be a big chance', () => {
     // Point blank shot in front of Orange goal (Y = 5120)
@@ -820,6 +820,11 @@ test('FIFA card helpers & OvertimeDBCache player_card_prefs persistence', () => 
     });
     assert.equal(saved.car_body, 'fennec');
     assert.equal(cache.getCardPrefs('Epic|swapo|0')?.custom_title, 'NET HUNTER');
+    assert.equal(classifyRowGameMode({ playlist_id: 11, team_size: 2 }), '2s');
+    assert.equal(classifyRowGameMode({ playlist_id: 2, team_size: 2 }), '2s');
+    assert.equal(classifyRowGameMode({ playlist_id: 13, team_size: 3 }), '3s');
+    assert.equal(classifyRowGameMode({ playlist_id: 34, team_size: 2 }), '2s');
+    assert.equal(classifyRowGameMode({ playlist_id: 34, team_size: 3 }), '3s');
     cache.close();
     try { fs.unlinkSync(tmpDb); } catch {}
 });

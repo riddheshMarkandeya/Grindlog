@@ -76,6 +76,8 @@ export const FifaCard: React.FC<FifaCardProps> = ({
           car_body: carDraft,
           custom_name: nameDraft.trim() || null,
           custom_title: titleDraft.trim() || null,
+          mode: card.mode || 'all',
+          cycle: card.cycle.cycle_size,
         }),
       }).then(r => r.json());
       if (res.card && onCardUpdated) {
@@ -219,25 +221,18 @@ export const FifaCard: React.FC<FifaCardProps> = ({
 
             <line x1="38" y1="115" x2="74" y2="115" stroke={spec.divider} strokeWidth="1.2" />
 
+            {/* Visual Rocket League Blue-White-Orange Flag (replacing text clutter) */}
+            <rect x="41" y="124" width="30" height="6" fill="#0284c7" />
+            <rect x="41" y="130" width="30" height="6" fill="#f8fafc" />
+            <rect x="41" y="136" width="30" height="6" fill="#ea580c" />
+            <rect x="41" y="124" width="30" height="18" fill="none" stroke={spec.divider} strokeWidth="1" />
+
+            <line x1="38" y1="150" x2="74" y2="150" stroke={spec.divider} strokeWidth="1.2" />
+
+            <circle cx="56" cy="174" r="14" fill="none" stroke={spec.textMain} strokeWidth="1.6" />
             <text
               x="56"
-              y="136"
-              textAnchor="middle"
-              fill={spec.textMain}
-              fontSize="10.5"
-              fontWeight="900"
-              letterSpacing="0.8"
-              fontFamily="system-ui, sans-serif"
-            >
-              RL 3v3
-            </text>
-
-            <line x1="38" y1="146" x2="74" y2="146" stroke={spec.divider} strokeWidth="1.2" />
-
-            <circle cx="56" cy="172" r="14" fill="none" stroke={spec.textMain} strokeWidth="1.6" />
-            <text
-              x="56"
-              y="175"
+              y="177"
               textAnchor="middle"
               fill={spec.textMain}
               fontSize="8.5"
@@ -245,7 +240,7 @@ export const FifaCard: React.FC<FifaCardProps> = ({
               letterSpacing="0.6"
               fontFamily="system-ui, sans-serif"
             >
-              ORL
+              {card.mode === '2s' ? '2V2' : card.mode === '3s' ? '3V3' : 'ORL'}
             </text>
 
             {/* Real 3D Rocket League Car Cutout PNG */}

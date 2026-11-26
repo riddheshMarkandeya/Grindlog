@@ -229,13 +229,15 @@ export class GrindlogReader {
     score_team0: number;
     score_team1: number;
     winner_team_num: number | null;
+    team_size?: number;
   }> {
     const db = this.openTracker();
     try {
       const cleanedName = primaryIdOrName.startsWith('custom:') ? primaryIdOrName.slice(7) : primaryIdOrName;
       const byPidStmt = db.prepare(`
         SELECT mp.*, m.started_at, m.playlist_id, m.arena, m.overtime,
-               m.score_team0, m.score_team1, m.winner_team_num
+               m.score_team0, m.score_team1, m.winner_team_num,
+               (SELECT COUNT(*) FROM match_players mp2 WHERE mp2.match_guid = m.guid AND mp2.team_num = mp.team_num AND mp2.is_bot = 0) as team_size
         FROM match_players mp
         JOIN matches m ON mp.match_guid = m.guid
         WHERE mp.primary_id = ?
@@ -246,7 +248,8 @@ export class GrindlogReader {
 
       const byNameStmt = db.prepare(`
         SELECT mp.*, m.started_at, m.playlist_id, m.arena, m.overtime,
-               m.score_team0, m.score_team1, m.winner_team_num
+               m.score_team0, m.score_team1, m.winner_team_num,
+               (SELECT COUNT(*) FROM match_players mp2 WHERE mp2.match_guid = m.guid AND mp2.team_num = mp.team_num AND mp2.is_bot = 0) as team_size
         FROM match_players mp
         JOIN matches m ON mp.match_guid = m.guid
         WHERE LOWER(mp.name) = LOWER(?) AND mp.is_bot = 0
