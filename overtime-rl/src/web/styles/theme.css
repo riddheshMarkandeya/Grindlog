@@ -1,0 +1,290 @@
+/* OvertimeRL - Unified 2026 Liquid Glass & Multi-Theme Design System */
+:root,
+[data-theme="obsidian"] {
+  --bg-obsidian: #060a13;
+  --bg-card: rgba(13, 21, 38, 0.72);
+  --bg-card-elevated: rgba(17, 27, 48, 0.86);
+  --bg-sub: rgba(20, 31, 56, 0.58);
+  --bg-inset: #0a101d;
+  --bg-glass-base: rgba(13, 21, 38, 0.72);
+  --bg-glass-elevated: rgba(17, 27, 48, 0.86);
+  --bg-glass-sub: rgba(20, 31, 56, 0.58);
+  --bg-glass-hover: rgba(30, 46, 78, 0.65);
+
+  --bg-glow-1: rgba(56, 189, 248, 0.09);
+  --bg-glow-2: rgba(99, 102, 241, 0.08);
+  --bg-glow-3: rgba(16, 185, 129, 0.06);
+
+  --border-glass: rgba(148, 163, 184, 0.14);
+  --border-hairline: rgba(148, 163, 184, 0.14);
+  --border-specular-top: rgba(255, 255, 255, 0.2);
+  --border-specular-left: rgba(255, 255, 255, 0.12);
+  --border-focus: #38bdf8;
+
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
+
+  --accent-cyan: #38bdf8;
+  --accent-cyan-soft: rgba(56, 189, 248, 0.15);
+  --accent-cyan-glow: rgba(56, 189, 248, 0.32);
+  --accent-emerald: #10b981;
+  --accent-emerald-glow: rgba(16, 185, 129, 0.3);
+  --accent-amber: #fbbf24;
+  --accent-rose: #f87171;
+
+  --team0-blue: #38bdf8;
+  --team0-blue-glow: rgba(56, 189, 248, 0.35);
+  --team1-orange: #fb923c;
+  --team1-orange-glow: rgba(251, 146, 60, 0.35);
+
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+[data-theme="carbon"] {
+  --bg-obsidian: #07080c;
+  --bg-card: rgba(18, 20, 27, 0.78);
+  --bg-card-elevated: rgba(24, 27, 37, 0.90);
+  --bg-sub: rgba(28, 32, 43, 0.65);
+  --bg-inset: #0c0e13;
+  --bg-glass-base: rgba(18, 20, 27, 0.78);
+  --bg-glass-elevated: rgba(24, 27, 37, 0.90);
+  --bg-glass-sub: rgba(28, 32, 43, 0.65);
+  --bg-glass-hover: rgba(42, 47, 63, 0.65);
+
+  --bg-glow-1: rgba(34, 211, 238, 0.07);
+  --bg-glow-2: rgba(168, 85, 247, 0.06);
+  --bg-glow-3: rgba(52, 211, 153, 0.05);
+
+  --border-glass: rgba(255, 255, 255, 0.09);
+  --border-hairline: rgba(255, 255, 255, 0.09);
+  --border-specular-top: rgba(255, 255, 255, 0.19);
+  --border-specular-left: rgba(255, 255, 255, 0.11);
+  --border-focus: #22d3ee;
+
+  --accent-cyan: #22d3ee;
+  --accent-cyan-soft: rgba(34, 211, 238, 0.15);
+  --accent-cyan-glow: rgba(34, 211, 238, 0.3);
+  --accent-emerald: #34d399;
+  --accent-amber: #fbbf24;
+  --accent-rose: #fb7185;
+}
+
+[data-theme="rlcs"] {
+  --bg-obsidian: #050b18;
+  --bg-card: rgba(11, 23, 49, 0.78);
+  --bg-card-elevated: rgba(15, 31, 66, 0.88);
+  --bg-sub: rgba(20, 39, 78, 0.62);
+  --bg-inset: #071228;
+  --bg-glass-base: rgba(11, 23, 49, 0.78);
+  --bg-glass-elevated: rgba(15, 31, 66, 0.88);
+  --bg-glass-sub: rgba(20, 39, 78, 0.62);
+  --bg-glass-hover: rgba(28, 55, 108, 0.68);
+
+  --bg-glow-1: rgba(0, 212, 255, 0.11);
+  --bg-glow-2: rgba(59, 130, 246, 0.11);
+  --bg-glow-3: rgba(251, 191, 36, 0.05);
+
+  --border-glass: rgba(96, 165, 250, 0.2);
+  --border-hairline: rgba(96, 165, 250, 0.18);
+  --border-specular-top: rgba(147, 197, 253, 0.28);
+  --border-specular-left: rgba(147, 197, 253, 0.15);
+  --border-focus: #00d4ff;
+
+  --accent-cyan: #00d4ff;
+  --accent-cyan-soft: rgba(0, 212, 255, 0.17);
+  --accent-cyan-glow: rgba(0, 212, 255, 0.36);
+  --accent-emerald: #22c55e;
+  --accent-amber: #fbbf24;
+  --accent-rose: #f43f5e;
+}
+
+[data-theme="turf"] {
+  --bg-obsidian: #050f0d;
+  --bg-card: rgba(10, 27, 23, 0.78);
+  --bg-card-elevated: rgba(13, 36, 30, 0.90);
+  --bg-sub: rgba(17, 45, 38, 0.64);
+  --bg-inset: #061713;
+  --bg-glass-base: rgba(10, 27, 23, 0.78);
+  --bg-glass-elevated: rgba(13, 36, 30, 0.90);
+  --bg-glass-sub: rgba(17, 45, 38, 0.64);
+  --bg-glass-hover: rgba(24, 62, 52, 0.66);
+
+  --bg-glow-1: rgba(45, 212, 191, 0.1);
+  --bg-glow-2: rgba(16, 185, 129, 0.09);
+  --bg-glow-3: rgba(251, 191, 36, 0.04);
+
+  --border-glass: rgba(52, 211, 153, 0.17);
+  --border-hairline: rgba(52, 211, 153, 0.16);
+  --border-specular-top: rgba(110, 231, 183, 0.26);
+  --border-specular-left: rgba(110, 231, 183, 0.14);
+  --border-focus: #2dd4bf;
+
+  --accent-cyan: #2dd4bf;
+  --accent-cyan-soft: rgba(45, 212, 191, 0.16);
+  --accent-cyan-glow: rgba(45, 212, 191, 0.32);
+  --accent-emerald: #34d399;
+  --accent-amber: #fbbf24;
+  --accent-rose: #fb7185;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+html, body {
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+body {
+  background-color: var(--bg-obsidian);
+  background-image: 
+    radial-gradient(circle at 18% 12%, var(--bg-glow-1) 0%, transparent 46%),
+    radial-gradient(circle at 82% 16%, var(--bg-glow-2) 0%, transparent 44%),
+    radial-gradient(circle at 50% 88%, var(--bg-glow-3) 0%, transparent 55%);
+  background-attachment: fixed;
+  color: #f1f5f9;
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.25s ease;
+}
+
+/* Unified Surface Glass Tokens */
+.surface-card,
+.glass-panel {
+  background: var(--bg-card);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border: 1px solid var(--border-hairline);
+  border-top: 1px solid var(--border-specular-top);
+  border-left: 1px solid var(--border-specular-left);
+  box-shadow: 0 12px 34px -8px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+}
+
+.surface-card-elevated,
+.glass-panel-elevated {
+  background: var(--bg-card-elevated);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border-hairline);
+  border-top: 1px solid var(--border-specular-top);
+  border-left: 1px solid var(--border-specular-left);
+  box-shadow: 0 18px 44px -12px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+}
+
+.surface-sub {
+  background: var(--bg-sub);
+  border: 1px solid var(--border-hairline);
+  border-radius: 12px;
+}
+
+.glass-pill {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-hairline);
+  border-top: 1px solid var(--border-specular-top);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.15s ease;
+}
+.glass-pill:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-top: 1px solid rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Custom Range Slider styling for Match Timeline Scrubber */
+input[type="range"].timeline-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  background: transparent;
+  cursor: pointer;
+}
+input[type="range"].timeline-slider:focus {
+  outline: none;
+}
+input[type="range"].timeline-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  background: transparent;
+}
+input[type="range"].timeline-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 14px var(--accent-cyan-glow);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+input[type="range"].timeline-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.18);
+  box-shadow: 0 0 18px var(--accent-cyan);
+}
+input[type="range"].timeline-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 14px var(--accent-cyan-glow);
+}
+
+/* Pitch Field Styles */
+.pitch-container {
+  background: radial-gradient(circle at center, #0f231e 0%, #091310 80%, #060c0a 100%);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-top: 1px solid rgba(52, 211, 153, 0.45);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.pitch-lines {
+  position: absolute;
+  inset: 12px;
+  border: 2px solid rgba(16, 185, 129, 0.25);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.pitch-midline {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(16, 185, 129, 0.25);
+}
+
+.pitch-center-circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 90px;
+  height: 90px;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(16, 185, 129, 0.25);
+  border-radius: 50%;
+}
