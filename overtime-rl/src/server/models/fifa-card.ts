@@ -324,7 +324,11 @@ function evaluateSliceRadar(
   };
 }
 
-function defaultCarForArchetype(archetype: TacticalArchetype): CarBodyType {
+function defaultCarForArchetype(archetype: TacticalArchetype, playerHint?: string): CarBodyType {
+  const hint = (playerHint || '').trim().toLowerCase();
+  if (hint === 'swapo_o' || hint === 'swap' || hint.includes('f5c0f37f0a5649e4bff607332fcf8ac0')) {
+    return 'octane_zsr';
+  }
   if (archetype === 'The Striker' || archetype === 'The Dribbler') return 'fennec';
   if (archetype === 'The Playmaker') return 'dominus';
   return 'octane';
@@ -398,7 +402,7 @@ export function buildPlayerFifaCard(params: {
   }
 
   const prefs = prefsOverride !== undefined ? prefsOverride : cache?.getCardPrefs(resolvedPid) || cache?.getCardPrefs(primaryId) || null;
-  const carBody: CarBodyType = prefs?.car_body || defaultCarForArchetype(activeEval.radar.archetype);
+  const carBody: CarBodyType = prefs?.car_body || defaultCarForArchetype(activeEval.radar.archetype, resolvedName || resolvedPid);
   const displayName = (prefs?.custom_name || '').trim() || resolveDefaultCardName(resolvedName);
   const cardTitle = (prefs?.custom_title || '').trim() || DEFAULT_SUBTITLE_MAP[activeEval.radar.archetype];
 

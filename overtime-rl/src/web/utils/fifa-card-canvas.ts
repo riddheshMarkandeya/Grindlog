@@ -547,6 +547,33 @@ export function exportTrioFormationPng(
       drawFifaShieldOnCanvas(ctx, card, pos.x, pos.y, 330, 473, carImgs[i]);
     });
 
+    if (trio.pair_chemistry && trio.pair_chemistry.length > 0 && cards.length >= 2) {
+      const findPair = (idA: string, idB: string) =>
+        trio.pair_chemistry?.find(
+          p =>
+            (p.player_a.primary_id === idA && p.player_b.primary_id === idB) ||
+            (p.player_a.primary_id === idB && p.player_b.primary_id === idA)
+        );
+      const links = [
+        { pair: findPair(cards[0].primary_id, cards[1].primary_id), cx: 478 },
+        ...(cards[2] ? [{ pair: findPair(cards[1].primary_id, cards[2].primary_id), cx: 882 }] : []),
+      ];
+      ctx.font = '800 14px monospace';
+      ctx.textAlign = 'center';
+      links.forEach(({ pair, cx }) => {
+        if (!pair) return;
+        const label = `${'◆'.repeat(pair.diamonds)}${'◇'.repeat(Math.max(0, 3 - pair.diamonds))} ${pair.chemistry_score} SYN`;
+        const col = pair.chemistry_score >= 76 ? '#34d399' : pair.chemistry_score >= 64 ? '#38bdf8' : '#fbbf24';
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+        ctx.fillRect(cx - 72, 618, 144, 30);
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(cx - 72, 618, 144, 30);
+        ctx.fillStyle = col;
+        ctx.fillText(label, cx, 638);
+      });
+    }
+
     ctx.textAlign = 'center';
     ctx.fillStyle = '#64748b';
     ctx.font = 'italic 16px system-ui';

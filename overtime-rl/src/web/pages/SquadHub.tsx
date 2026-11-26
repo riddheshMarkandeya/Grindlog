@@ -6,6 +6,7 @@ import { RatingBadge } from '../components/RatingBadge.tsx';
 import { RotationBadge } from '../components/RotationBadge.tsx';
 import { TrioSquadDossierView } from '../components/TrioSquadDossierView.tsx';
 import { SquadMatchesExplorerView } from '../components/SquadMatchesExplorerView.tsx';
+import { PairChemistryLab } from '../components/PairChemistryLab.tsx';
 import { FifaCard } from '../components/FifaCard.tsx';
 
 interface FriendItem {
@@ -22,7 +23,7 @@ interface SquadHubProps {
 }
 
 export const SquadHubView: React.FC<SquadHubProps> = ({ onSelectMatch, onOpenProfile, initialFriendId = null }) => {
-  const [squadTab, setSquadTab] = useState<'trio' | 'matches' | 'duos'>('trio');
+  const [squadTab, setSquadTab] = useState<'trio' | 'chemistry' | 'matches' | 'duos'>('trio');
   const [friends, setFriends] = useState<SquadFriendStats[]>([]);
   const [allFriends, setAllFriends] = useState<FriendItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -575,9 +576,32 @@ export const SquadHubView: React.FC<SquadHubProps> = ({ onSelectMatch, onOpenPro
         >
           <span>👥</span> Partner Duo Cards ({friends.length})
         </button>
+        <button
+          onClick={() => { setSquadTab('chemistry'); setSelectedFriendId(null); }}
+          style={{
+            padding: '8px 18px',
+            borderRadius: '8px',
+            border: squadTab === 'chemistry' ? '1px solid rgba(52, 211, 153, 0.35)' : '1px solid transparent',
+            borderTop: squadTab === 'chemistry' ? '1px solid rgba(110, 231, 183, 0.65)' : '1px solid transparent',
+            backgroundColor: squadTab === 'chemistry' ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
+            color: squadTab === 'chemistry' ? '#34d399' : '#94a3b8',
+            boxShadow: squadTab === 'chemistry' ? '0 2px 10px rgba(16, 185, 129, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.12)' : 'none',
+            fontWeight: 800,
+            fontSize: '13px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <span>🧪</span> Pair Chemistry Lab
+        </button>
       </div>
 
-      {squadTab === 'trio' ? (
+      {squadTab === 'chemistry' ? (
+        <PairChemistryLab onOpenProfile={onOpenProfile} />
+      ) : squadTab === 'trio' ? (
         loadingTrio ? (
           <div style={{ textAlign: 'center', padding: '80px 0', color: '#94a3b8' }}>
             <div style={{ fontSize: '18px', fontWeight: 800 }}>Analyzing Full 3s Trio Roster Telemetry...</div>

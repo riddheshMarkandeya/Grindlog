@@ -5,7 +5,9 @@ import { GrindlogReader } from './ingestion/grindlog-reader.ts';
 import { GrindlogSSEClient } from './ingestion/sse-client.ts';
 import { MatchAnalyzer } from './models/analyzer.ts';
 import { buildPlayerProfile } from './models/profile.ts';
+import { z } from 'zod';
 import { buildSquadFriendsStats, buildDuoFriendDossier, buildTrioSquadDossier, buildSquadExplorerMatches } from './models/squad.ts';
+import { buildAllPairwiseChemistry } from './models/chemistry.ts';
 import { buildSessionPodium, computeSessionTeamTotals } from './models/session.ts';
 import { buildPlayerFifaCard, DEFAULT_CARD_CYCLE_SIZE } from './models/fifa-card.ts';
 import { OvertimeDBCache } from './db/cache.ts';
@@ -332,6 +334,28 @@ const server = http.createServer((req, res) => {
       sendJson(res, 200, dossier);
     } catch (e: any) {
       console.error('Error generating 3s trio squad dossier:', e);
+      sendJson(res, 500, { error: e.message });
+    }
+    return;
+  }
+
+  // 10b. Pairwise Teammate Chemistry Matrix: /api/squad/chemistry?mode=all|2v2|3v3
+  if (pathname === '/api/squad/chemistry' && req.method === 'GET') {
+    try {
+      const parsedMode = z.enum(['all', '2v2', '3v3']).safeParse(url.searchParams.get('mode') || 'all');
+      if (!parsedMode.success) {
+        sendJson(res, 400, { error: 'Invalid mode filter. Expected all, 2v2, or 3v3.' });
+        return;
+      }
+      const overview = buildAllPairwiseChemistry({
+        reader,
+        cache,
+        analyzer,
+        modeFilter: parsedMode.data,
+      });
+      sendJson(res, 200, overview);
+    } catch (e: any) {
+      console.error('Error computing pairwise chemistry:', e);
       sendJson(res, 500, { error: e.message });
     }
     return;

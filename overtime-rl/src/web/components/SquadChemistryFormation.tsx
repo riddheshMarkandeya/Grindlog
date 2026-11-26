@@ -40,7 +40,9 @@ export const SquadChemistryFormation: React.FC<SquadChemistryFormationProps> = (
       ? '#fbbf24'
       : '#f87171';
 
-  const getPairLink = (nameA: string, nameB: string) => {
+  const getPairLink = (cardA: FifaCardData, cardB: FifaCardData) => {
+    const nameA = cardA.player_name;
+    const nameB = cardB.player_name;
     const dcPair = trio.intra_double_commits.find(
       p => p.pair.includes(nameA) && p.pair.includes(nameB)
     );
@@ -48,17 +50,35 @@ export const SquadChemistryFormation: React.FC<SquadChemistryFormationProps> = (
       trio.passing_matrix?.find(m => m.passer === nameA && m.receiver === nameB)?.passes ?? 0;
     const passesBA =
       trio.passing_matrix?.find(m => m.passer === nameB && m.receiver === nameA)?.passes ?? 0;
+    const chem = trio.pair_chemistry?.find(
+      p =>
+        (p.player_a.primary_id === cardA.primary_id && p.player_b.primary_id === cardB.primary_id) ||
+        (p.player_a.primary_id === cardB.primary_id && p.player_b.primary_id === cardA.primary_id)
+    );
+    const chemColor = chem
+      ? chem.chemistry_score >= 76
+        ? '#34d399'
+        : chem.chemistry_score >= 64
+        ? '#38bdf8'
+        : chem.chemistry_score >= 52
+        ? '#fbbf24'
+        : '#f87171'
+      : linkHealthColor;
     return {
-      dcs: dcPair?.count ?? 0,
+      dcs: dcPair?.count ?? chem?.mutual_double_commits ?? 0,
       passes: passesAB + passesBA,
+      syn: chem?.chemistry_score ?? null,
+      diamonds: chem?.diamonds ?? 0,
+      roleFit: chem?.role_pairing_label ?? null,
+      color: chemColor,
     };
   };
 
   const cLeft = cards[0];
   const cMid = cards[1] || cards[0];
   const cRight = cards[2] || cards[0];
-  const leftLink = getPairLink(cLeft.player_name, cMid.player_name);
-  const rightLink = getPairLink(cMid.player_name, cRight.player_name);
+  const leftLink = getPairLink(cLeft, cMid);
+  const rightLink = getPairLink(cMid, cRight);
 
   return (
     <div
@@ -142,16 +162,34 @@ export const SquadChemistryFormation: React.FC<SquadChemistryFormationProps> = (
               flexDirection: 'column',
               alignItems: 'center',
               gap: '4px',
-              minWidth: '90px',
+              minWidth: '108px',
             }}
           >
-            <div style={{ width: '76px', height: '3px', backgroundColor: linkHealthColor, borderRadius: '2px', boxShadow: `0 0 8px ${linkHealthColor}` }} />
-            <span style={{ fontSize: '10px', fontWeight: 800, color: linkHealthColor, fontFamily: 'var(--font-mono)' }}>
-              {leftLink.passes} PAS
+            {leftLink.syn !== null && (
+              <span
+                style={{
+                  fontSize: '10px',
+                  fontWeight: 900,
+                  color: leftLink.color,
+                  fontFamily: 'var(--font-mono)',
+                  padding: '2px 7px',
+                  borderRadius: '999px',
+                  border: `1px solid ${leftLink.color}55`,
+                  backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                }}
+              >
+                {'◆'.repeat(leftLink.diamonds)}{'◇'.repeat(Math.max(0, 3 - leftLink.diamonds))} {leftLink.syn} SYN
+              </span>
+            )}
+            <div style={{ width: '84px', height: '3px', backgroundColor: leftLink.color, borderRadius: '2px', boxShadow: `0 0 8px ${leftLink.color}` }} />
+            <span style={{ fontSize: '10px', fontWeight: 800, color: leftLink.color, fontFamily: 'var(--font-mono)' }}>
+              {leftLink.passes} PAS · {leftLink.dcs} DCs
             </span>
-            <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-              {leftLink.dcs} DCs
-            </span>
+            {leftLink.roleFit && (
+              <span style={{ fontSize: '9px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                {leftLink.roleFit}
+              </span>
+            )}
           </div>
         )}
 
@@ -175,16 +213,34 @@ export const SquadChemistryFormation: React.FC<SquadChemistryFormationProps> = (
               flexDirection: 'column',
               alignItems: 'center',
               gap: '4px',
-              minWidth: '90px',
+              minWidth: '108px',
             }}
           >
-            <div style={{ width: '76px', height: '3px', backgroundColor: linkHealthColor, borderRadius: '2px', boxShadow: `0 0 8px ${linkHealthColor}` }} />
-            <span style={{ fontSize: '10px', fontWeight: 800, color: linkHealthColor, fontFamily: 'var(--font-mono)' }}>
-              {rightLink.passes} PAS
+            {rightLink.syn !== null && (
+              <span
+                style={{
+                  fontSize: '10px',
+                  fontWeight: 900,
+                  color: rightLink.color,
+                  fontFamily: 'var(--font-mono)',
+                  padding: '2px 7px',
+                  borderRadius: '999px',
+                  border: `1px solid ${rightLink.color}55`,
+                  backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                }}
+              >
+                {'◆'.repeat(rightLink.diamonds)}{'◇'.repeat(Math.max(0, 3 - rightLink.diamonds))} {rightLink.syn} SYN
+              </span>
+            )}
+            <div style={{ width: '84px', height: '3px', backgroundColor: rightLink.color, borderRadius: '2px', boxShadow: `0 0 8px ${rightLink.color}` }} />
+            <span style={{ fontSize: '10px', fontWeight: 800, color: rightLink.color, fontFamily: 'var(--font-mono)' }}>
+              {rightLink.passes} PAS · {rightLink.dcs} DCs
             </span>
-            <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-              {rightLink.dcs} DCs
-            </span>
+            {rightLink.roleFit && (
+              <span style={{ fontSize: '9px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                {rightLink.roleFit}
+              </span>
+            )}
           </div>
         )}
 

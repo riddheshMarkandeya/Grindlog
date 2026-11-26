@@ -83,15 +83,14 @@ function clamp01(v: number, min: number, max: number): number {
   return Math.max(0, Math.min(1, (v - min) / (max - min)));
 }
 
-function clampAxis(v: number): number {
-  return Math.max(10, Math.min(99, Math.round(v)));
+function clampAxis(v: number, floor: number = 42): number {
+  return Math.max(floor, Math.min(99, Math.round(v)));
 }
 
 /**
- * Single canonical Unified 8-Axis FIFA+RL Radar calculator powering every UI radar,
- * FIFA stat strip, OVR badge, and squad profile across OvertimeRL.
- * Cleanly separates Outfield Tackling (`tackling`) from Net Protection (`goalkeeping`),
- * adds Dribbling (`dribbling`), and replaces Motor with Transition Speed (`pace`).
+ * Single canonical Unified 8-Axis FIFA+RL Radar calculator calibrated cleanly onto EA FC attribute bands (42..99)
+ * so median Rocket League play maps around ~68-74, strong performances ~78-86, and elite showcases ~87-98,
+ * matching Role-Weighted OVR directly without artificial OVR inflation.
  */
 export function calculatePlayerRadar(input: RadarInputMetrics): RadarProfile {
   const durationMinutes = Math.max(1.0, input.carMs / 60_000);
@@ -103,14 +102,16 @@ export function calculatePlayerRadar(input: RadarInputMetrics): RadarProfile {
   const clinicalityPer5 = (input.goals - input.xg) * normFactor;
   const qualityFinishesPer5 =
     ((input.screamers ?? 0) + (input.soloGoals ?? 0) * 1.2 + (input.counterGoals ?? 0)) * normFactor;
-  const speedBonus = (input.hardestShotKmh ?? 0) >= 105 ? 4 : (input.hardestShotKmh ?? 0) >= 90 ? 2 : 0;
-  const bigMissPenalty = ((input.bigChancesMissed ?? 0) * normFactor) * 6;
+  const speedBonus = (input.hardestShotKmh ?? 0) >= 105 ? 3 : (input.hardestShotKmh ?? 0) >= 90 ? 1.5 : 0;
+  const bigMissPenalty = ((input.bigChancesMissed ?? 0) * normFactor) * 3.5;
+  const activeShotBase = input.goals > 0 ? 48 : input.shots > 0 ? 44 : 40;
 
   const clampedFinishing = clampAxis(
-    clamp01(goalsPer5, 0, 2.4) * 45 +
-      clamp01(shotPct, 0, 42) * 30 +
-      clamp01(clinicalityPer5, -0.8, 1.4) * 15 +
-      clamp01(qualityFinishesPer5, 0, 1.2) * 10 +
+    activeShotBase +
+      clamp01(goalsPer5, 0, 2.2) * 28 +
+      clamp01(shotPct, 5, 44) * 14 +
+      clamp01(clinicalityPer5, -0.5, 1.2) * 7 +
+      clamp01(qualityFinishesPer5, 0, 1.0) * 6 +
       speedBonus -
       bigMissPenalty
   );
@@ -126,17 +127,19 @@ export function calculatePlayerRadar(input: RadarInputMetrics): RadarProfile {
 
   const playmakingIndex =
     assistsPer5 * 1.6 +
-    keyPassesPer5 * 0.65 +
+    keyPassesPer5 * 0.75 +
     bccPer5 * 0.9 +
-    favorablePer5 * 0.45 +
-    infieldPer5 * 0.45 +
-    hockeyPer5 * 0.35;
+    favorablePer5 * 0.5 +
+    infieldPer5 * 0.5 +
+    hockeyPer5 * 0.4;
   const badDeliveryPenalty =
-    ((input.hospitalPasses ?? 0) * 6 + (input.cornerRollGiveaways ?? 0) * 4) * normFactor;
+    ((input.hospitalPasses ?? 0) * 3.5 + (input.cornerRollGiveaways ?? 0) * 2.5) * normFactor;
+  const activePassBase = input.touchesTotal >= 12 ? 48 : 40;
 
   const clampedCreation = clampAxis(
-    clamp01(playmakingIndex, 0, 4.2) * 75 +
-      clamp01(midTouchPct, 15, 48) * 25 -
+    activePassBase +
+      clamp01(playmakingIndex, 0, 3.8) * 36 +
+      clamp01(midTouchPct, 12, 46) * 15 -
       badDeliveryPenalty
   );
 
@@ -146,14 +149,14 @@ export function calculatePlayerRadar(input: RadarInputMetrics): RadarProfile {
   const takeOnsPer5 = (input.dribbleTakeOns ?? 0) * normFactor;
   const dribbleGoalsPer5 = ((input.dribbleGoals ?? 0) + (input.soloGoals ?? 0) * 0.7) * normFactor;
   const dribbleLossPenalty =
-    ((input.dribbleTurnovers ?? 0) * 4.5 + (input.cornerRollGiveaways ?? 0) * 2.5) * normFactor;
-  const activeDribbleBase = input.touchesTotal >= 20 ? 18 : input.touchesTotal > 8 ? 12 : 0;
+    ((input.dribbleTurnovers ?? 0) * 2.8 + (input.cornerRollGiveaways ?? 0) * 1.8) * normFactor;
+  const activeDribbleBase = input.touchesTotal >= 18 ? 48 : input.touchesTotal > 6 ? 43 : 38;
 
   const clampedDribbling = clampAxis(
     activeDribbleBase +
-      clamp01(dribbleChainsPer5, 0, 3.8) * 38 +
-      clamp01(takeOnsPer5, 0, 1.8) * 22 +
-      clamp01(dribbleGoalsPer5, 0, 1.0) * 22 -
+      clamp01(dribbleChainsPer5, 0, 4.2) * 28 +
+      clamp01(takeOnsPer5, 0, 1.8) * 14 +
+      clamp01(dribbleGoalsPer5, 0, 1.0) * 12 -
       dribbleLossPenalty
   );
 
@@ -164,36 +167,36 @@ export function calculatePlayerRadar(input: RadarInputMetrics): RadarProfile {
   const avgTransitionVel = input.avgTransitionVelocity ?? 0;
   const blitzPer5 = ((input.blitzCounterGoals ?? 0) + (input.counterGoals ?? 0) * 0.6) * normFactor;
   const paceRuleBonus = Math.min(
-    8,
-    ((input.counterPressRecoveries ?? 0) * 2.0 + (input.kickoffCheatUps ?? 0) * 2.0) * normFactor
+    6,
+    ((input.counterPressRecoveries ?? 0) * 1.5 + (input.kickoffCheatUps ?? 0) * 1.5) * normFactor
   );
 
   let paceRaw: number;
   if (avgTransitionVel > 0 || paceSprintsPer5 > 0) {
     paceRaw =
-      10 +
-      clamp01(avgTransitionVel, 900, 2100) * 32 +
-      clamp01(paceSprintsPer5, 0, 4.5) * 24 +
-      clamp01(blitzPer5, 0, 1.0) * 14 +
-      clamp01(supersonicPct, 2.0, 22.0) * 20;
+      50 +
+      clamp01(avgTransitionVel, 850, 2100) * 18 +
+      clamp01(paceSprintsPer5, 0, 3.8) * 14 +
+      clamp01(blitzPer5, 0, 1.0) * 8 +
+      clamp01(supersonicPct, 4.0, 24.0) * 11;
   } else if (input.supersonicMs > 0) {
     paceRaw =
-      14 +
-      clamp01(supersonicPct, 2.0, 22.0) * 48 +
-      clamp01(touchesPer5, 10.0, 45.0) * 30 +
+      50 +
+      clamp01(supersonicPct, 3.0, 24.0) * 26 +
+      clamp01(touchesPer5, 10.0, 44.0) * 17 +
       paceRuleBonus +
-      Math.min(10, blitzPer5 * 10);
+      Math.min(6, blitzPer5 * 6);
   } else {
     const actionsPer5 = (input.shots + input.saves + input.demos + input.goals) * normFactor;
     paceRaw =
-      18 +
-      clamp01(touchesPer5, 8.0, 42.0) * 50 +
-      clamp01(actionsPer5, 1.0, 8.0) * 22 +
+      48 +
+      clamp01(touchesPer5, 8.0, 42.0) * 24 +
+      clamp01(actionsPer5, 1.0, 8.0) * 16 +
       paceRuleBonus;
   }
   const clampedPace = clampAxis(paceRaw);
 
-  // 5. Tackling (TAC): Outfield ball-winning (won 50/50s + clean steals + shadow defense + backboard clears + demos)
+  // 5. Tackling (TAC): Empirical RL duel range (p50=6, p90=13) + dispossessions + shadow defense + backboard + demos
   const duelsPer5 = input.duelsWon * normFactor;
   const stealsPer5 = ((input.cleanDispossessions ?? 0) + (input.counterPressRecoveries ?? 0) * 0.75) * normFactor;
   const outfieldStopPer5 =
@@ -201,20 +204,20 @@ export function calculatePlayerRadar(input: RadarInputMetrics): RadarProfile {
       (input.backboardClears ?? 0) * 0.8 +
       (input.demos * 0.45 + (input.tacticalDemos ?? 0) * 0.65)) *
     normFactor;
-  const tackleDivePenalty = (input.recklessDives ?? 0) * 6 * normFactor;
-  const activeTackleBase = input.touchesTotal > 5 ? 8 : 0;
+  const tackleDivePenalty = (input.recklessDives ?? 0) * 4 * normFactor;
+  const activeTackleBase = input.touchesTotal >= 8 ? 46 : 38;
 
   const clampedTackling = clampAxis(
     activeTackleBase +
-      clamp01(duelsPer5, 0, 5.2) * 38 +
-      clamp01(stealsPer5, 0, 4.0) * 30 +
-      clamp01(outfieldStopPer5, 0, 3.5) * 24 -
+      clamp01(duelsPer5, 0, 11.5) * 26 +
+      clamp01(stealsPer5, 0, 5.5) * 15 +
+      clamp01(outfieldStopPer5, 0, 4.0) * 12 -
       tackleDivePenalty
   );
 
-  // 6. Goalkeeping (GK): Shot-difficulty xG prevented + saves + clearances + safe rebound clears - spills
+  // 6. Goalkeeping (GK): Net Protection — xG prevented + saves + defensive clearances + clutch waivers - spills
   const savesPer5 = input.saves * normFactor;
-  const xgPreventedPer5 = (input.xgPrevented ?? input.saves * 0.28) * normFactor;
+  const xgPreventedPer5 = (input.xgPrevented ?? input.saves * 0.25) * normFactor;
   const clearsPer5 = input.clearances * normFactor;
   const gkClutchPer5 =
     ((input.reflexSaves ?? 0) * 1.2 +
@@ -223,13 +226,15 @@ export function calculatePlayerRadar(input: RadarInputMetrics): RadarProfile {
       (input.backPostRotations ?? 0) * 0.5) *
     normFactor;
   const gkErrorPenalty =
-    ((input.spilledRebounds ?? 0) * 6 + (input.turnoverConcessions ?? 0) * 4) * normFactor;
+    ((input.spilledRebounds ?? 0) * 3.5 + (input.turnoverConcessions ?? 0) * 2.5) * normFactor;
+  const activeGkBase = input.saves > 0 || input.clearances >= 2 ? 48 : 42;
 
   const clampedGoalkeeping = clampAxis(
-    clamp01(xgPreventedPer5, 0, 1.35) * 44 +
-      clamp01(savesPer5, 0, 3.5) * 24 +
-      clamp01(clearsPer5, 0, 8.0) * 16 +
-      clamp01(gkClutchPer5, 0, 2.2) * 16 -
+    activeGkBase +
+      clamp01(xgPreventedPer5, 0, 0.90) * 24 +
+      clamp01(savesPer5, 0, 3.2) * 15 +
+      clamp01(clearsPer5, 0, 8.0) * 9 +
+      clamp01(gkClutchPer5, 0, 2.0) * 6 -
       gkErrorPenalty
   );
 
@@ -238,9 +243,12 @@ export function calculatePlayerRadar(input: RadarInputMetrics): RadarProfile {
   const bbClearsPer5 = (input.backboardClears ?? 0) * normFactor;
   const aerialHighlightsPer5 = ((input.aerialGoals ?? 0) + (input.flipResets ?? 0) * 0.8) * normFactor;
   const clampedAerial = clampAxis(
-    clamp01(aerialPer5, 0, 4.0) * 70 +
-      clamp01(bbClearsPer5, 0, 1.5) * 15 +
-      clamp01(aerialHighlightsPer5, 0, 0.5) * 15
+    (input.aerialTouches ?? 0) > 0 || (input.backboardClears ?? 0) > 0
+      ? 44 +
+          clamp01(aerialPer5, 0, 4.5) * 36 +
+          clamp01(bbClearsPer5, 0, 1.5) * 10 +
+          clamp01(aerialHighlightsPer5, 0, 0.5) * 10
+      : 42
   );
 
   // 8. Discipline (DIS): Rotational spacing, 3rd-man safety covers, restraint & boost/pad discipline
@@ -273,58 +281,59 @@ export function calculatePlayerRadar(input: RadarInputMetrics): RadarProfile {
   const emptyPct = input.carMs > 0 ? (input.emptyBoostMs / input.carMs) * 100 : 0;
   const hasPadTelemetry = (input.smallPads ?? 0) + (input.bigOrbs ?? 0) > 0;
   const resourceDisciplineBonus =
-    clamp01(boostAvg, 35, 70) * 6 +
-    (hasPadTelemetry ? clamp01(input.padRatioPct ?? 50, 45, 80) * 5 : 2) +
-    Math.min(4, ((input.boostSteals ?? 0) * normFactor) * 2);
+    clamp01(boostAvg, 35, 70) * 5 +
+    (hasPadTelemetry ? clamp01(input.padRatioPct ?? 50, 45, 80) * 4 : 2) +
+    Math.min(3, ((input.boostSteals ?? 0) * normFactor) * 1.5);
 
   const positiveRotBonus = Math.min(
-    18,
-    ((input.backPostRotations ?? 0) * 3.5 +
-      (input.shadowDefenses ?? 0) * 3.5 +
-      (input.kickoffCheatUps ?? 0) * 2.5 +
-      (input.reboundInstantClears ?? 0) * 3.5 +
-      (input.thirdManCovers ?? 0) * 3.0 +
-      (input.counterPressRecoveries ?? 0) * 0.25) *
+    14,
+    ((input.backPostRotations ?? 0) * 2.5 +
+      (input.shadowDefenses ?? 0) * 2.5 +
+      (input.kickoffCheatUps ?? 0) * 2.0 +
+      (input.reboundInstantClears ?? 0) * 2.5 +
+      (input.thirdManCovers ?? 0) * 2.5 +
+      (input.counterPressRecoveries ?? 0) * 0.2) *
       normFactor
   );
 
   const cleanRestraintBonus =
     dcPer5 <= 0.15 && turnoverPer5 <= 0.15
-      ? 14
+      ? 10
       : dcPer5 <= 0.35 && turnoverPer5 <= 0.25
-      ? 7
+      ? 5
       : dcPer5 <= 0.46
-      ? 3
+      ? 2
       : 0;
 
   const structuralAnchorBonus =
-    clamp01(defShare - attShare * 0.45, 0.16, 0.42) * 8 +
-    clamp01(savesPer5 * 0.75 + clearsPer5 * 0.22, 0.8, 3.2) * 4;
+    clamp01(defShare - attShare * 0.45, 0.16, 0.42) * 6 +
+    clamp01(savesPer5 * 0.75 + clearsPer5 * 0.22, 0.8, 3.2) * 3;
 
   const disciplinePenalties =
-    dcPer5 * 18 +
-    fatalDcPer5 * 22 +
-    turnoverPer5 * 20 +
-    divePer5 * 15 +
-    nearPostPer5 * 12 +
-    koDesertPer5 * 14 +
-    baPer5 * 14 +
-    cbdPer5 * 10 +
-    crgPer5 * 5 +
+    dcPer5 * 13 +
+    fatalDcPer5 * 18 +
+    turnoverPer5 * 15 +
+    divePer5 * 12 +
+    nearPostPer5 * 10 +
+    koDesertPer5 * 11 +
+    baPer5 * 11 +
+    cbdPer5 * 8 +
+    crgPer5 * 4 +
     srPer5 * 3 +
-    Math.max(0, hosPer5 - 1.5) * 4 +
-    (emptyPct > 10 ? 5 : 0);
+    Math.max(0, hosPer5 - 1.5) * 3 +
+    (emptyPct > 10 ? 4 : 0);
 
   const clampedPos = clampAxis(
-    42 +
+    60 +
       positiveRotBonus +
       cleanRestraintBonus +
       structuralAnchorBonus +
       resourceDisciplineBonus -
-      disciplinePenalties
+      disciplinePenalties,
+    24
   );
 
-  // Archetype Classification across Unified 8 Axes
+  // Archetype Classification across Calibrated 8 Axes
   const activeScores = [
     clampedFinishing,
     clampedCreation,
@@ -340,33 +349,35 @@ export function calculatePlayerRadar(input: RadarInputMetrics): RadarProfile {
 
   let archetype: TacticalArchetype = 'The All-Rounder';
 
-  if (maxActive <= 22) {
+  if (input.touchesTotal <= 4 && input.goals + input.shots + input.saves + input.assists === 0) {
     archetype = 'The Passenger';
-  } else if (clampedAerial >= 55 && clampedAerial >= clampedFinishing && clampedAerial >= avgScore + 8) {
+  } else if (maxActive <= 46) {
+    archetype = 'The Passenger';
+  } else if (clampedAerial >= 76 && clampedAerial >= clampedFinishing && clampedAerial >= avgScore + 6) {
     archetype = 'The Air Marshal';
-  } else if (clampedDribbling >= 58 && clampedDribbling >= clampedFinishing && clampedDribbling >= avgScore + 8) {
+  } else if (clampedDribbling >= 78 && clampedDribbling >= clampedFinishing && clampedDribbling >= avgScore + 6) {
     archetype = 'The Dribbler';
-  } else if (clampedFinishing >= 55 && clampedFinishing >= clampedCreation + 8 && clampedFinishing >= clampedGoalkeeping + 8) {
+  } else if (clampedFinishing >= 76 && clampedFinishing >= clampedCreation + 4 && clampedFinishing >= clampedGoalkeeping + 4) {
     archetype = 'The Striker';
-  } else if (clampedCreation >= 50 && clampedCreation >= clampedFinishing && clampedCreation >= clampedGoalkeeping) {
+  } else if (clampedCreation >= 74 && clampedCreation >= clampedFinishing && clampedCreation >= clampedGoalkeeping) {
     archetype = 'The Playmaker';
-  } else if (clampedGoalkeeping >= 52 && clampedGoalkeeping >= clampedFinishing && clampedGoalkeeping >= clampedCreation) {
+  } else if (clampedGoalkeeping >= 74 && clampedGoalkeeping >= clampedFinishing && clampedGoalkeeping >= clampedCreation) {
     archetype = 'The Anchor';
-  } else if (clampedTackling >= 55 && clampedTackling >= clampedFinishing) {
+  } else if (clampedTackling >= 78 && clampedTackling >= clampedFinishing) {
     archetype = 'The Disruptor';
-  } else if (clampedPace >= 60 && clampedPace >= avgScore + 10) {
+  } else if (clampedPace >= 80 && clampedPace >= avgScore + 6) {
     archetype = 'The Speed Demon';
-  } else if (clampedFinishing >= 50) {
+  } else if (clampedFinishing >= 70) {
     archetype = 'The Striker';
-  } else if (clampedGoalkeeping >= 45) {
+  } else if (clampedGoalkeeping >= 70) {
     archetype = 'The Anchor';
-  } else if (clampedCreation >= 45) {
+  } else if (clampedCreation >= 70) {
     archetype = 'The Playmaker';
-  } else if (clampedTackling >= 45) {
+  } else if (clampedTackling >= 70) {
     archetype = 'The Disruptor';
-  } else if (clampedDribbling >= 45) {
+  } else if (clampedDribbling >= 70) {
     archetype = 'The Dribbler';
-  } else if (clampedAerial >= 45) {
+  } else if (clampedAerial >= 70) {
     archetype = 'The Air Marshal';
   } else {
     archetype = 'The All-Rounder';

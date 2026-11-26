@@ -22,6 +22,7 @@ import { calculatePlayerRadar } from './radar.ts';
 import { aggregateRadarFromAnalyses } from './radar-aggregator.ts';
 import { MatchAnalyzer } from './analyzer.ts';
 import { buildPlayerFifaCard } from './fifa-card.ts';
+import { buildAllPairwiseChemistry } from './chemistry.ts';
 
 export function buildSquadFriendsStats(
   reader: GrindlogReader,
@@ -1092,6 +1093,13 @@ export function buildTrioSquadDossier(
         ? `Dominant 3s Trio (${winRate}% WR): Strong offensive firepower (${goalDiff >= 0 ? '+' : ''}${goalDiff} GD, ${totalGoalsScored} GF) with ${thirdManCoveragePct}% third-man safety. Clean up ${topCollisionLabel} rotational overlap (${dcPerGame}/game) to push win rate higher.`
         : `High Firepower, Spacing Vulnerability (${winRate}% WR): ${totalGoalsScored}-goal offensive unit (${goalDiff >= 0 ? '+' : ''}${goalDiff} GD), but collision frequency (${dcPerGame}/game) and errors trigger counterattack concessions.`;
 
+    const pairChemistry = buildAllPairwiseChemistry({
+      reader,
+      cache,
+      analyzer: resolvedAnalyzer,
+      primaryIdsFilter: new Set([p1Stats.pid, p2Stats.pid, p3Stats.pid]),
+    }).pairs;
+
     return {
       squad_name: 'Swapo_o + Rocinante_. + Mechless Madness',
       matches_together: n,
@@ -1108,6 +1116,7 @@ export function buildTrioSquadDossier(
       passing_network: assistNetwork,
       passing_matrix: passingMatrix,
       intra_double_commits: intraDoubleCommits,
+      pair_chemistry: pairChemistry,
       synergy_verdict: synergyVerdict,
       tactical_insights: tacticalInsights,
       matches: matchRecords,

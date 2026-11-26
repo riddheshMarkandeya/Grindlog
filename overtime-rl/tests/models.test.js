@@ -505,46 +505,48 @@ test('3rd-Man Safety Cover rewards rating and Discipline without affecting non-c
     );
 });
 
-test('calculateTacticalOvr - computes role-weighted 0-99 OVR and exact /800 totals cleanly', () => {
+test('calculateTacticalOvr - computes honest role-weighted 0-99 OVR matching card stats', () => {
     const swapo = calculateTacticalOvr({
-        finishing: 63, creation: 39, dribbling: 61, pace: 57,
-        tackling: 67, goalkeeping: 39, aerial: 47, positioning: 42,
+        finishing: 86, creation: 76, dribbling: 79, pace: 81,
+        tackling: 78, goalkeeping: 64, aerial: 73, positioning: 72,
         archetype: 'The Striker',
     });
     const mechless = calculateTacticalOvr({
-        finishing: 58, creation: 35, dribbling: 50, pace: 60,
-        tackling: 73, goalkeeping: 39, aerial: 68, positioning: 38,
+        finishing: 84, creation: 75, dribbling: 77, pace: 85,
+        tackling: 82, goalkeeping: 68, aerial: 89, positioning: 74,
         archetype: 'The Air Marshal',
     });
     const rocinante = calculateTacticalOvr({
-        finishing: 24, creation: 52, dribbling: 54, pace: 35,
-        tackling: 50, goalkeeping: 44, aerial: 23, positioning: 55,
+        finishing: 64, creation: 82, dribbling: 74, pace: 68,
+        tackling: 73, goalkeeping: 71, aerial: 62, positioning: 78,
         archetype: 'The Playmaker',
     });
     const passenger = calculateTacticalOvr({
-        finishing: 14, creation: 14, dribbling: 14, pace: 14,
-        tackling: 14, goalkeeping: 14, aerial: 14, positioning: 14,
+        finishing: 42, creation: 44, dribbling: 43, pace: 45,
+        tackling: 44, goalkeeping: 42, aerial: 43, positioning: 38,
         archetype: 'The Passenger',
     });
     const icon = calculateTacticalOvr({
-        finishing: 85, creation: 78, dribbling: 82, pace: 84,
-        tackling: 76, goalkeeping: 80, aerial: 80, positioning: 88,
+        finishing: 91, creation: 87, dribbling: 90, pace: 92,
+        tackling: 85, goalkeeping: 84, aerial: 89, positioning: 90,
         archetype: 'The All-Rounder',
     });
 
-    assert.equal(swapo.total800, 415);
-    assert.equal(mechless.total800, 421);
-    assert.equal(rocinante.total800, 337);
-    assert.ok(mechless.ovr >= 78 && mechless.ovr <= 85, `Expected Mechless OVR ~81, got ${mechless.ovr}`);
-    assert.ok(swapo.ovr >= 76 && swapo.ovr <= 83, `Expected Swapo OVR ~79, got ${swapo.ovr}`);
-    assert.ok(rocinante.ovr >= 70 && rocinante.ovr <= 77, `Expected Rocinante OVR ~73, got ${rocinante.ovr}`);
+    assert.equal(swapo.total800, 609);
+    assert.equal(mechless.total800, 634);
+    assert.equal(rocinante.total800, 572);
+    assert.ok(mechless.ovr >= 82 && mechless.ovr <= 87, `Expected Mechless OVR ~84, got ${mechless.ovr}`);
+    assert.ok(swapo.ovr >= 78 && swapo.ovr <= 83, `Expected Swapo OVR ~80, got ${swapo.ovr}`);
+    assert.ok(rocinante.ovr >= 72 && rocinante.ovr <= 77, `Expected Rocinante OVR ~74, got ${rocinante.ovr}`);
+    assert.ok(Math.abs(swapo.ovr - swapo.weightedRaw) <= 3, `OVR must honestly justify card stats (${swapo.ovr} vs ${swapo.weightedRaw})`);
     assert.ok(passenger.ovr < rocinante.ovr && rocinante.ovr < icon.ovr, 'OVR should increase monotonically across tiers');
+    assert.equal(passenger.tier, 'BRONZE');
     assert.equal(icon.tier, 'ICON');
 
     // Role sensitivity: playmaker axes score higher OVR as Playmaker than as Striker
     const sameAxesAsStriker = calculateTacticalOvr({
-        finishing: 24, creation: 52, dribbling: 54, pace: 35,
-        tackling: 50, goalkeeping: 44, aerial: 23, positioning: 55,
+        finishing: 64, creation: 82, dribbling: 74, pace: 68,
+        tackling: 73, goalkeeping: 71, aerial: 62, positioning: 78,
         archetype: 'The Striker',
     });
     assert.ok(rocinante.ovr > sameAxesAsStriker.ovr, `Role weights should reward true role fit (${rocinante.ovr} vs ${sameAxesAsStriker.ovr})`);
@@ -827,4 +829,85 @@ test('FIFA card helpers & OvertimeDBCache player_card_prefs persistence', () => 
     assert.equal(classifyRowGameMode({ playlist_id: 34, team_size: 3 }), '3s');
     cache.close();
     try { fs.unlinkSync(tmpDb); } catch {}
+});
+
+test('evaluatePairChemistry - distinguishes complementary Playmaker+Striker synergy from dual ball-chasing friction', async () => {
+    const { evaluatePairChemistry, scoreToDiamondsAndTier } = await import('../src/server/models/chemistry.ts');
+    const { buildPlayerFifaCard } = await import('../src/server/models/fifa-card.ts');
+
+    const strikerRadar = { finishing: 86, creation: 74, dribbling: 79, pace: 83, tackling: 76, goalkeeping: 62, aerial: 88, positioning: 64, archetype: 'The Air Marshal' };
+    const playmakerRadar = { finishing: 63, creation: 85, dribbling: 76, pace: 72, tackling: 75, goalkeeping: 78, aerial: 64, positioning: 82, archetype: 'The Playmaker' };
+    const secondChaserRadar = { finishing: 84, creation: 64, dribbling: 80, pace: 81, tackling: 68, goalkeeping: 58, aerial: 79, positioning: 59, archetype: 'The Striker' };
+
+    const telepathic = evaluatePairChemistry({
+        playerA: { primary_id: 'p1', display_name: 'Mechless', archetype: 'The Air Marshal', role_badge: 'AF', ovr: 82, car_body: 'fennec' },
+        playerB: { primary_id: 'p2', display_name: 'Rocinante', archetype: 'The Playmaker', role_badge: 'CM', ovr: 76, car_body: 'octane' },
+        radarA: strikerRadar,
+        radarB: playmakerRadar,
+        matchesTogether: 36,
+        wins: 23,
+        goalDiff: 22,
+        assistsAtoB: 10,
+        assistsBtoA: 14,
+        mutualDoubleCommits: 4,
+        thirdManCovers: 12,
+        soloWinRateA: 50,
+        soloWinRateB: 49,
+        avgRatingTogether: 7.45,
+        soloRatingBaseline: 6.95,
+        avgBoostA: 56,
+        avgBoostB: 58,
+        supersonicShareA: 0.16,
+        supersonicShareB: 0.15,
+        emptyBoostShareA: 0.04,
+        emptyBoostShareB: 0.04,
+        modeBuckets: [{ mode: '3v3', matches: 36, wins: 23, goalDiff: 22, mutualDoubleCommits: 4, assistsAtoB: 10, assistsBtoA: 14 }],
+    });
+
+    const colliding = evaluatePairChemistry({
+        playerA: { primary_id: 'p1', display_name: 'ChaserA', archetype: 'The Striker', role_badge: 'ST', ovr: 79, car_body: 'octane_zsr' },
+        playerB: { primary_id: 'p3', display_name: 'ChaserB', archetype: 'The Striker', role_badge: 'ST', ovr: 78, car_body: 'fennec' },
+        radarA: strikerRadar,
+        radarB: secondChaserRadar,
+        matchesTogether: 36,
+        wins: 14,
+        goalDiff: -14,
+        assistsAtoB: 2,
+        assistsBtoA: 2,
+        mutualDoubleCommits: 32,
+        thirdManCovers: 0,
+        soloWinRateA: 52,
+        soloWinRateB: 51,
+        avgRatingTogether: 6.45,
+        soloRatingBaseline: 7.05,
+        avgBoostA: 41,
+        avgBoostB: 40,
+        supersonicShareA: 0.25,
+        supersonicShareB: 0.10,
+        emptyBoostShareA: 0.15,
+        emptyBoostShareB: 0.16,
+    });
+
+    assert.ok(telepathic.chemistry_score >= 76, `Expected >=76 chemistry for complementary low-DC pair, got ${telepathic.chemistry_score}`);
+    assert.equal(telepathic.diamonds, 3);
+    assert.ok(colliding.chemistry_score <= 55, `Expected <=55 chemistry for high-DC colliding aggressors, got ${colliding.chemistry_score}`);
+    assert.equal(colliding.role_pairing_label, 'Dual Aggressors');
+    assert.ok(telepathic.pillars.spacing_discipline > colliding.pillars.spacing_discipline);
+    assert.equal(scoreToDiamondsAndTier(80).diamonds, 3);
+    assert.equal(scoreToDiamondsAndTier(66).diamonds, 2);
+    assert.equal(scoreToDiamondsAndTier(55).diamonds, 1);
+    assert.equal(scoreToDiamondsAndTier(45).diamonds, 0);
+
+    // Verify Swap defaults cleanly to octane_zsr on real card builder
+    const swapCard = buildPlayerFifaCard({
+        reader: {
+            getPlayerMatches: () => [
+                { match_guid: 'g1', started_at: 1000, playlist_id: 11, arena: 'UtopiaStadium_P', overtime: 0, score_team0: 3, score_team1: 1, winner_team_num: 0, team_size: 2, player_key: 'k1', primary_id: 'Epic|f5c0f37f0a5649e4bff607332fcf8ac0|0', name: 'Swapo_o', is_bot: 0, team_num: 0, score: 520, goals: 2, shots: 4, assists: 1, saves: 1, touches: 35, demos: 1, hardest_shot_kmh: 98, woodwork_hits: 0, aerial_touches: 3, car_ms: 300000, boost_avg: 52, supersonic_ms: 48000, empty_boost_ms: 15000, touches_defence: 10, touches_midfield: 15, touches_attack: 10 },
+            ],
+        },
+        primaryId: 'Epic|f5c0f37f0a5649e4bff607332fcf8ac0|0',
+        playerName: 'Swapo_o',
+    });
+    assert.equal(swapCard?.car_body, 'octane_zsr');
+    assert.equal(swapCard?.display_name, 'Swap');
 });

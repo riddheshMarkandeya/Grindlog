@@ -18,6 +18,7 @@ interface FifaCardProps {
 }
 
 const CAR_OPTIONS: Array<{ id: CarBodyType; label: string }> = [
+  { id: 'octane_zsr', label: 'Octane ZSR' },
   { id: 'fennec', label: 'Fennec' },
   { id: 'octane', label: 'Octane' },
   { id: 'dominus', label: 'Dominus' },

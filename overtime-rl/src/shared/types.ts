@@ -389,7 +389,7 @@ export const PlaylistStatsSchema = z.object({
 });
 export type PlaylistStats = z.infer<typeof PlaylistStatsSchema>;
 
-export const CarBodyTypeSchema = z.enum(['octane', 'fennec', 'dominus', 'breakout', 'hybrid']);
+export const CarBodyTypeSchema = z.enum(['octane', 'octane_zsr', 'fennec', 'dominus', 'breakout', 'hybrid']);
 export type CarBodyType = z.infer<typeof CarBodyTypeSchema>;
 
 export const PlayerCardPrefsSchema = z.object({
@@ -665,6 +665,78 @@ export const TrioPassingMatrixEntrySchema = z.object({
 });
 export type TrioPassingMatrixEntry = z.infer<typeof TrioPassingMatrixEntrySchema>;
 
+export const PairChemistryPillarScoresSchema = z.object({
+  passing_synergy: z.number(),
+  spacing_discipline: z.number(),
+  role_complementarity: z.number(),
+  tempo_sync: z.number(),
+  impact_lift: z.number(),
+});
+export type PairChemistryPillarScores = z.infer<typeof PairChemistryPillarScoresSchema>;
+
+export const PairChemistryModeSplitSchema = z.object({
+  mode: z.enum(['all', '2v2', '3v3']),
+  matches_together: z.number(),
+  wins: z.number(),
+  losses: z.number(),
+  win_rate: z.number(),
+  goal_differential: z.number(),
+  chemistry_score: z.number(),
+  diamonds: z.number(),
+  double_commits_per_game: z.number(),
+  mutual_assists_per_game: z.number(),
+});
+export type PairChemistryModeSplit = z.infer<typeof PairChemistryModeSplitSchema>;
+
+export const PairChemistryPlayerRefSchema = z.object({
+  primary_id: z.string(),
+  display_name: z.string(),
+  archetype: TacticalArchetypeSchema,
+  role_badge: z.string(),
+  ovr: z.number(),
+  car_body: CarBodyTypeSchema,
+});
+export type PairChemistryPlayerRef = z.infer<typeof PairChemistryPlayerRefSchema>;
+
+export const PairChemistryRecordSchema = z.object({
+  pair_key: z.string(),
+  player_a: PairChemistryPlayerRefSchema,
+  player_b: PairChemistryPlayerRefSchema,
+  matches_together: z.number(),
+  wins: z.number(),
+  losses: z.number(),
+  win_rate: z.number(),
+  goal_differential: z.number(),
+  chemistry_score: z.number(),
+  diamonds: z.number(),
+  tier_label: z.string(),
+  role_pairing_label: z.string(),
+  pillars: PairChemistryPillarScoresSchema,
+  mutual_double_commits: z.number(),
+  double_commits_per_game: z.number(),
+  assists_a_to_b: z.number(),
+  assists_b_to_a: z.number(),
+  total_goal_links: z.number(),
+  win_rate_lift_pct: z.number(),
+  confidence_pct: z.number(),
+  mode_splits: z.array(PairChemistryModeSplitSchema),
+  strengths: z.array(z.string()),
+  frictions: z.array(z.string()),
+  coaching_tip: z.string(),
+});
+export type PairChemistryRecord = z.infer<typeof PairChemistryRecordSchema>;
+
+export const PairChemistryOverviewSchema = z.object({
+  generated_at: z.string(),
+  mode_filter: z.enum(['all', '2v2', '3v3']).default('all'),
+  players: z.array(PairChemistryPlayerRefSchema),
+  pairs: z.array(PairChemistryRecordSchema),
+  best_pairs: z.array(PairChemistryRecordSchema),
+  friction_pairs: z.array(PairChemistryRecordSchema),
+  methodology_notes: z.array(z.string()),
+});
+export type PairChemistryOverview = z.infer<typeof PairChemistryOverviewSchema>;
+
 export const TrioSquadDossierSchema = z.object({
   squad_name: z.string(),
   matches_together: z.number(),
@@ -681,6 +753,7 @@ export const TrioSquadDossierSchema = z.object({
   passing_network: z.array(TrioAssistConnectionSchema),
   passing_matrix: z.array(TrioPassingMatrixEntrySchema).optional().default([]),
   intra_double_commits: z.array(TrioDoubleCommitPairSchema),
+  pair_chemistry: z.array(PairChemistryRecordSchema).optional().default([]),
   synergy_verdict: z.string(),
   tactical_insights: z.array(z.string()),
   matches: z.array(TrioMatchRecordSchema),
