@@ -329,6 +329,16 @@ function defaultCarForArchetype(archetype: TacticalArchetype): CarBodyType {
   return 'octane';
 }
 
+const DEFAULT_DISPLAY_NAMES: Record<string, string> = {
+  'swapo_o': 'Swap',
+  'mechless madness': 'Mechless',
+  'rocinante_.': 'Rocinante',
+};
+
+function resolveDefaultCardName(rawName: string): string {
+  return DEFAULT_DISPLAY_NAMES[rawName.trim().toLowerCase()] || rawName;
+}
+
 /**
  * Builds the player's shareable FUT-style FIFA+RL Card locked to completed 15-game Rating Cycles.
  */
@@ -362,7 +372,7 @@ export function buildPlayerFifaCard(params: {
 
   const prefs = prefsOverride !== undefined ? prefsOverride : cache?.getCardPrefs(resolvedPid) || cache?.getCardPrefs(primaryId) || null;
   const carBody: CarBodyType = prefs?.car_body || defaultCarForArchetype(activeEval.radar.archetype);
-  const displayName = (prefs?.custom_name || '').trim() || resolvedName;
+  const displayName = (prefs?.custom_name || '').trim() || resolveDefaultCardName(resolvedName);
   const cardTitle = (prefs?.custom_title || '').trim() || DEFAULT_SUBTITLE_MAP[activeEval.radar.archetype];
 
   return {
