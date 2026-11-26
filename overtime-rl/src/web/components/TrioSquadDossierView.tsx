@@ -4,6 +4,7 @@ import { formatArenaName } from '../../shared/formatters.ts';
 import { RadarChart } from './RadarChart.tsx';
 import { RatingBadge } from './RatingBadge.tsx';
 import { RotationBadge } from './RotationBadge.tsx';
+import { SquadChemistryFormation } from './SquadChemistryFormation.tsx';
 
 interface TrioSquadDossierViewProps {
   trio: TrioSquadDossier;
@@ -107,6 +108,9 @@ export const TrioSquadDossierView: React.FC<TrioSquadDossierViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* 1.5 Starting Trio Ultimate Team Formation with Chemistry Links */}
+      <SquadChemistryFormation trio={trio} onOpenProfile={onOpenProfile} />
 
       {/* 2. Tactical Verdict & AI Insights */}
       <div

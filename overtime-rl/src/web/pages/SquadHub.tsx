@@ -6,6 +6,7 @@ import { RatingBadge } from '../components/RatingBadge.tsx';
 import { RotationBadge } from '../components/RotationBadge.tsx';
 import { TrioSquadDossierView } from '../components/TrioSquadDossierView.tsx';
 import { SquadMatchesExplorerView } from '../components/SquadMatchesExplorerView.tsx';
+import { FifaCard } from '../components/FifaCard.tsx';
 
 interface FriendItem {
   primary_id: string;
@@ -681,7 +682,7 @@ export const SquadHubView: React.FC<SquadHubProps> = ({ onSelectMatch, onOpenPro
         </div>
       ) : (
         /* 2. Friends Cards Grid */
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px' }}>
           {filteredFriends.map(friend => {
             const isHighDc = friend.double_commits_per_game >= 0.70;
             const isGoodChemistry = friend.chemistry_score >= 70;
@@ -717,6 +718,26 @@ export const SquadHubView: React.FC<SquadHubProps> = ({ onSelectMatch, onOpenPro
                 onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)')}
               >
                 <div>
+                  {/* Compact FIFA Ultimate Card Showcase when available */}
+                  {friend.fifa_card && (
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+                      <FifaCard
+                        card={friend.fifa_card}
+                        size="sm"
+                        editable
+                        showShare
+                        showCycleBar
+                        onCardUpdated={nextCard =>
+                          setFriends(prev =>
+                            prev.map(item =>
+                              item.primary_id === friend.primary_id ? { ...item, fifa_card: nextCard } : item
+                            )
+                          )
+                        }
+                      />
+                    </div>
+                  )}
+
                   {/* Top Bar: Name & Chemistry Badge */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

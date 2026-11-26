@@ -8,6 +8,7 @@ import { aggregateRadarFromAnalyses } from './radar-aggregator.ts';
 import type { GrindlogReader } from '../ingestion/grindlog-reader.ts';
 import type { OvertimeDBCache } from '../db/cache.ts';
 import { ENGINE_VERSION, type MatchAnalyzer } from './analyzer.ts';
+import { buildPlayerFifaCard } from './fifa-card.ts';
 
 interface CareerRawTelemetry {
   duelsWon: number;
@@ -569,6 +570,14 @@ export function buildPlayerProfile(
     );
   }
 
+  const fifaCard = buildPlayerFifaCard({
+    reader,
+    primaryId: resolvedPrimaryId,
+    playerName,
+    cache,
+    analyzer,
+  });
+
   return {
     player_key: rows[0].player_key,
     primary_id: resolvedPrimaryId,
@@ -584,6 +593,7 @@ export function buildPlayerProfile(
     highest_rating: highestRating,
     lowest_rating: lowestRating,
     radar,
+    fifa_card: fifaCard ?? undefined,
     attributes: {
       total_goals: totalGoals,
       goals_per_game: gpg,

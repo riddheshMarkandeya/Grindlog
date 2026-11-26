@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import type { PlayerProfile, RadarProfile } from '../../shared/types.ts';
+import type { FifaCardData, PlayerProfile, RadarProfile } from '../../shared/types.ts';
 import { RatingBadge } from '../components/RatingBadge.tsx';
 import { RadarChart } from '../components/RadarChart.tsx';
 import { OvrBadge } from '../components/OvrBadge.tsx';
+import { FifaCard } from '../components/FifaCard.tsx';
 
 interface FriendSwitcherItem {
   name: string;
@@ -27,6 +28,25 @@ export const PlayerProfileView: React.FC<PlayerProfileProps> = ({
   const [isFriend, setIsFriend] = useState<boolean>(false);
   const [squadPlayers, setSquadPlayers] = useState<FriendSwitcherItem[]>([]);
   const [userBaselineRadar, setUserBaselineRadar] = useState<RadarProfile | null>(null);
+  const [cardCycleSize, setCardCycleSize] = useState<10 | 15 | 20>(15);
+  const [cardData, setCardData] = useState<FifaCardData | undefined>(profile.fifa_card);
+
+  useEffect(() => {
+    setCardData(profile.fifa_card);
+    setCardCycleSize(15);
+  }, [profile]);
+
+  const handleCycleChange = async (nextCycle: 10 | 15 | 20) => {
+    setCardCycleSize(nextCycle);
+    try {
+      const next = await fetch(`/api/card/${encodeURIComponent(profile.primary_id)}?cycle=${nextCycle}`).then(r =>
+        r.json()
+      );
+      if (next && next.primary_id) {
+        setCardData(next);
+      }
+    } catch {}
+  };
 
   useEffect(() => {
     fetch('/api/squad/friends')
@@ -372,6 +392,137 @@ export const PlayerProfileView: React.FC<PlayerProfileProps> = ({
           </div>
         </div>
       </div>
+
+      {/* 1.5 FIFA Ultimate Card & 15-Game Rating Cycle Showcase */}
+      {cardData && (
+        <div
+          className="surface-card"
+          style={{
+            padding: '24px',
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '24px',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'center', flex: '0 0 auto', margin: '0 auto' }}>
+            <FifaCard
+              card={cardData}
+              size="md"
+              editable
+              showShare
+              showCycleBar
+              onCardUpdated={setCardData}
+            />
+          </div>
+
+          <div style={{ flex: '1 1 360px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 800, color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  FIFA+RL Ultimate Card Edition
+                </div>
+                <h3 style={{ fontSize: '20px', fontWeight: 900, color: '#f8fafc', margin: '2px 0 0 0' }}>
+                  {cardData.cycle.is_provisional
+                    ? `Provisional Debut (${cardData.cycle.total_matches}/${cardData.cycle.cycle_size} Matches)`
+                    : `Locked Cycle #${cardData.cycle.current_cycle} · Matches #${cardData.cycle.window_start_match}–#${cardData.cycle.window_end_match}`}
+                </h3>
+              </div>
+
+              {/* Configurable 10 / 15 / 20 Game Lock Cycle Switcher */}
+              <div style={{ display: 'inline-flex', backgroundColor: '#0c121e', border: '1px solid #1c273e', borderRadius: '8px', padding: '3px', gap: '4px' }}>
+                {([10, 15, 20] as const).map(sz => (
+                  <button
+                    key={sz}
+                    type="button"
+                    onClick={() => handleCycleChange(sz)}
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      backgroundColor: cardCycleSize === sz ? '#0284c7' : 'transparent',
+                      color: cardCycleSize === sz ? '#ffffff' : '#94a3b8',
+                    }}
+                  >
+                    {sz}G Cycle
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
+              Your card locks onto the most recent completed <strong style={{ color: '#e2e8f0' }}>{cardData.cycle.cycle_size}-match</strong> block so individual outlier matches never skew your rating.{' '}
+              {cardData.cycle.is_provisional
+                ? `Play ${cardData.cycle.matches_until_refresh} more match${cardData.cycle.matches_until_refresh === 1 ? '' : 'es'} to unlock Cycle #1.`
+                : `Progress: ${cardData.cycle.progress_in_cycle}/${cardData.cycle.cycle_size} matches toward Cycle #${cardData.cycle.current_cycle + 1} (${cardData.cycle.matches_until_refresh} remaining).`}
+            </p>
+
+            {/* Cycle Performance & Delta Chips */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px' }}>
+              <div className="surface-sub" style={{ padding: '10px 12px' }}>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 800 }}>CYCLE OVR</div>
+                <div style={{ fontSize: '20px', fontWeight: 900, color: cardData.accent_color, fontFamily: 'var(--font-mono)' }}>
+                  {cardData.ovr}{' '}
+                  {cardData.stat_deltas.ovr !== 0 && (
+                    <span style={{ fontSize: '12px', color: cardData.stat_deltas.ovr > 0 ? '#34d399' : '#f87171' }}>
+                      ({cardData.stat_deltas.ovr > 0 ? `+${cardData.stat_deltas.ovr}` : cardData.stat_deltas.ovr})
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="surface-sub" style={{ padding: '10px 12px' }}>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 800 }}>CYCLE WIN RATE</div>
+                <div style={{ fontSize: '20px', fontWeight: 900, color: cardData.cycle.win_rate >= 50 ? '#34d399' : '#f87171', fontFamily: 'var(--font-mono)' }}>
+                  {cardData.cycle.win_rate}%
+                </div>
+              </div>
+              <div className="surface-sub" style={{ padding: '10px 12px' }}>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 800 }}>CYCLE RATING</div>
+                <div style={{ fontSize: '20px', fontWeight: 900, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
+                  {cardData.cycle.avg_rating.toFixed(1)}★
+                </div>
+              </div>
+            </div>
+
+            {/* PlayStyles+ Earned Details */}
+            {cardData.playstyles.length > 0 && (
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                  Active PlayStyles+ (Earned From Cycle Telemetry)
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {cardData.playstyles.map(ps => (
+                    <div
+                      key={ps.id}
+                      className="surface-sub"
+                      style={{
+                        padding: '6px 10px',
+                        border: ps.tier === 'plus' ? '1px solid #fbbf24' : '1px solid var(--border-hairline)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <span>{ps.icon}</span>
+                      <span style={{ fontSize: '12px', fontWeight: 800, color: ps.tier === 'plus' ? '#fbbf24' : '#e2e8f0' }}>
+                        {ps.name}
+                        {ps.tier === 'plus' ? '+' : ''}
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                        {ps.metric_label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 2. Tactical Radar & AI Career Diagnostics */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px' }}>

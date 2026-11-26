@@ -7,8 +7,9 @@ import { MatchAnalyzer } from './models/analyzer.ts';
 import { buildPlayerProfile } from './models/profile.ts';
 import { buildSquadFriendsStats, buildDuoFriendDossier, buildTrioSquadDossier, buildSquadExplorerMatches } from './models/squad.ts';
 import { buildSessionPodium, computeSessionTeamTotals } from './models/session.ts';
+import { buildPlayerFifaCard, DEFAULT_CARD_CYCLE_SIZE } from './models/fifa-card.ts';
 import { OvertimeDBCache } from './db/cache.ts';
-import type { MatchAnalysisResult, SessionRecap, SessionMatchSummary, PlayerProfile, SquadFriendStats } from '../shared/types.ts';
+import { PlayerCardPrefsUpdateSchema, type MatchAnalysisResult, type SessionRecap, type SessionMatchSummary } from '../shared/types.ts';
 
 const PORT = 49200;
 
@@ -347,6 +348,66 @@ const server = http.createServer((req, res) => {
       sendJson(res, 200, matches);
     } catch (e: any) {
       console.error('Error generating squad explorer matches:', e);
+      sendJson(res, 500, { error: e.message });
+    }
+    return;
+  }
+
+  // 12. FIFA+RL Card Preferences & Cycle Card Endpoint
+  if (pathname === '/api/card/prefs' && req.method === 'GET') {
+    try {
+      sendJson(res, 200, cache.getAllCardPrefs());
+    } catch (e: any) {
+      sendJson(res, 500, { error: e.message });
+    }
+    return;
+  }
+
+  if (pathname === '/api/card/prefs' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const parsedJson = JSON.parse(body || '{}');
+        const validated = PlayerCardPrefsUpdateSchema.safeParse(parsedJson);
+        if (!validated.success) {
+          sendJson(res, 400, { error: 'Invalid card preferences payload', details: validated.error.flatten() });
+          return;
+        }
+        const saved = cache.upsertCardPrefs(validated.data);
+        const refreshed = buildPlayerFifaCard({
+          reader,
+          primaryId: saved.primary_id,
+          cache,
+          analyzer,
+          cycleSize: DEFAULT_CARD_CYCLE_SIZE,
+          prefsOverride: saved,
+        });
+        sendJson(res, 200, { prefs: saved, card: refreshed });
+      } catch (e: any) {
+        sendJson(res, 400, { error: e.message || 'Invalid JSON body' });
+      }
+    });
+    return;
+  }
+
+  if (pathname.startsWith('/api/card/') && req.method === 'GET') {
+    try {
+      const targetId = decodeURIComponent(pathname.replace('/api/card/', '').trim());
+      const cycleParam = Number(url.searchParams.get('cycle')) || DEFAULT_CARD_CYCLE_SIZE;
+      const card = buildPlayerFifaCard({
+        reader,
+        primaryId: targetId,
+        cache,
+        analyzer,
+        cycleSize: cycleParam,
+      });
+      if (!card) {
+        sendJson(res, 404, { error: `Card not found for ${targetId}` });
+        return;
+      }
+      sendJson(res, 200, card);
+    } catch (e: any) {
       sendJson(res, 500, { error: e.message });
     }
     return;

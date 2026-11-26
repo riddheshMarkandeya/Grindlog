@@ -21,6 +21,7 @@ import { calculateMatchRatingFromPlayerRow } from './profile.ts';
 import { calculatePlayerRadar } from './radar.ts';
 import { aggregateRadarFromAnalyses } from './radar-aggregator.ts';
 import { MatchAnalyzer } from './analyzer.ts';
+import { buildPlayerFifaCard } from './fifa-card.ts';
 
 export function buildSquadFriendsStats(
   reader: GrindlogReader,
@@ -154,6 +155,17 @@ export function buildSquadFriendsStats(
         chemistryVerdict = 'Needs Spacing: Sub-45% win rate; defensive double-commits leave open nets.';
       }
 
+      const buildFriendCard = isPinned || friendsStats.length < 8;
+      const fifaCard = buildFriendCard
+        ? buildPlayerFifaCard({
+            reader,
+            primaryId: t.primary_id,
+            playerName: t.name,
+            cache,
+            analyzer: resolvedAnalyzer,
+          })
+        : null;
+
       friendsStats.push({
         name: t.name,
         primary_id: t.primary_id,
@@ -171,6 +183,7 @@ export function buildSquadFriendsStats(
         chemistry_score: chemistryScore,
         chemistry_verdict: chemistryVerdict,
         last_played: t.last_played,
+        fifa_card: fifaCard ?? undefined,
       });
     }
 
@@ -907,6 +920,14 @@ export function buildTrioSquadDossier(
         avg_score: Math.round(p1Stats.score / n),
         mvp_count: p1Stats.mvpCount,
         radar: uRadar,
+        fifa_card:
+          buildPlayerFifaCard({
+            reader,
+            primaryId: p1Stats.pid,
+            playerName: 'Swapo_o',
+            cache,
+            analyzer: resolvedAnalyzer,
+          }) ?? undefined,
       },
       {
         name: 'Mechless Madness',
@@ -926,6 +947,14 @@ export function buildTrioSquadDossier(
         avg_score: Math.round(p3Stats.score / n),
         mvp_count: p3Stats.mvpCount,
         radar: mRadar,
+        fifa_card:
+          buildPlayerFifaCard({
+            reader,
+            primaryId: p3Stats.pid,
+            playerName: 'Mechless Madness',
+            cache,
+            analyzer: resolvedAnalyzer,
+          }) ?? undefined,
       },
       {
         name: 'Rocinante_.',
@@ -945,6 +974,14 @@ export function buildTrioSquadDossier(
         avg_score: Math.round(p2Stats.score / n),
         mvp_count: p2Stats.mvpCount,
         radar: rRadar,
+        fifa_card:
+          buildPlayerFifaCard({
+            reader,
+            primaryId: p2Stats.pid,
+            playerName: 'Rocinante_.',
+            cache,
+            analyzer: resolvedAnalyzer,
+          }) ?? undefined,
       },
     ];
 

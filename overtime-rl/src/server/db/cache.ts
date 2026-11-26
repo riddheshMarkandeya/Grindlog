@@ -1,7 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
-import type { MatchAnalysisResult, SessionRecap } from '../../shared/types.ts';
+import type { CarBodyType, MatchAnalysisResult, PlayerCardPrefs, SessionRecap } from '../../shared/types.ts';
 
 export class OvertimeDBCache {
   private db: DatabaseSync;
@@ -57,8 +57,60 @@ export class OvertimeDBCache {
         added_at INTEGER NOT NULL
       );
 
+      CREATE TABLE IF NOT EXISTS player_card_prefs (
+        primary_id TEXT PRIMARY KEY,
+        car_body TEXT NOT NULL DEFAULT 'octane',
+        custom_name TEXT,
+        custom_title TEXT,
+        updated_at INTEGER NOT NULL
+      );
+
       CREATE INDEX IF NOT EXISTS idx_match_cache_computed ON match_cache(computed_at DESC);
     `);
+  }
+
+  public getCardPrefs(primaryId: string): PlayerCardPrefs | null {
+    try {
+      const row = this.db
+        .prepare('SELECT primary_id, car_body, custom_name, custom_title, updated_at FROM player_card_prefs WHERE primary_id = ?')
+        .get(primaryId) as PlayerCardPrefs | undefined;
+      return row ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  public getAllCardPrefs(): PlayerCardPrefs[] {
+    try {
+      return this.db
+        .prepare('SELECT primary_id, car_body, custom_name, custom_title, updated_at FROM player_card_prefs ORDER BY updated_at DESC')
+        .all() as unknown as PlayerCardPrefs[];
+    } catch {
+      return [];
+    }
+  }
+
+  public upsertCardPrefs(input: {
+    primary_id: string;
+    car_body?: CarBodyType;
+    custom_name?: string | null;
+    custom_title?: string | null;
+  }): PlayerCardPrefs {
+    const existing = this.getCardPrefs(input.primary_id);
+    const next: PlayerCardPrefs = {
+      primary_id: input.primary_id,
+      car_body: input.car_body ?? existing?.car_body ?? 'octane',
+      custom_name: input.custom_name !== undefined ? input.custom_name : (existing?.custom_name ?? null),
+      custom_title: input.custom_title !== undefined ? input.custom_title : (existing?.custom_title ?? null),
+      updated_at: Date.now(),
+    };
+    this.db
+      .prepare(
+        `INSERT OR REPLACE INTO player_card_prefs (primary_id, car_body, custom_name, custom_title, updated_at)
+         VALUES (?, ?, ?, ?, ?)`
+      )
+      .run(next.primary_id, next.car_body, next.custom_name ?? null, next.custom_title ?? null, next.updated_at);
+    return next;
   }
 
   public getMatch(guid: string): MatchAnalysisResult | null {

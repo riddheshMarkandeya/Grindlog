@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { calculateXG, calculateClinicality } from '../src/server/models/xg.ts';
 import { calculatePlayerRating } from '../src/server/models/rating.ts';
 import { calculateMomentumWave } from '../src/server/models/momentum.ts';
@@ -9,6 +12,8 @@ import { getPlayerMatchTitles } from '../src/shared/awards.ts';
 import { calculateTacticalOvr } from '../src/shared/ovr.ts';
 import { buildSessionPodium, computeSessionTeamTotals } from '../src/server/models/session.ts';
 import { extractFifaPlayMetrics, evaluateConcededGoalChains } from '../src/server/models/fifa-telemetry.ts';
+import { sliceCardCycleMatches, resolveCardPosition, resolvePromoEdition, extractCardPlayStyles } from '../src/server/models/fifa-card.ts';
+import { OvertimeDBCache } from '../src/server/db/cache.ts';
 test('calculateXG - tap in should have high xG and be a big chance', () => {
     // Point blank shot in front of Orange goal (Y = 5120)
     const result = calculateXG({
@@ -722,4 +727,99 @@ test('evaluateConcededGoalChains - constructs 3-step Origin -> Breakdown -> Net 
     assert.equal(chains[0].steps[0].category, 'Dribbling');
     assert.equal(chains[0].steps[1].category, 'Discipline');
     assert.equal(chains[0].steps[2].category, 'Goalkeeping');
+});
+
+test('sliceCardCycleMatches - locks card stats to completed 15-game checkpoints rather than every game', () => {
+    const mkRow = (idx) => ({
+        match_guid: `m-${idx}`,
+        player_key: 'p1',
+        primary_id: 'Epic|swapo|0',
+        name: 'Swapo_o',
+        is_bot: 0,
+        team_num: 0,
+        score: 400,
+        goals: 1,
+        shots: 3,
+        assists: 1,
+        saves: 1,
+        touches: 30,
+        demos: 0,
+        hardest_shot_kmh: 95,
+        woodwork_hits: 0,
+        aerial_touches: 2,
+        car_ms: 300000,
+        boost_avg: 50,
+        supersonic_ms: 45000,
+        empty_boost_ms: 15000,
+        touches_defence: 10,
+        touches_midfield: 10,
+        touches_attack: 10,
+        started_at: 1000000 + idx * 500000,
+        winner_team_num: 0,
+        score_team0: 2,
+        score_team1: 1,
+    });
+
+    // 10 matches (< 15) -> Provisional window
+    const prov = sliceCardCycleMatches(Array.from({ length: 10 }, (_, i) => mkRow(i)), 15);
+    assert.equal(prov.isProvisional, true);
+    assert.equal(prov.currentCycle, 0);
+    assert.equal(prov.matchesUntilRefresh, 5);
+    assert.equal(prov.activeSlice.length, 10);
+
+    // 24 matches (sorted newest-first) -> Locked strictly to Cycle #1 (#1..#15)
+    const rows24NewestFirst = Array.from({ length: 24 }, (_, i) => mkRow(23 - i));
+    const win24 = sliceCardCycleMatches(rows24NewestFirst, 15);
+    assert.equal(win24.isProvisional, false);
+    assert.equal(win24.currentCycle, 1);
+    assert.equal(win24.windowStartMatch, 1);
+    assert.equal(win24.windowEndMatch, 15);
+    assert.equal(win24.progressInCycle, 9);
+    assert.equal(win24.matchesUntilRefresh, 6);
+    assert.equal(win24.activeSlice[0].match_guid, 'm-0');
+    assert.equal(win24.activeSlice[14].match_guid, 'm-14');
+
+    // Adding matches #25..#29 MUST still lock to Cycle #1 (#1..#15)
+    const rows29NewestFirst = Array.from({ length: 29 }, (_, i) => mkRow(28 - i));
+    const win29 = sliceCardCycleMatches(rows29NewestFirst, 15);
+    assert.equal(win29.currentCycle, 1);
+    assert.deepEqual(win29.activeSlice.map(r => r.match_guid), win24.activeSlice.map(r => r.match_guid));
+
+    // Reaching match #30 flips cleanly to Cycle #2 (#16..#30) with prevSlice (#1..#15)
+    const rows30NewestFirst = Array.from({ length: 30 }, (_, i) => mkRow(29 - i));
+    const win30 = sliceCardCycleMatches(rows30NewestFirst, 15);
+    assert.equal(win30.currentCycle, 2);
+    assert.equal(win30.windowStartMatch, 16);
+    assert.equal(win30.windowEndMatch, 30);
+    assert.equal(win30.activeSlice[0].match_guid, 'm-15');
+    assert.equal(win30.prevSlice.length, 15);
+    assert.equal(win30.prevSlice[0].match_guid, 'm-0');
+});
+
+test('FIFA card helpers & OvertimeDBCache player_card_prefs persistence', () => {
+    assert.equal(resolveCardPosition({ finishing: 75, creation: 40, dribbling: 55, pace: 50, tackling: 45, goalkeeping: 20, archetype: 'The Striker' }), 'ST');
+    assert.equal(resolveCardPosition({ finishing: 30, creation: 45, dribbling: 30, pace: 35, tackling: 50, goalkeeping: 68, archetype: 'The Anchor' }), 'GK');
+    assert.equal(resolvePromoEdition(91, false, 8.5), 'OVERTIME ICON');
+    assert.equal(resolvePromoEdition(78, true, 7.5), 'PROVISIONAL');
+
+    const playstyles = extractCardPlayStyles(
+        { finishing: 82, creation: 55, dribbling: 68, pace: 50, tackling: 40, goalkeeping: 20, aerial: 35, positioning: 52, archetype: 'The Striker' },
+        []
+    );
+    assert.ok(playstyles.length >= 2);
+    assert.equal(playstyles[0].id, 'power_shot');
+    assert.equal(playstyles[0].tier, 'plus');
+
+    const tmpDb = path.join(os.tmpdir(), `overtime-card-test-${Date.now()}.db`);
+    const cache = new OvertimeDBCache(tmpDb);
+    const saved = cache.upsertCardPrefs({
+        primary_id: 'Epic|swapo|0',
+        car_body: 'fennec',
+        custom_name: 'SWAPO',
+        custom_title: 'NET HUNTER',
+    });
+    assert.equal(saved.car_body, 'fennec');
+    assert.equal(cache.getCardPrefs('Epic|swapo|0')?.custom_title, 'NET HUNTER');
+    cache.close();
+    try { fs.unlinkSync(tmpDb); } catch {}
 });

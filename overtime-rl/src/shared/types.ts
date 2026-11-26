@@ -389,6 +389,82 @@ export const PlaylistStatsSchema = z.object({
 });
 export type PlaylistStats = z.infer<typeof PlaylistStatsSchema>;
 
+export const CarBodyTypeSchema = z.enum(['octane', 'fennec', 'dominus', 'breakout', 'hybrid']);
+export type CarBodyType = z.infer<typeof CarBodyTypeSchema>;
+
+export const PlayerCardPrefsSchema = z.object({
+  primary_id: z.string(),
+  car_body: CarBodyTypeSchema.default('octane'),
+  custom_name: z.string().max(24).nullable().optional(),
+  custom_title: z.string().max(32).nullable().optional(),
+  updated_at: z.number(),
+});
+export type PlayerCardPrefs = z.infer<typeof PlayerCardPrefsSchema>;
+
+export const PlayerCardPrefsUpdateSchema = z.object({
+  primary_id: z.string().min(1).max(128),
+  car_body: CarBodyTypeSchema.optional(),
+  custom_name: z.string().max(24).nullable().optional(),
+  custom_title: z.string().max(32).nullable().optional(),
+});
+
+export const PlayStyleBadgeSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  icon: z.string(),
+  tier: z.enum(['plus', 'silver']),
+  metric_label: z.string(),
+});
+export type PlayStyleBadge = z.infer<typeof PlayStyleBadgeSchema>;
+
+export const FifaCardDataSchema = z.object({
+  primary_id: z.string(),
+  player_name: z.string(),
+  display_name: z.string(),
+  card_title: z.string(),
+  promo_edition: z.string(),
+  position: z.string(),
+  archetype: TacticalArchetypeSchema,
+  car_body: CarBodyTypeSchema,
+  ovr: z.number(),
+  total800: z.number(),
+  tier: z.enum(['ICON', 'ELITE', 'GOLD', 'SILVER', 'BRONZE']),
+  accent_color: z.string(),
+  stats: z.object({
+    pac: z.number(),
+    sho: z.number(),
+    pas: z.number(),
+    dri: z.number(),
+    tac: z.number(),
+    gk: z.number(),
+    aer: z.number(),
+    dis: z.number(),
+  }),
+  stat_deltas: z.object({
+    ovr: z.number(),
+    pac: z.number(),
+    sho: z.number(),
+    pas: z.number(),
+    dri: z.number(),
+    tac: z.number(),
+    gk: z.number(),
+  }),
+  cycle: z.object({
+    cycle_size: z.number(),
+    current_cycle: z.number(),
+    window_start_match: z.number(),
+    window_end_match: z.number(),
+    total_matches: z.number(),
+    progress_in_cycle: z.number(),
+    matches_until_refresh: z.number(),
+    is_provisional: z.boolean(),
+    win_rate: z.number(),
+    avg_rating: z.number(),
+  }),
+  playstyles: z.array(PlayStyleBadgeSchema),
+});
+export type FifaCardData = z.infer<typeof FifaCardDataSchema>;
+
 export const PlayerProfileSchema = z.object({
   player_key: z.string(),
   primary_id: z.string(),
@@ -404,6 +480,7 @@ export const PlayerProfileSchema = z.object({
   highest_rating: z.number(),
   lowest_rating: z.number(),
   radar: RadarProfileSchema,
+  fifa_card: FifaCardDataSchema.optional(),
   attributes: z.object({
     total_goals: z.number(),
     goals_per_game: z.number(),
@@ -449,6 +526,7 @@ export const SquadFriendStatsSchema = z.object({
   chemistry_score: z.number(),
   chemistry_verdict: z.string(),
   last_played: z.number().nullable(),
+  fifa_card: FifaCardDataSchema.optional(),
 });
 export type SquadFriendStats = z.infer<typeof SquadFriendStatsSchema>;
 
@@ -523,6 +601,7 @@ export const TrioPlayerSummarySchema = z.object({
   avg_score: z.number(),
   mvp_count: z.number(),
   radar: RadarProfileSchema,
+  fifa_card: FifaCardDataSchema.optional(),
 });
 export type TrioPlayerSummary = z.infer<typeof TrioPlayerSummarySchema>;
 
