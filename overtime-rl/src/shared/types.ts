@@ -94,6 +94,7 @@ export type MomentumPoint = z.infer<typeof MomentumPointSchema>;
 export const TacticalArchetypeSchema = z.enum([
   'The Striker',
   'The Playmaker',
+  'The Dribbler',
   'The Anchor',
   'The Disruptor',
   'The Speed Demon',
@@ -103,6 +104,28 @@ export const TacticalArchetypeSchema = z.enum([
   'The Passenger',
 ]);
 export type TacticalArchetype = z.infer<typeof TacticalArchetypeSchema>;
+
+export const GoalCausalStepSchema = z.object({
+  offset_label: z.string(),
+  player_name: z.string().nullable(),
+  team_num: z.number(),
+  category: z.enum(['Dribbling', 'Creation', 'Tackling', 'Pace', 'Goalkeeping', 'Discipline']),
+  title: z.string(),
+  detail: z.string(),
+  severity: z.enum(['high', 'medium', 'low']),
+});
+export type GoalCausalStep = z.infer<typeof GoalCausalStepSchema>;
+
+export const GoalCausalChainSchema = z.object({
+  goal_id: z.string(),
+  time_seconds: z.number(),
+  conceding_team: z.number(),
+  scorer_name: z.string(),
+  shot_xg: z.number(),
+  primary_attribution: z.string(),
+  steps: z.array(GoalCausalStepSchema),
+});
+export type GoalCausalChain = z.infer<typeof GoalCausalChainSchema>;
 
 export const DoubleCommitEventSchema = z.object({
   time_seconds: z.number(),
@@ -158,10 +181,10 @@ export type TouchDistribution = z.infer<typeof TouchDistributionSchema>;
 export const RadarProfileSchema = z.object({
   finishing: z.number().min(0).max(100),
   creation: z.number().min(0).max(100),
-  defense: z.number().min(0).max(100),
-  motor: z.number().min(0).max(100),
-  physicality: z.number().min(0).max(100),
-  boost_iq: z.number().min(0).max(100),
+  dribbling: z.number().min(0).max(100),
+  pace: z.number().min(0).max(100),
+  tackling: z.number().min(0).max(100),
+  goalkeeping: z.number().min(0).max(100),
   aerial: z.number().min(0).max(100).optional(),
   positioning: z.number().min(0).max(100).optional(),
   archetype: TacticalArchetypeSchema,
@@ -242,6 +265,15 @@ export const MatchPlayerAnalysisSchema = z.object({
     covered_double_commits: z.number().default(0),
     net_rush_double_commits: z.number().default(0),
     third_man_covers: z.number().default(0),
+    dribble_chains: z.number().default(0),
+    dribble_take_ons: z.number().default(0),
+    dribble_goals: z.number().default(0),
+    dribble_turnovers: z.number().default(0),
+    clean_dispossessions: z.number().default(0),
+    pace_sprints: z.number().default(0),
+    avg_transition_velocity: z.number().default(0),
+    blitz_counter_goals: z.number().default(0),
+    xg_prevented: z.number().default(0),
   }).optional(),
   radar: RadarProfileSchema,
 });
@@ -267,6 +299,7 @@ export const MatchAnalysisResultSchema = z.object({
   shots: z.array(ShotMapItemSchema),
   momentum: z.array(MomentumPointSchema),
   double_commits: z.array(DoubleCommitEventSchema).default([]),
+  conceded_goal_chains: z.array(GoalCausalChainSchema).default([]).optional(),
   user_coach_report: PlayerCoachReportSchema.nullable(),
   awards: z.object({
     player_of_the_match: z.string().nullable(),

@@ -415,7 +415,13 @@ export const MatchCenter: React.FC<MatchCenterProps> = ({ match, onOpenProfile }
       </div>
 
       {/* 4. Tab Content */}
-      {activeTab === 'coach' && <CoachReportCard report={match.user_coach_report} doubleCommits={match.double_commits} />}
+      {activeTab === 'coach' && (
+        <CoachReportCard
+          report={match.user_coach_report}
+          doubleCommits={match.double_commits}
+          concededGoalChains={match.conceded_goal_chains ?? []}
+        />
+      )}
 
       {activeTab === 'stats' && <DetailedStatsTable players={match.players} onSelectPlayer={setSelectedPlayer} />}
 

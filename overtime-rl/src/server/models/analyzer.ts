@@ -14,6 +14,7 @@ import { calculatePlayerRadar } from './radar.ts';
 import { generateCoachReport } from './coach.ts';
 import { groupMicroTouches, isSimultaneous50 } from './possession.ts';
 import type { RawBallHit } from './possession.ts';
+import { extractFifaPlayMetrics, evaluateConcededGoalChains } from './fifa-telemetry.ts';
 import {
   evaluatePassDelivery,
   evaluate5sWinBack,
@@ -32,7 +33,7 @@ import { GrindlogReader } from '../ingestion/grindlog-reader.ts';
 import type { TrackerMatch, TrackerMatchPlayer, TrackerMatchGoal, RawEventRecord } from '../ingestion/grindlog-reader.ts';
 import { OvertimeDBCache } from '../db/cache.ts';
 
-export const ENGINE_VERSION = 6;
+export const ENGINE_VERSION = 7;
 
 export class MatchAnalyzer {
   private reader: GrindlogReader;
@@ -126,6 +127,10 @@ export class MatchAnalyzer {
       garbageTimeMultiplier,
       hits,
       momentumEvents,
+      debouncedHits,
+      roundStartedTimes,
+      resolvedGoalsList,
+      fifaMetricsMap,
     } = this.processRawEvents(match, players, goals, rawEvents);
 
     // 2. Team metrics
@@ -150,7 +155,8 @@ export class MatchAnalyzer {
       const pBigChancesMissed = pShots.filter(s => s.is_big_chance && s.outcome !== 'goal').length;
       const pKeyPasses = keyPassesMap.get(p.name) || 0;
       const pBCC = bigChancesCreatedMap.get(p.name) || 0;
-      const pDuelsWon = duelsMap.get(p.name) || 0;
+      const fifa = fifaMetricsMap.get(p.name);
+      const pDuelsWon = fifa ? fifa.duelsWon : (duelsMap.get(p.name) || 0);
       const pTurnoverConcessions = turnoverConcessionMap.get(p.name) || 0;
 
       const ratingResult = calculatePlayerRating({
@@ -249,6 +255,15 @@ export class MatchAnalyzer {
         coveredDoubleCommits: coveredDoubleCommitsMap.get(p.name) || 0,
         netRushDoubleCommits: netRushDoubleCommitsMap.get(p.name) || 0,
         thirdManCovers: thirdManCoversMap.get(p.name) || 0,
+        dribbleChains: fifa?.dribbleChains ?? 0,
+        dribbleTakeOns: fifa?.dribbleTakeOns ?? 0,
+        dribbleGoals: fifa?.dribbleGoals ?? 0,
+        dribbleTurnovers: fifa?.dribbleTurnovers ?? 0,
+        cleanDispossessions: fifa?.cleanDispossessions ?? 0,
+        paceSprints: fifa?.paceSprints ?? 0,
+        avgTransitionVelocity: fifa?.avgTransitionVelocity ?? 0,
+        blitzCounterGoals: fifa?.blitzCounterGoals ?? 0,
+        xgPrevented: fifa?.xgPrevented ?? 0,
         // Wire full tactical & causal rules into attributes
         screamers: screamersMap.get(p.name) || 0,
         soloGoals: soloGoalsMap.get(p.name) || 0,
@@ -381,6 +396,15 @@ export class MatchAnalyzer {
           covered_double_commits: coveredDoubleCommitsMap.get(p.name) || 0,
           net_rush_double_commits: netRushDoubleCommitsMap.get(p.name) || 0,
           third_man_covers: thirdManCoversMap.get(p.name) || 0,
+          dribble_chains: Math.round((fifa?.dribbleChains ?? 0) * 100) / 100,
+          dribble_take_ons: fifa?.dribbleTakeOns ?? 0,
+          dribble_goals: fifa?.dribbleGoals ?? 0,
+          dribble_turnovers: fifa?.dribbleTurnovers ?? 0,
+          clean_dispossessions: fifa?.cleanDispossessions ?? 0,
+          pace_sprints: fifa?.paceSprints ?? 0,
+          avg_transition_velocity: fifa?.avgTransitionVelocity ?? 0,
+          blitz_counter_goals: fifa?.blitzCounterGoals ?? 0,
+          xg_prevented: Math.round((fifa?.xgPrevented ?? 0) * 100) / 100,
         },
         radar,
       };
@@ -466,6 +490,19 @@ export class MatchAnalyzer {
 
     // 7. Generate User Diagnostic & Coach Report
     const userPlayer = analyzedPlayers.find(p => p.is_user) || null;
+    const effectiveRoundStarts =
+      roundStartedTimes.length > 0
+        ? roundStartedTimes
+        : [match.started_at, ...resolvedGoalsList.map(g => g.ts + 4500)];
+    const concededGoalChains = evaluateConcededGoalChains({
+      goals: resolvedGoalsList,
+      shots,
+      doubleCommits: doubleCommitsList,
+      debouncedHits,
+      roundStartedTimes: effectiveRoundStarts,
+      matchStartedAt: match.started_at,
+      userTeamNum: userPlayer ? userPlayer.team_num : null,
+    });
 
     const result: MatchAnalysisResult = {
       guid: match.guid,
@@ -487,6 +524,7 @@ export class MatchAnalyzer {
       shots,
       momentum,
       double_commits: doubleCommitsList,
+      conceded_goal_chains: concededGoalChains,
       user_coach_report: null,
       awards: {
         player_of_the_match: playerOfTheMatch,
@@ -724,6 +762,7 @@ export class MatchAnalyzer {
     const tapInsMap = new Map<string, number>();
     const soloGoalsMap = new Map<string, number>();
     const counterGoalsMap = new Map<string, number>();
+    const resolvedGoalsList: Array<{ idx: number; ts: number; teamNum: number; scorerName: string; speedKmh: number }> = [];
 
     for (let i = 0; i < goals.length; i++) {
       const g = goals[i];
@@ -737,6 +776,7 @@ export class MatchAnalyzer {
       const z = g.z ?? 100;
       const speedKmh = g.speed_kmh ?? 70;
       const distance = g.distance ?? 2000;
+      resolvedGoalsList.push({ idx: i, ts: realGoalTs, teamNum, scorerName, speedKmh });
 
       const xgRes = calculateXG({
         x,
@@ -981,6 +1021,7 @@ export class MatchAnalyzer {
     const spilledReboundsMap = new Map<string, number>();
     const aerialGoalsMap = new Map<string, number>();
     const flipResetsMap = new Map<string, number>();
+    const saveEventsList: Array<{ ts: number; playerName: string; teamNum: number; isEpic: boolean }> = [];
 
     for (const ev of rawEvents) {
       if (ev.name === 'StatfeedEvent') {
@@ -1001,7 +1042,9 @@ export class MatchAnalyzer {
             tacticalDemosMap.set(target, (tacticalDemosMap.get(target) || 0) + 1);
           }
         } else if ((evtName === 'Save' || evtName === 'EpicSave' || evtName === 'Epic Save') && target) {
-          if (evtName === 'EpicSave' || evtName === 'Epic Save') {
+          const isEpic = evtName === 'EpicSave' || evtName === 'Epic Save';
+          saveEventsList.push({ ts: ev.ts, playerName: target, teamNum, isEpic });
+          if (isEpic) {
             reflexSavesMap.set(target, (reflexSavesMap.get(target) || 0) + 1);
           } else {
             routineSavesMap.set(target, (routineSavesMap.get(target) || 0) + 1);
@@ -1447,6 +1490,14 @@ export class MatchAnalyzer {
       garbageTimeMultiplier = 0.50;
     }
 
+    const goalMarkersForFifa = resolvedGoalsList.length > 0 ? resolvedGoalsList : realGoalEvents;
+    const fifaMetricsMap = extractFifaPlayMetrics({
+      debouncedHits,
+      shots,
+      realGoalEvents: goalMarkersForFifa,
+      saveEvents: saveEventsList,
+    });
+
     return {
       shots,
       playerShotsMap,
@@ -1503,6 +1554,10 @@ export class MatchAnalyzer {
       garbageTimeMultiplier,
       hits,
       momentumEvents,
+      debouncedHits,
+      roundStartedTimes,
+      resolvedGoalsList,
+      fifaMetricsMap,
     };
   }
 }

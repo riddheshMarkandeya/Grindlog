@@ -8,6 +8,7 @@ import { aggregateRadarFromAnalyses } from '../src/server/models/radar-aggregato
 import { getPlayerMatchTitles } from '../src/shared/awards.ts';
 import { calculateTacticalOvr } from '../src/shared/ovr.ts';
 import { buildSessionPodium, computeSessionTeamTotals } from '../src/server/models/session.ts';
+import { extractFifaPlayMetrics, evaluateConcededGoalChains } from '../src/server/models/fifa-telemetry.ts';
 test('calculateXG - tap in should have high xG and be a big chance', () => {
     // Point blank shot in front of Orange goal (Y = 5120)
     const result = calculateXG({
@@ -162,7 +163,7 @@ test('calculatePlayerRadar - outputs valid 0-100 scores and assigns archetypes',
     });
     assert.equal(striker.archetype, 'The Striker');
     assert.ok(striker.finishing >= 65);
-    assert.ok(striker.motor >= 55);
+    assert.ok(striker.pace >= 55);
     const anchor = calculatePlayerRadar({
         goals: 0,
         shots: 1,
@@ -181,8 +182,8 @@ test('calculatePlayerRadar - outputs valid 0-100 scores and assigns archetypes',
         xg: 0.2,
     });
     assert.equal(anchor.archetype, 'The Anchor');
-    assert.ok(anchor.defense >= 65);
-    assert.ok(anchor.boost_iq >= 60);
+    assert.ok(anchor.goalkeeping >= 55, `Expected anchor goalkeeping >= 55, got ${anchor.goalkeeping}`);
+    assert.ok(anchor.positioning >= 55, `Expected anchor positioning >= 55, got ${anchor.positioning}`);
 });
 
 test('calculatePlayerRadar - responds accurately to tactical & disciplinary rules', () => {
@@ -216,8 +217,8 @@ test('calculatePlayerRadar - responds accurately to tactical & disciplinary rule
     });
     assert.ok(disciplinedCreator.creation >= 65, `Expected creation >= 65, got ${disciplinedCreator.creation}`);
     assert.ok(disciplinedCreator.positioning >= 85, `Expected positioning >= 85, got ${disciplinedCreator.positioning}`);
-    assert.ok(disciplinedCreator.physicality >= 45, `Expected realistic physicality >= 45, got ${disciplinedCreator.physicality}`);
-    assert.ok(disciplinedCreator.boost_iq >= 70, `Expected boost_iq >= 70, got ${disciplinedCreator.boost_iq}`);
+    assert.ok(disciplinedCreator.tackling >= 45, `Expected realistic tackling >= 45, got ${disciplinedCreator.tackling}`);
+    assert.ok(disciplinedCreator.goalkeeping >= 30, `Expected goalkeeping >= 30, got ${disciplinedCreator.goalkeeping}`);
 
     const chaoticTailer = calculatePlayerRadar({
         goals: 1,
@@ -242,7 +243,7 @@ test('calculatePlayerRadar - responds accurately to tactical & disciplinary rule
         boostAbandonments: 1,
     });
     assert.ok(chaoticTailer.positioning <= 30, `Expected disciplined positioning <= 30, got ${chaoticTailer.positioning}`);
-    assert.ok(chaoticTailer.boost_iq < disciplinedCreator.boost_iq);
+    assert.ok(chaoticTailer.tackling < disciplinedCreator.tackling);
     assert.ok(chaoticTailer.creation < disciplinedCreator.creation);
 });
 
@@ -374,7 +375,8 @@ test('aggregateRadarFromAnalyses - unifies multi-match tactical & causal rules i
 
     assert.ok(disciplinedAgg.positioning > chaoticAgg.positioning, `Expected disciplined positioning > chaotic (${disciplinedAgg.positioning} vs ${chaoticAgg.positioning})`);
     assert.ok(disciplinedAgg.creation > chaoticAgg.creation, `Expected disciplined creation > chaotic (${disciplinedAgg.creation} vs ${chaoticAgg.creation})`);
-    assert.ok(disciplinedAgg.boost_iq > chaoticAgg.boost_iq, `Expected disciplined boost_iq > chaotic (${disciplinedAgg.boost_iq} vs ${chaoticAgg.boost_iq})`);
+    assert.ok(disciplinedAgg.tackling > chaoticAgg.tackling, `Expected disciplined tackling > chaotic (${disciplinedAgg.tackling} vs ${chaoticAgg.tackling})`);
+    assert.ok(disciplinedAgg.goalkeeping > chaoticAgg.goalkeeping, `Expected disciplined goalkeeping > chaotic (${disciplinedAgg.goalkeeping} vs ${chaoticAgg.goalkeeping})`);
 });
 
 test('calculatePlayerRadar - Discipline separates defensive anchor from aggressive striker', () => {
@@ -500,28 +502,28 @@ test('3rd-Man Safety Cover rewards rating and Discipline without affecting non-c
 
 test('calculateTacticalOvr - computes role-weighted 0-99 OVR and exact /800 totals cleanly', () => {
     const swapo = calculateTacticalOvr({
-        finishing: 63, creation: 39, defense: 39, motor: 57,
-        physicality: 67, boost_iq: 61, aerial: 47, positioning: 42,
+        finishing: 63, creation: 39, dribbling: 61, pace: 57,
+        tackling: 67, goalkeeping: 39, aerial: 47, positioning: 42,
         archetype: 'The Striker',
     });
     const mechless = calculateTacticalOvr({
-        finishing: 58, creation: 35, defense: 39, motor: 60,
-        physicality: 73, boost_iq: 50, aerial: 68, positioning: 38,
+        finishing: 58, creation: 35, dribbling: 50, pace: 60,
+        tackling: 73, goalkeeping: 39, aerial: 68, positioning: 38,
         archetype: 'The Air Marshal',
     });
     const rocinante = calculateTacticalOvr({
-        finishing: 24, creation: 52, defense: 44, motor: 35,
-        physicality: 50, boost_iq: 54, aerial: 23, positioning: 55,
+        finishing: 24, creation: 52, dribbling: 54, pace: 35,
+        tackling: 50, goalkeeping: 44, aerial: 23, positioning: 55,
         archetype: 'The Playmaker',
     });
     const passenger = calculateTacticalOvr({
-        finishing: 14, creation: 14, defense: 14, motor: 14,
-        physicality: 14, boost_iq: 14, aerial: 14, positioning: 14,
+        finishing: 14, creation: 14, dribbling: 14, pace: 14,
+        tackling: 14, goalkeeping: 14, aerial: 14, positioning: 14,
         archetype: 'The Passenger',
     });
     const icon = calculateTacticalOvr({
-        finishing: 85, creation: 78, defense: 80, motor: 84,
-        physicality: 76, boost_iq: 82, aerial: 80, positioning: 88,
+        finishing: 85, creation: 78, dribbling: 82, pace: 84,
+        tackling: 76, goalkeeping: 80, aerial: 80, positioning: 88,
         archetype: 'The All-Rounder',
     });
 
@@ -536,8 +538,8 @@ test('calculateTacticalOvr - computes role-weighted 0-99 OVR and exact /800 tota
 
     // Role sensitivity: playmaker axes score higher OVR as Playmaker than as Striker
     const sameAxesAsStriker = calculateTacticalOvr({
-        finishing: 24, creation: 52, defense: 44, motor: 35,
-        physicality: 50, boost_iq: 54, aerial: 23, positioning: 55,
+        finishing: 24, creation: 52, dribbling: 54, pace: 35,
+        tackling: 50, goalkeeping: 44, aerial: 23, positioning: 55,
         archetype: 'The Striker',
     });
     assert.ok(rocinante.ovr > sameAxesAsStriker.ovr, `Role weights should reward true role fit (${rocinante.ovr} vs ${sameAxesAsStriker.ovr})`);
@@ -623,4 +625,101 @@ test('buildSessionPodium - excludes random opponents/teammates and includes only
     assert.equal(totals.totalGoalsFor, 6);
     assert.equal(totals.totalGoalsAgainst, 4);
     assert.equal(totals.totalDoubleCommits, 2);
+});
+
+test('extractFifaPlayMetrics - computes Dribbling, Tackling 50/50 + dispossessions, Pace velocity, and Goalkeeping xG prevented', () => {
+    const t0 = 100000;
+    const hits = [
+        // Own-half clear/carry by Striker -> forward multi-touch dribble beat + rapid goal
+        { start_ts: t0 + 1000, end_ts: t0 + 1100, player_name: 'Striker', team_num: 0, touch_count: 1, x: 0, y: -2600, z: 100 },
+        { start_ts: t0 + 2100, end_ts: t0 + 2250, player_name: 'Striker', team_num: 0, touch_count: 2, x: 100, y: -400, z: 120 },
+        { start_ts: t0 + 3200, end_ts: t0 + 3400, player_name: 'Striker', team_num: 0, touch_count: 2, x: 50, y: 3400, z: 140 },
+        // Opponent carries 2 touches then Anchor cleanly dispossesses & keeps ball
+        { start_ts: t0 + 15000, end_ts: t0 + 15200, player_name: 'OppCarrier', team_num: 1, touch_count: 2, x: 300, y: 800, z: 100 },
+        { start_ts: t0 + 16100, end_ts: t0 + 16200, player_name: 'Anchor', team_num: 0, touch_count: 1, x: 250, y: 1100, z: 100 },
+        { start_ts: t0 + 17200, end_ts: t0 + 17300, player_name: 'Anchor', team_num: 0, touch_count: 1, x: 100, y: 2200, z: 100 },
+    ];
+    const shots = [
+        {
+            id: 'shot-saved-1',
+            shot_ts: t0 + 25000,
+            time_seconds: 25,
+            player_name: 'OppCarrier',
+            player_key: 'opp',
+            team_num: 1,
+            x: 0,
+            y: -4600,
+            z: 100,
+            distance: 520,
+            speed_kmh: 96,
+            xg: 0.72,
+            is_big_chance: true,
+            outcome: 'saved',
+        },
+    ];
+    const metrics = extractFifaPlayMetrics({
+        debouncedHits: hits,
+        shots,
+        realGoalEvents: [{ ts: t0 + 4200, teamNum: 0, scorerName: 'Striker', speedKmh: 105 }],
+        saveEvents: [{ ts: t0 + 25300, playerName: 'Anchor', teamNum: 0, isEpic: true }],
+    });
+
+    const strikerM = metrics.get('Striker');
+    assert.ok(strikerM, 'Expected Striker FIFA metrics');
+    assert.ok(strikerM.dribbleChains >= 1, `Expected >= 1 dribble chain, got ${strikerM.dribbleChains}`);
+    assert.equal(strikerM.dribbleGoals, 1);
+    assert.ok(strikerM.paceSprints >= 1);
+    assert.ok(strikerM.avgTransitionVelocity >= 1500);
+    assert.equal(strikerM.blitzCounterGoals, 1);
+
+    const anchorM = metrics.get('Anchor');
+    assert.ok(anchorM, 'Expected Anchor FIFA metrics');
+    assert.equal(anchorM.cleanDispossessions, 1);
+    assert.ok(anchorM.xgPrevented >= 0.7, `Expected xG prevented >= 0.7, got ${anchorM.xgPrevented}`);
+
+    // Feed directly into Unified Radar
+    const unified = calculatePlayerRadar({
+        goals: 1, shots: 2, assists: 0, saves: 0, demos: 0, clearances: 1, keyPasses: 0,
+        duelsWon: 1, touchesMidfield: 10, touchesTotal: 25, carMs: 300000, supersonicMs: 60000,
+        boostAvg: 55, emptyBoostMs: 12000, xg: 0.6,
+        dribbleChains: strikerM.dribbleChains,
+        dribbleTakeOns: strikerM.dribbleTakeOns,
+        dribbleGoals: strikerM.dribbleGoals,
+        paceSprints: strikerM.paceSprints,
+        avgTransitionVelocity: strikerM.avgTransitionVelocity,
+        blitzCounterGoals: strikerM.blitzCounterGoals,
+    });
+    assert.ok(unified.dribbling >= 50, `Expected dribbling >= 50, got ${unified.dribbling}`);
+    assert.ok(unified.pace >= 70, `Expected rapid net-to-net pace >= 70, got ${unified.pace}`);
+});
+
+test('evaluateConcededGoalChains - constructs 3-step Origin -> Breakdown -> Net Impact film strip', () => {
+    const start = 200000;
+    const goalTs = start + 42000;
+    const chains = evaluateConcededGoalChains({
+        goals: [{ idx: 0, ts: goalTs, teamNum: 1, scorerName: 'EnemyScorer', speedKmh: 95 }],
+        shots: [{
+            id: 'goal-0', shot_ts: goalTs, time_seconds: 42, player_name: 'EnemyScorer',
+            player_key: 'enemy', team_num: 1, x: 100, y: -4400, z: 120,
+            distance: 720, speed_kmh: 95, xg: 0.68, is_big_chance: true, outcome: 'goal',
+        }],
+        doubleCommits: [{
+            time_seconds: 39, player1_name: 'Swapo_o', player2_name: 'Rocinante_.',
+            team_num: 0, is_fatal: true, instigator_name: 'Swapo_o',
+            net_status: 'rusher_open_net', rushed_from_net: true,
+        }],
+        debouncedHits: [
+            { start_ts: goalTs - 7000, end_ts: goalTs - 6800, player_name: 'Rocinante_.', team_num: 0, touch_count: 2, x: 0, y: 1200, z: 100 },
+            { start_ts: goalTs - 5800, end_ts: goalTs - 5700, player_name: 'EnemyScorer', team_num: 1, touch_count: 1, x: 100, y: 1000, z: 100 },
+        ],
+        roundStartedTimes: [start],
+        matchStartedAt: start,
+        userTeamNum: 0,
+    });
+
+    assert.equal(chains.length, 1);
+    assert.equal(chains[0].steps.length, 3);
+    assert.equal(chains[0].steps[0].category, 'Dribbling');
+    assert.equal(chains[0].steps[1].category, 'Discipline');
+    assert.equal(chains[0].steps[2].category, 'Goalkeeping');
 });

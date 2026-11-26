@@ -1,13 +1,18 @@
 import React from 'react';
-import type { PlayerCoachReport, DoubleCommitEvent } from '../../shared/types.ts';
+import type { PlayerCoachReport, DoubleCommitEvent, GoalCausalChain } from '../../shared/types.ts';
 import { RatingBadge } from './RatingBadge.tsx';
 
 interface CoachReportCardProps {
   report: PlayerCoachReport | null;
   doubleCommits?: DoubleCommitEvent[];
+  concededGoalChains?: GoalCausalChain[];
 }
 
-export const CoachReportCard: React.FC<CoachReportCardProps> = ({ report, doubleCommits = [] }) => {
+export const CoachReportCard: React.FC<CoachReportCardProps> = ({
+  report,
+  doubleCommits = [],
+  concededGoalChains = [],
+}) => {
   if (!report) return null;
 
   return (
@@ -164,7 +169,110 @@ export const CoachReportCard: React.FC<CoachReportCardProps> = ({ report, double
         </div>
       </div>
 
-      {/* 3. Double-Commit Incidents & Collision Log */}
+      {/* 3. Conceded Goal 3-Step Causal Chain Autopsy */}
+      {concededGoalChains.length > 0 && (
+        <div
+          style={{
+            padding: '24px 28px',
+            backgroundColor: 'var(--bg-card)',
+            borderTop: '1px solid var(--border-hairline)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '18px' }}>🎬</span>
+              <h4 style={{ fontSize: '15px', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
+                Conceded Goal Causal Film Strip ({concededGoalChains.length})
+              </h4>
+            </div>
+            <span style={{ fontSize: '11px', color: '#64748b' }}>
+              10-second buildup attribution: Origin → Breakdown → Net Impact
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {concededGoalChains.map(chain => {
+              const gm = Math.floor(chain.time_seconds / 60);
+              const gs = Math.floor(chain.time_seconds % 60);
+              const gClock = `${gm.toString().padStart(2, '0')}:${gs.toString().padStart(2, '0')}`;
+              return (
+                <div key={chain.goal_id} className="surface-sub" style={{ padding: '14px 16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span
+                        style={{
+                          fontFamily: 'var(--font-mono)',
+                          fontWeight: 800,
+                          fontSize: '12px',
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          backgroundColor: 'rgba(239, 68, 68, 0.14)',
+                          color: '#f87171',
+                          border: '1px solid rgba(239, 68, 68, 0.35)',
+                        }}
+                      >
+                        [{gClock}] CONCEDED
+                      </span>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#f8fafc' }}>
+                        Scored by <strong style={{ color: '#fb923c' }}>{chain.scorer_name}</strong>
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8' }}>
+                      Shot Quality: <strong style={{ color: '#e2e8f0' }}>{chain.shot_xg.toFixed(2)} xG</strong> • Key Driver:{' '}
+                      <strong style={{ color: '#fbbf24' }}>{chain.primary_attribution}</strong>
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(1, chain.steps.length)}, minmax(0, 1fr))`, gap: '10px' }}>
+                    {chain.steps.map((step, sIdx) => {
+                      const sevColor =
+                        step.severity === 'high' ? '#ef4444' : step.severity === 'medium' ? '#f59e0b' : '#38bdf8';
+                      return (
+                        <div
+                          key={sIdx}
+                          style={{
+                            padding: '10px 12px',
+                            borderRadius: '10px',
+                            backgroundColor: 'var(--bg-card)',
+                            border: `1px solid ${step.severity === 'high' ? 'rgba(239, 68, 68, 0.45)' : 'var(--border-hairline)'}`,
+                            borderTop: `3px solid ${sevColor}`,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '4px',
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 900, fontFamily: 'var(--font-mono)', color: sevColor }}>
+                              {step.offset_label}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: '9px',
+                                fontWeight: 800,
+                                textTransform: 'uppercase',
+                                padding: '2px 6px',
+                                borderRadius: '6px',
+                                backgroundColor: 'rgba(255,255,255,0.06)',
+                                color: '#cbd5e1',
+                              }}
+                            >
+                              {step.category}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '12px', fontWeight: 800, color: '#f8fafc' }}>{step.title}</div>
+                          <div style={{ fontSize: '11px', lineHeight: 1.4, color: 'var(--text-secondary)' }}>{step.detail}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 4. Double-Commit Incidents & Collision Log */}
       <div style={{ padding: '24px 28px', backgroundColor: 'var(--bg-card)', borderTop: '1px solid var(--border-hairline)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

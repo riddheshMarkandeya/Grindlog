@@ -20,7 +20,7 @@ const CATEGORY_CONFIG: Record<
   goalkeeping: { label: 'Goalkeeping & Saves', icon: '🧤', color: '#34d399' },
   possession: { label: 'Passing & Playmaking', icon: '🎯', color: '#a78bfa' },
   turnover_recovery: { label: 'Counter-Press & Recoveries', icon: '⚡', color: '#f59e0b' },
-  discipline: { label: 'Motor & Physicality', icon: '💥', color: '#ec4899' },
+  discipline: { label: 'Pace & Tackling', icon: '⚡', color: '#ec4899' },
   clutch: { label: 'Match Outcome & Clutch', icon: '🔥', color: '#f97316' },
 };
 
@@ -75,10 +75,10 @@ export const RatingModal: React.FC<RatingModalProps> = ({ player, awards, onOpen
   const radarAttrs = [
     { label: 'Finishing', value: player.radar.finishing },
     { label: 'Creation', value: player.radar.creation },
-    { label: 'Defense', value: player.radar.defense },
-    { label: 'Motor', value: player.radar.motor },
-    { label: 'Physicality', value: player.radar.physicality },
-    { label: 'Boost IQ', value: player.radar.boost_iq },
+    { label: 'Dribbling', value: player.radar.dribbling },
+    { label: 'Pace', value: player.radar.pace },
+    { label: 'Tackling', value: player.radar.tackling },
+    { label: 'Goalkeeping', value: player.radar.goalkeeping },
     { label: 'Aerial', value: player.radar.aerial ?? 0 },
     { label: 'Discipline', value: player.radar.positioning ?? 74 },
   ];
@@ -276,7 +276,7 @@ export const RatingModal: React.FC<RatingModalProps> = ({ player, awards, onOpen
           <div style={{ backgroundColor: '#0c121e', border: '1px solid #1c273e', borderRadius: '12px', padding: '14px 16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <span style={{ fontSize: '11px', fontWeight: 800, color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                📊 Match Tactical Attributes (0–99)
+                📊 Unified FIFA+RL Attributes (0–99)
               </span>
               <span style={{ fontSize: '11px', color: '#64748b' }}>
                 DCs: <strong style={{ color: player.double_commits > 0 ? '#f59e0b' : '#34d399' }}>{player.double_commits}</strong>

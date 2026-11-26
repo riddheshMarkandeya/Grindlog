@@ -5,12 +5,12 @@ import { OvrBadge } from './OvrBadge.tsx';
 export const ATTRIBUTE_DESCRIPTIONS: Record<string, string> = {
   Finishing: 'Shot conversion efficiency, clinical finishing, and scoring goals relative to expected goals (xG).',
   Creation: 'Playmaking vision, key passes, assist delivery, and setting up high-probability scoring chances.',
-  Defense: 'Goal-line saves, backboard clearances, disrupting attacks, and safeguarding the defensive third.',
-  Motor: 'Sustained supersonic speed, pitch coverage, high-tempo rotations, and rapid recovery back on defense.',
-  Physicality: 'Demolitions executed, physical bumps on opponents, and disruption of enemy rotations.',
-  'Boost IQ': 'Pad routing efficiency, collecting small pads, boost denial, and avoiding boost waste at max speed.',
+  Dribbling: 'Sustained forward multi-touch ball carries, beating challengers cleanly, and solo dribble finishes.',
+  Pace: 'Net-to-net ball transition speed, rapid counter-attack goals, and sustained supersonic rotation tempo.',
+  Tackling: 'Outfield 50/50 duel wins, clean dribble dispossessions, shadow defense delays, and physical disruptions.',
+  Goalkeeping: 'Difficulty-weighted xG prevented on net, reflex saves, safe corner clears, and avoiding spilled rebounds.',
   Aerial: 'High-altitude aerial touches, fast aerial saves, air dribbles, and backboard aerial clears.',
-  Discipline: 'Clean rotational spacing, avoiding double commits, staying in position, and covering as 3rd man.',
+  Discipline: 'Clean rotational spacing, 3rd-man safety covers, low double commits, and boost/pad discipline.',
 };
 
 interface RadarChartProps {
@@ -36,10 +36,10 @@ export const RadarChart: React.FC<RadarChartProps> = ({
   const axes = [
     { label: 'Finishing', value: radar.finishing },
     { label: 'Creation', value: radar.creation },
-    { label: 'Defense', value: radar.defense },
-    { label: 'Motor', value: radar.motor },
-    { label: 'Physicality', value: radar.physicality },
-    { label: 'Boost IQ', value: radar.boost_iq },
+    { label: 'Dribbling', value: radar.dribbling },
+    { label: 'Pace', value: radar.pace },
+    { label: 'Tackling', value: radar.tackling },
+    { label: 'Goalkeeping', value: radar.goalkeeping },
     ...(radar.aerial !== undefined ? [{ label: 'Aerial', value: radar.aerial }] : []),
     ...(radar.positioning !== undefined ? [{ label: 'Discipline', value: radar.positioning }] : []),
   ];
@@ -259,10 +259,10 @@ export const DualRadarChart: React.FC<DualRadarChartProps> = ({
   const axes = [
     { label: 'Finishing', a: playerA.radar.finishing, b: playerB.radar.finishing },
     { label: 'Creation', a: playerA.radar.creation, b: playerB.radar.creation },
-    { label: 'Defense', a: playerA.radar.defense, b: playerB.radar.defense },
-    { label: 'Motor', a: playerA.radar.motor, b: playerB.radar.motor },
-    { label: 'Physicality', a: playerA.radar.physicality, b: playerB.radar.physicality },
-    { label: 'Boost IQ', a: playerA.radar.boost_iq, b: playerB.radar.boost_iq },
+    { label: 'Dribbling', a: playerA.radar.dribbling, b: playerB.radar.dribbling },
+    { label: 'Pace', a: playerA.radar.pace, b: playerB.radar.pace },
+    { label: 'Tackling', a: playerA.radar.tackling, b: playerB.radar.tackling },
+    { label: 'Goalkeeping', a: playerA.radar.goalkeeping, b: playerB.radar.goalkeeping },
     ...(playerA.radar.aerial !== undefined && playerB.radar.aerial !== undefined
       ? [{ label: 'Aerial', a: playerA.radar.aerial, b: playerB.radar.aerial }]
       : []),

@@ -375,21 +375,57 @@ export const PlayerProfileView: React.FC<PlayerProfileProps> = ({
 
       {/* 2. Tactical Radar & AI Career Diagnostics */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px' }}>
-        {/* Left: SofaScore 6-Axis Tactical Radar + Friend Baseline Comparison */}
+        {/* Left: Unified 8-Axis Tactical Radar + FIFA Card Strip + Friend Baseline Comparison */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
           <RadarChart radar={radar} playerName={`${profile.name} (Career)`} size={320} />
+
+          {/* Unified FIFA 6-Pillar Card Strip (Directly Powered by Same Radar Engine) */}
+          <div className="surface-card" style={{ width: '100%', padding: '12px 16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                FIFA Skill Ratings (Unified Profile)
+              </span>
+              <span style={{ fontSize: '10px', color: 'var(--accent-cyan)', fontWeight: 700 }}>
+                Same Core Formulas
+              </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: '6px' }}>
+              {[
+                { code: 'PAC', label: 'Pace', val: radar.pace, color: '#38bdf8' },
+                { code: 'SHO', label: 'Finishing', val: radar.finishing, color: '#34d399' },
+                { code: 'PAS', label: 'Creation', val: radar.creation, color: '#a78bfa' },
+                { code: 'DRI', label: 'Dribbling', val: radar.dribbling, color: '#f472b6' },
+                { code: 'TAC', label: 'Tackling', val: radar.tackling, color: '#fb923c' },
+                { code: 'GK', label: 'Goalkeeping', val: radar.goalkeeping, color: '#fbbf24' },
+              ].map(pill => (
+                <div
+                  key={pill.code}
+                  className="surface-sub"
+                  title={`${pill.label}: ${Math.round(pill.val)}/99`}
+                  style={{ padding: '7px 4px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '2px' }}
+                >
+                  <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--text-muted)' }}>{pill.code}</span>
+                  <span style={{ fontSize: '16px', fontWeight: 900, color: pill.color, fontFamily: 'var(--font-mono)' }}>
+                    {Math.round(pill.val)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
 
           {!profile.is_user && userBaselineRadar && (
             <div className="surface-card" style={{ width: '100%', padding: '14px 16px' }}>
               <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
                 vs Your Career Baseline
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px' }}>
                 {[
+                  { label: 'Pace', val: radar.pace, base: userBaselineRadar.pace },
                   { label: 'Finishing', val: radar.finishing, base: userBaselineRadar.finishing },
                   { label: 'Creation', val: radar.creation, base: userBaselineRadar.creation },
-                  { label: 'Defense', val: radar.defense, base: userBaselineRadar.defense },
-                  { label: 'Boost IQ', val: radar.boost_iq, base: userBaselineRadar.boost_iq },
+                  { label: 'Dribbling', val: radar.dribbling, base: userBaselineRadar.dribbling },
+                  { label: 'Tackling', val: radar.tackling, base: userBaselineRadar.tackling },
+                  { label: 'Goalkeep', val: radar.goalkeeping, base: userBaselineRadar.goalkeeping },
                   { label: 'Aerial', val: radar.aerial ?? 50, base: userBaselineRadar.aerial ?? 50 },
                   { label: 'Discipline', val: radar.positioning ?? 50, base: userBaselineRadar.positioning ?? 50 },
                 ].map(item => {

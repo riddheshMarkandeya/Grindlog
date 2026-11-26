@@ -55,6 +55,17 @@ export function aggregateRadarFromAnalyses(entries: MatchPlayerAnalysis[]): Rada
   let hardestShotKmh = 0;
 
   let duelsWon = 0;
+  let dribbleChains = 0;
+  let dribbleTakeOns = 0;
+  let dribbleGoals = 0;
+  let dribbleTurnovers = 0;
+  let cleanDispossessions = 0;
+  let paceSprints = 0;
+  let transitionVelSum = 0;
+  let transitionVelCount = 0;
+  let blitzCounterGoals = 0;
+  let xgPrevented = 0;
+
   let favorablePasses = 0;
   let infieldCrosses = 0;
   let hockeyAssists = 0;
@@ -99,7 +110,6 @@ export function aggregateRadarFromAnalyses(entries: MatchPlayerAnalysis[]): Rada
     touchesAttack += p.touches_attack || 0;
     touchesTotal += p.touches || 0;
 
-    // Derive match carMs from supersonic ratio or 300s regulation baseline
     const mCarMs = p.supersonic_pct > 0 && p.supersonic_seconds > 0
       ? Math.round((p.supersonic_seconds * 1000 * 100) / Math.max(1, p.supersonic_pct))
       : 300_000;
@@ -123,6 +133,19 @@ export function aggregateRadarFromAnalyses(entries: MatchPlayerAnalysis[]): Rada
     const tm = p.tactical_metrics;
     if (tm) {
       duelsWon += tm.duels_won || 0;
+      dribbleChains += tm.dribble_chains || 0;
+      dribbleTakeOns += tm.dribble_take_ons || 0;
+      dribbleGoals += tm.dribble_goals || 0;
+      dribbleTurnovers += tm.dribble_turnovers || 0;
+      cleanDispossessions += tm.clean_dispossessions || 0;
+      paceSprints += tm.pace_sprints || 0;
+      if ((tm.avg_transition_velocity || 0) > 0) {
+        transitionVelSum += tm.avg_transition_velocity || 0;
+        transitionVelCount += 1;
+      }
+      blitzCounterGoals += tm.blitz_counter_goals || 0;
+      xgPrevented += tm.xg_prevented || 0;
+
       favorablePasses += tm.favorable_passes || 0;
       infieldCrosses += tm.infield_crosses || 0;
       hockeyAssists += tm.hockey_assists || 0;
@@ -156,6 +179,8 @@ export function aggregateRadarFromAnalyses(entries: MatchPlayerAnalysis[]): Rada
 
   const totalPadEvents = smallPads + bigOrbs;
   const padRatioPct = totalPadEvents > 0 ? Math.round((smallPads / totalPadEvents) * 100) : undefined;
+  const avgTransitionVelocity =
+    transitionVelCount > 0 ? Math.round(transitionVelSum / transitionVelCount) : undefined;
 
   return calculatePlayerRadar({
     goals,
@@ -166,6 +191,15 @@ export function aggregateRadarFromAnalyses(entries: MatchPlayerAnalysis[]): Rada
     clearances,
     keyPasses,
     duelsWon,
+    dribbleChains: dribbleChains > 0 ? dribbleChains : undefined,
+    dribbleTakeOns,
+    dribbleGoals,
+    dribbleTurnovers,
+    cleanDispossessions,
+    paceSprints,
+    avgTransitionVelocity,
+    blitzCounterGoals,
+    xgPrevented: xgPrevented > 0 ? xgPrevented : undefined,
     touchesDefence,
     touchesMidfield,
     touchesAttack,
