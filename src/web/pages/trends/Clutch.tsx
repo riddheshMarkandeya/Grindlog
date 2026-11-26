@@ -1,8 +1,9 @@
-// The Trends "Clutch" section: close games, overtime, who scored first, comebacks and blown leads,
-// forfeits, then win % by the biggest deficit and lead a match reached. It follows the period and
-// both filters; the numbers come with the period (shared/clutch.ts) and the text from logic/clutch.ts.
+// The Trends "Clutch" section: close games, overtime, late winners and late goals, who scored first, goals
+// answered within seconds, comebacks and blown leads, forfeits, then win % by the biggest deficit and lead a
+// match reached. It follows the period and both filters; the numbers come with the period
+// (shared/clutch.ts) and the text from logic/clutch.ts.
 import { Link } from "react-router";
-import type { WL } from "../../../shared/clutch";
+import { LATE_SECONDS, type WL } from "../../../shared/clutch";
 import type { PeriodView } from "../../../shared/schemas/responses";
 import { cx } from "../../components/cx";
 import { Section } from "../../components/Section";
@@ -13,7 +14,7 @@ import { recordLabel, recordText, winPctText } from "../../logic/friends";
 import type { TrendsState } from "../../logic/trends";
 import styles from "./Clutch.module.css";
 
-const INTRO = `How you do when it's tight or the lead swings. A comeback or blown lead means ${swingText} goals down or up at some point; a 1-goal deficit happens in almost every match, so it isn't counted. Every match counts, forfeits included. Casual, ranked and tournament playlists only.`;
+const INTRO = `How your team does when it's tight or the lead swings: every number here counts your team's goals and results, not just yours. A comeback or blown lead means ${swingText} goals down or up at some point; a 1-goal deficit happens in almost every match, so it isn't counted. Every match counts, forfeits included. Late means the last ${String(LATE_SECONDS)} s of regular match time; overtime goals are never late. Casual, ranked and tournament playlists only.`;
 
 const SIDES = {
   down: { title: "Win % by the most you trailed by", hint: "Each match counted once, at its biggest deficit." },

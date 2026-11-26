@@ -18,6 +18,7 @@ import { Tile, Tiles, VsText } from "../../components/Tile";
 import { clock, dayLabel, decimal, durationText, plural, whole } from "../../logic/format";
 import {
   clutchStory,
+  lateWinnerMark,
   extrasCards,
   highlights,
   isDense,
@@ -137,15 +138,22 @@ function MatchCards({ matches, goals, matchPath }: { matches: MyMatchWire[]; goa
           const score = scoreFor(m);
           const mvp = isMyMvp(m);
           const playlist = playlistInfo(m.playlistId).name;
-          const story = clutchStory(matchClutch(m, goals));
+          const c = matchClutch(m, goals);
+          const story = clutchStory(c);
+          const late = lateWinnerMark(c);
           return (
             <li key={m.guid}>
-              <Link to={matchPath(m.guid)} className={cx(styles.card, m.result === "win" && styles.win, m.result === "loss" && styles.loss, m.flags.length > 0 && styles.flagged)} aria-label={matchLabel(m, i + 1, hours, story?.label)}>
+              <Link to={matchPath(m.guid)} className={cx(styles.card, m.result === "win" && styles.win, m.result === "loss" && styles.loss, m.flags.length > 0 && styles.flagged, late !== null && styles.hasLate)} aria-label={matchLabel(m, i + 1, hours, story?.label, late?.label)}>
                 <span className={styles.t} aria-hidden="true">#{i + 1} · {clock(m.startedAt, hours)}</span>
                 <b className="num display" aria-hidden="true"><i>{letter(m.result)}</i> {score}</b>
                 <span className={styles.p} aria-hidden="true" title={playlist}>{playlist}</span>
                 {story && <span className={cx(styles.story, story.tone !== null && styles[story.tone])} aria-hidden="true" title={story.text}>{story.text}</span>}
                 {mvp && <Icon k="mvp" className={styles.mvp} />}
+                {late && (
+                  <span className={cx(styles.late, styles[late.tone])} aria-hidden="true" title={late.title}>
+                    <Icon k="time" />
+                  </span>
+                )}
               </Link>
             </li>
           );

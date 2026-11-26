@@ -7,6 +7,11 @@ All notable changes to Grindlog are listed here. The format is based on
 ## [Unreleased]
 
 ### Added
+- Trends › Clutch gains four tiles: Late winners (your win % in matches decided in the last 30 seconds), Late
+  goals (scored and conceded in the last 30 seconds of regular time), and Scored / Conceded right back (a goal
+  answered by the other team within 15 seconds, each way). The section now says every number is your team's.
+- Recap match cards show a small clock on a match decided in the last 30 seconds: green for your late winner,
+  red for theirs, with the time left in its tooltip.
 - "With" takes up to two friends: tick a second friend to see the matches where both were on your team. The list
   stays open after the first tick, and friends who can't join the one you ticked are greyed out with the reason.
 

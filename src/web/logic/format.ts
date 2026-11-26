@@ -20,6 +20,9 @@ export function durationText(ms: number): string {
   return m ? `${String(h)} h ${String(m)} min` : `${String(h)} h`;
 }
 
+/** A game-clock reading as m:ss ("0:17", "4:59"). */
+export const mmss = (s: number): string => `${String(Math.floor(s / 60))}:${String(s % 60).padStart(2, "0")}`;
+
 /** A local clock time in the clock setting's 12 or 24 hours; the locale picks the rest (padding, am/pm). */
 export const clock = (ms: number, hours: Units["clock"], locale?: string) =>
   new Date(ms).toLocaleTimeString(locale, { timeStyle: "short", hourCycle: hours === "24h" ? "h23" : "h12" });

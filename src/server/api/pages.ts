@@ -226,7 +226,16 @@ export function createPages({ reader, logger, now }: { reader: QueryReader; logg
   /** Clutch over a period's matches, each biggest swing with the session that opens its match page. */
   function clutch(idx: Index, matches: readonly MyMatch[]): PeriodView["clutch"] {
     const c = clutchStats(matches, reader.readGoals(matches.map((m) => m.guid)));
-    logger.info(C, "clutch", { matches: c?.stats.matches ?? 0, skippedOrder: c?.stats.skippedOrder ?? 0, skipped: c?.skipped.slice(0, 5) ?? [] });
+    logger.info(C, "clutch", {
+      matches: c?.stats.matches ?? 0,
+      skippedOrder: c?.stats.skippedOrder ?? 0,
+      skipped: c?.skipped.slice(0, 5) ?? [],
+      clockMatches: c?.stats.clock.matches ?? 0,
+      skippedClock: c?.stats.skippedClock ?? 0,
+      skippedClockGuids: c?.skippedClock.slice(0, 5) ?? [],
+      lateScored: c?.stats.clock.lateScored ?? 0,
+      lateConceded: c?.stats.clock.lateConceded ?? 0,
+    });
     if (!c) return null;
     const keyed = (r: ClutchRef | null) => r && { ...r, sessionKey: keyOf(idx, r.guid) };
     return { ...c.stats, best: keyed(c.stats.best), worst: keyed(c.stats.worst) };

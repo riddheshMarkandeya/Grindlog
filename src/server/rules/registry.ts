@@ -12,7 +12,7 @@ import {
   SIDE_WALL_X,
   WEEK_START_DAY,
 } from "../../shared/constants";
-import { SWING_MIN_GOALS } from "../../shared/clutch";
+import { ANSWER_SECONDS, LATE_SECONDS, SWING_MIN_GOALS } from "../../shared/clutch";
 import { FIRM_N, MIN_N, TILT_Z } from "../../shared/tilt";
 import { CLOSE_UNDER, LONG_FROM } from "../../shared/goal-range";
 import { AERIAL_MIN_Z, CORNER_MAX_XY_SUM, HARDEST_SHOT_MAX_KMH, THIRD_Y, WALL_MARGIN } from "../recorder/extras";
@@ -83,6 +83,7 @@ const PLAN_ACCOUNTS = "docs/plans/2026-11-22-account-profiles.md";
 const ANALYTICS_MAP = "docs/plans/2026-11-23-analytics-map.md";
 const PLAN_GOAL_CLOCK = "docs/plans/2026-11-24-goal-clock.md";
 const PLAN_GOAL_TIMELINE = "docs/plans/2026-11-24-goal-timeline.md";
+const PLAN_LATE_GOALS = "docs/plans/2026-11-25-late-goals.md";
 
 const p = (column: string) => `match_players.${column}`;
 const m = (column: string) => `matches.${column}`;
@@ -874,6 +875,27 @@ export const RULES: readonly Rule[] = [
     version: 1,
     applied: "read",
     refs: [ANALYTICS_MAP],
+  },
+  {
+    id: "clutch_late_goals",
+    area: "queries",
+    rule: "Goal-clock stats count a match with a goal order whose goals all have a clock and consistent overtime flags: no overtime goal in a match without overtime, no regulation goal after an overtime one, and a completed overtime match ending on an overtime goal (else the match is left out of them only). A late goal is a regulation goal whose clock reading is LATE_SECONDS or less; overtime goals are never late. A goal is answered when the next goal by idx is the other team's and comes ANSWER_SECONDS or less of game clock later (both in regulation: the first reading minus the second; regulation then overtime: their sum; both in overtime: the second minus the first). Your goals answered are out of all your team's goals, theirs likewise, overtime goals included.",
+    constants: { LATE_SECONDS, ANSWER_SECONDS },
+    checks: ["goals_clocked", "clock_overtime_flagged", "goals_per_team_equal_score"],
+    evidence: "Real data (2026-11-25): 2,061 goals, all clocked, 0 matches breaking the overtime-flag rules. 173 regulation goals came in the last 30 s (13 at 0:00). Of 819 goals the other team answered, 210 came within 15 s of regulation clock (139 within 10 s, 280 within 20 s). The late-goals prototype (`4325383`) settled the tiles and their wording (user's choice).",
+    version: 1,
+    applied: "read",
+    refs: [ANALYTICS_MAP, PLAN_LATE_GOALS],
+  },
+  {
+    id: "clutch_late_winner",
+    area: "queries",
+    rule: "A match's deciding goal is the winner's (loser's final + 1)-th goal: the go-ahead goal never given back. It's a late winner when it's a late goal (clutch_late_goals): yours in a win, theirs in a loss. There is none when the final score is tied, when you left the match (its score is wherever you stopped watching), when the result contradicts the final score, when the goal order fails, or when the clock check fails. The Late winners tile is the win % over matches with a late winner.",
+    checks: ["goals_clocked", "clock_overtime_flagged", "goals_per_team_equal_score"],
+    evidence: "Real data (2026-11-25): 32 of 354 deciding goals came in the last 30 s (both teams' wins; 59 were in overtime). 1 forfeit win at 2–2 has no deciding goal. The recap shows it as a clock icon on the match card (user's choice from the late-goals prototype).",
+    version: 1,
+    applied: "read",
+    refs: [ANALYTICS_MAP, PLAN_LATE_GOALS],
   },
   {
     id: "tilt_session_order",

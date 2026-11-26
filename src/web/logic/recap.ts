@@ -7,7 +7,7 @@ import type { FlagReason } from "../../shared/flags";
 import type { AggregateWire, MatchDetail, MyMatchWire, SessionDetail } from "../../shared/schemas/responses";
 import { filterValue } from "../../shared/playlist-filter";
 import { teammateValue, type TeammateFilter } from "../../shared/teammate-filter";
-import { clock, decimal, plural, SPEED_LABEL, speedIn, type Units, whole } from "./format";
+import { clock, decimal, mmss, plural, SPEED_LABEL, speedIn, type Units, whole } from "./format";
 import type { IconKey } from "./icons";
 
 /** A share as whole percent. */
@@ -267,11 +267,12 @@ export const flagShort = (flags: readonly FlagReason[]): string | null => (flags
 export const isMyMvp = (m: MyMatchWire): boolean => m.me !== null && m.mvpKey === m.me.playerKey;
 
 /**
- * How a match link is announced: "Match 2, 21:04, win, 3–1, Ranked Doubles, came back from 0–2, MVP,
- * flagged: …". `story` is a recap card's Clutch story in words; other links pass none.
+ * How a match link is announced: "Match 2, 21:04, win, 3–1, Ranked Doubles, came back from 0–2,
+ * late winner with 17 seconds left, MVP, flagged: …". `story` and `late` are a recap card's Clutch story and
+ * late-winner mark in words; other links pass none.
  */
-export function matchLabel(m: MyMatchWire, n: number, hours: Units["clock"], story: string | null = null): string {
-  return [`Match ${String(n)}`, clock(m.startedAt, hours), resultWord(m.result), scoreFor(m), playlistInfo(m.playlistId).name, story, isMyMvp(m) && "MVP", flagShort(m.flags)]
+export function matchLabel(m: MyMatchWire, n: number, hours: Units["clock"], story: string | null = null, late: string | null = null): string {
+  return [`Match ${String(n)}`, clock(m.startedAt, hours), resultWord(m.result), scoreFor(m), playlistInfo(m.playlistId).name, story, late, isMyMvp(m) && "MVP", flagShort(m.flags)]
     .filter(Boolean)
     .join(", ");
 }
@@ -294,6 +295,17 @@ export function clutchStory(c: MatchClutch | null): { text: string; label: strin
     label: parts.map(([, l]) => l).join(", "),
     tone: c.comebackFrom ? "up" : c.blownFrom ? "down" : null,
   };
+}
+
+/**
+ * A match card's late-winner clock: its tooltip ("Late winner with 0:17 left"), the same in words for a
+ * screen reader, and its tone (up for yours, down for theirs). Null with no late winner.
+ */
+export function lateWinnerMark(c: MatchClutch | null): { title: string; label: string; tone: "up" | "down" } | null {
+  const lw = c?.lateWinner;
+  if (!lw) return null;
+  const [title, what] = lw.mine ? ["Late winner", "late winner"] : ["Late loss", "late loss"];
+  return { title: `${title} with ${mmss(lw.seconds)} left`, label: `${what} with ${plural(lw.seconds, "second")} left`, tone: lw.mine ? "up" : "down" };
 }
 
 type MatchPlayer = MatchDetail["players"][number];

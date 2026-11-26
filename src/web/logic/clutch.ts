@@ -1,6 +1,6 @@
-// The Trends Clutch section's text: tile values and notes, ladder rung labels, and the best comeback
+// The Trends Clutch section's text: tile values and notes (the goal-clock tiles too), ladder rung labels, and the best comeback
 // and worst collapse links. The numbers come from the server (shared/clutch.ts).
-import { LADDER_TOP, SWING_MIN_GOALS, type WL } from "../../shared/clutch";
+import { ANSWER_SECONDS, LADDER_TOP, LATE_SECONDS, SWING_MIN_GOALS, type WL } from "../../shared/clutch";
 import type { PlaylistFilter } from "../../shared/playlist-filter";
 import type { ClutchView } from "../../shared/schemas/responses";
 import type { TeammateFilter } from "../../shared/teammate-filter";
@@ -26,11 +26,24 @@ export function clutchTiles(c: ClutchView): ClutchTile[] {
   const share = (label: string, icon: IconKey, r: WL, note: string) => ({ label, icon, value: winPctText(r), note: none(r) ? undefined : note });
   // The share of the matches that swung; the counts go in the note.
   const swing = (label: string, icon: IconKey, s: { n: number; of: number }, note: string) => ({ label, icon, value: s.of === 0 ? EMPTY : winPctText({ w: s.n, l: s.of - s.n }), note: s.of === 0 ? undefined : note });
+  const k = c.clock;
+  // Out of all of a side's goals, overtime ones too: any goal can be answered.
+  const answered = (label: string, icon: IconKey, n: number, of: number, whose: string) => ({
+    label,
+    icon,
+    value: of === 0 ? EMPTY : winPctText({ w: n, l: of - n }),
+    note: of === 0 ? undefined : `within ${String(ANSWER_SECONDS)} s, after ${whole(n)} of ${whose} ${whole(of)} goals`,
+  });
+  const lastSeconds = `the last ${String(LATE_SECONDS)} s`;
   return [
-    share("1-goal games", "score", c.oneGoal, `won ${recordText(c.oneGoal)} · ${recordText(c.oneGoalNoOt)} without OT`),
+    share("1-goal games", "oneGoal", c.oneGoal, `won ${recordText(c.oneGoal)} · ${recordText(c.oneGoalNoOt)} without OT`),
     share("Overtime", "overtime", c.overtime, `won ${recordText(c.overtime)}`),
-    share("Scored first", "goal", c.scoredFirst, `won ${recordText(c.scoredFirst)} when you opened the scoring`),
-    share("Conceded first", "save", c.concededFirst, `won ${recordText(c.concededFirst)} when they opened it`),
+    share("Late winners", "lateWinner", k.lateWinners, `won ${recordText(k.lateWinners)} when decided in ${lastSeconds}`),
+    { label: "Late goals", icon: "time", value: k.matches === 0 ? EMPTY : `${whole(k.lateScored)}–${whole(k.lateConceded)}`, note: k.matches === 0 ? undefined : `for–against in ${lastSeconds}` },
+    share("Scored first", "scoredFirst", c.scoredFirst, `won ${recordText(c.scoredFirst)} when you opened the scoring`),
+    share("Conceded first", "concededFirst", c.concededFirst, `won ${recordText(c.concededFirst)} when they opened it`),
+    answered("Scored right back", "fastest", k.answeredByYou, k.theirGoals, "their"),
+    answered("Conceded right back", "concededBack", k.answeredByThem, k.yourGoals, "your"),
     swing("Comebacks", "trendUp", c.comebacks, `won ${whole(c.comebacks.n)} of ${whole(c.comebacks.of)} after going ${swingText} down`),
     swing("Blown leads", "trendDown", c.blownLeads, `lost ${whole(c.blownLeads.n)} of ${whole(c.blownLeads.of)} after going ${swingText} up`),
     record("Forfeits", "flag", c.forfeits, "matches a side quit early"),

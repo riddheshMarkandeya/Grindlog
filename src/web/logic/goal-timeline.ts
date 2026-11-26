@@ -1,7 +1,7 @@
 // The match page's goal timeline: a row per player along the match clock, with the running score
 // above. Pure; the component lays it out at its measured width.
 import { TIMELINE_PLAYLISTS } from "../../shared/playlists";
-import { plural } from "./format";
+import { mmss, plural } from "./format";
 import type { MatchDetail, MomentKind } from "../../shared/schemas/responses";
 
 /**
@@ -79,7 +79,6 @@ const KIND_WORD: Record<MomentKind, string> = { shot: "Shot", save: "Save", epic
 
 /** A score, yours first, as the score row and a goal's hover both show it. */
 export const scoreText = (us: number, them: number) => `${String(us)}–${String(them)}`;
-const mmss = (s: number) => `${String(Math.floor(s / 60))}:${String(s % 60).padStart(2, "0")}`;
 /** As the game clock showed it: time left in regulation, "+" time played in overtime. */
 const clockText = (c: Clock) => (c.overtime ? `+${mmss(c.seconds)}` : mmss(c.seconds));
 const elapsed = (c: Clock, regulation: number) => (c.overtime ? regulation + c.seconds : regulation - c.seconds);

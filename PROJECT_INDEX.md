@@ -80,8 +80,8 @@ mobile app maybe later. It was called RL Tracker; the internal ids moved to grin
   `GRINDLOG_VERSION` (null in dev and source runs), `release.ts` release version parsing and compare, installer name, the
   minisign trusted comment and its parser, the update repo URLs, `update-key.ts` the baked `GRINDLOG_UPDATE_KEY`, `constants.ts`, `result.ts` your W/L, `lobby.ts` a match's lines and `Thirds`, `contribution.ts`
   the carry and per-session contribution (shares and touch thirds per mode), `playlists.ts` ID map, `goal-range.ts`
-  close/mid/long, `clutch.ts` Clutch's counted matches, goal order, comebacks and the period's stats (Trends,
-  the recap's card story line and the remarks share it), `tilt.ts` Tilt's session game number and streak buckets,
+  close/mid/long, `clutch.ts` Clutch's counted matches, goal order, comebacks, the goal clock (late goals, goals answered,
+  late winners) and the period's stats (Trends, the recap's match cards and the remarks share it), `tilt.ts` Tilt's session game number and streak buckets,
   Wilson ranges and verdict (the server counts, the web reads the verdict), `periods.ts` local days and periods, `playlist-filter.ts` filter groups, `accounts.ts` which account the dashboard shows (server and picker share
   it), `schemas/` API params
   and response shapes),

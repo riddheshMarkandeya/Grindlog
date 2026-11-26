@@ -6,6 +6,8 @@ const wl = (w: number, l: number) => ({ w, l });
 const view = (over: Partial<ClutchView> = {}): ClutchView => ({
   matches: 340,
   skippedOrder: 1,
+  skippedClock: 0,
+  clock: { matches: 339, lateScored: 47, lateConceded: 48, yourGoals: 630, theirGoals: 607, answeredByThem: 66, answeredByYou: 59, lateWinners: wl(10, 10) },
   oneGoal: wl(70, 84),
   oneGoalNoOt: wl(50, 49),
   overtime: wl(20, 35),
@@ -25,12 +27,45 @@ describe("clutchTiles", () => {
     expect(clutchTiles(view()).map((t) => [t.label, t.value, t.note])).toEqual([
       ["1-goal games", "45%", "won 70–84 · 50–49 without OT"],
       ["Overtime", "36%", "won 20–35"],
+      ["Late winners", "50%", "won 10–10 when decided in the last 30 s"],
+      ["Late goals", "47–48", "for–against in the last 30 s"],
       ["Scored first", "70%", "won 116–49 when you opened the scoring"],
       ["Conceded first", "25%", "won 40–120 when they opened it"],
+      ["Scored right back", "10%", "within 15 s, after 59 of their 607 goals"],
+      ["Conceded right back", "10%", "within 15 s, after 66 of your 630 goals"],
       ["Comebacks", "10%", "won 14 of 134 after going 2+ down"],
       ["Blown leads", "14%", "lost 20 of 143 after going 2+ up"],
       ["Forfeits", "59–19", "matches a side quit early"],
     ]);
+  });
+
+  test("each tile's icon", () => {
+    expect(clutchTiles(view()).map((t) => t.icon)).toEqual([
+      "oneGoal", "overtime", "lateWinner", "time", "scoredFirst", "concededFirst", "fastest", "concededBack", "trendUp", "trendDown", "flag",
+    ]);
+  });
+
+  test("every note fits the tile's two lines", () => {
+    for (const t of clutchTiles(view())) expect(t.note?.length ?? 0).toBeLessThanOrEqual(44);
+  });
+
+  test("the right-back shares are out of all goals, overtime ones too", () => {
+    const tiles = clutchTiles(view({ clock: { ...view().clock, yourGoals: 4, theirGoals: 8, answeredByThem: 1, answeredByYou: 6 } }));
+    const by = (label: string) => tiles.find((t) => t.label === label);
+    expect(by("Scored right back")).toMatchObject({ value: "75%", note: "within 15 s, after 6 of their 8 goals" });
+    expect(by("Conceded right back")).toMatchObject({ value: "25%", note: "within 15 s, after 1 of your 4 goals" });
+  });
+
+  test("no clocked match: the clock tiles show – with no note; clocked with no late goal shows 0–0", () => {
+    const empty = { matches: 0, lateScored: 0, lateConceded: 0, yourGoals: 0, theirGoals: 0, answeredByThem: 0, answeredByYou: 0, lateWinners: wl(0, 0) };
+    const tiles = clutchTiles(view({ clock: empty }));
+    for (const label of ["Late winners", "Late goals", "Scored right back", "Conceded right back"]) {
+      expect(tiles.find((t) => t.label === label)).toMatchObject({ value: "–", note: undefined });
+    }
+    const quiet = clutchTiles(view({ clock: { ...empty, matches: 3, yourGoals: 2 } }));
+    expect(quiet.find((t) => t.label === "Late goals")).toMatchObject({ value: "0–0", note: "for–against in the last 30 s" });
+    expect(quiet.find((t) => t.label === "Late winners")).toMatchObject({ value: "–", note: undefined });
+    expect(quiet.find((t) => t.label === "Scored right back")).toMatchObject({ value: "–", note: undefined });
   });
 
   test("an empty stat shows – with no note", () => {

@@ -125,11 +125,22 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
   credited team isn't the scorer's", with no scorer credit or point. One rule at a time with version bumps,
   `rules-diff`, then `release-recompute` moves it. Clutch already leaves this match out of goal-order stats (goals
   per team ≠ score), so it doesn't wait on the fix. Seen 1 time in ~1,931 goals.
+- [ ] **[design, Med, Substantial]** (user, 2026-11-25) Deep review of the whole Trends Clutch and Tilt sections
+  for ambiguity in the data: every tile, ladder rung and chart, checked for what it counts (team vs you, which
+  matches, forfeits and left matches, overtime, a joined-in-progress match), whether the wording says so, and
+  where the stored data can't tell cases apart. Prompted by the late-goals prototype, where "yours" read as
+  your own goals rather than your team's. Record: `docs/plans/2026-11-25-late-goals.md`.
 - [ ] **[design, Low, Standard]** (from analytics step A, the user's future task) Drop support for unknown and
   limited-time playlists: they'd stop showing in the playlist filter and the stats. `clutchCounts` in
   `src/shared/clutch.ts` already gives the casual/ranked/tournament rule and can be reused.
+- [ ] **[design, Low, Trivial]** Trigger: the Scored / Conceded right back note passing 44 characters (two tile
+  lines), around 1,000 answered goals; "within 15 s, after 104 of their 1,009 goals" is 43 today. Shorten the
+  note then. Record: `docs/plans/2026-11-25-late-goals.md` (review round 1).
 
 ## Watch list
+- [ ] **[bug, Low, Standard]** Trigger: the first match in the `clutch` log's `skippedClockGuids` whose clock runs
+  backwards (a later goal with more regulation time left, or less overtime played; none in 2,061 stored goals).
+  `clockChecked` leaves it out of the goal-clock stats; fit the rule to it. Record: `docs/plans/2026-11-25-late-goals.md`.
 - [ ] **[bug, Low, Standard]** Trigger: a match where a goal's scorer isn't on the team the goal counted for (an own
   goal credited by the game to the scorer's opponents, say; none in 1,988 stored goals). The goal timeline hides
   such a match; fit it once a real one shows how the game credits it. Record: `docs/plans/2026-11-24-goal-timeline.md`.

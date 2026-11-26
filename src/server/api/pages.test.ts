@@ -365,8 +365,32 @@ describe("Clutch on the period", () => {
     expect(clutch).toMatchObject({ matches: 4, skippedOrder: 1, scoredFirst: { w: 2, l: 0 }, concededFirst: { w: 1, l: 0 }, comebacks: { n: 1, of: 1 } });
     expect(clutch?.best).toEqual({ guid: "B", startedAt: t(10, 10, 10, 10), score: "3–2", at: "0–2", by: 2, sessionKey: "A" });
     expect(clutch?.worst).toBeNull();
-    expect(logger.lines.find((l) => l.event === "clutch")?.fields).toEqual({ matches: 4, skippedOrder: 1, skipped: ["J"] });
+    expect(logger.lines.find((l) => l.event === "clutch")?.fields).toEqual({
+      matches: 4,
+      skippedOrder: 1,
+      skipped: ["J"],
+      clockMatches: 3,
+      skippedClock: 0,
+      skippedClockGuids: [],
+      lateScored: 0,
+      lateConceded: 0,
+    });
     expect(pages.period(MONTH, "casual", ROLLING_WINDOW)?.clutch?.matches).toBe(1);
+  });
+
+  test("the goal-clock stats come with the period, and a match with an unclocked goal is logged as skipped", () => {
+    const writer = createRecordWriter({ tracker: storage.tracker, logger: memoryLogger(), now: () => 1 });
+    const logger = memoryLogger();
+    const pages = createPages({ reader: createQueryReader({ tracker: storage.tracker, logger: memoryLogger() }), logger, now: () => t(12, 31, 12) });
+    const at = (seconds: number) => ({ clock: { seconds, overtime: false } });
+    // 2–1: they score at 3:20, you answer 10 s later, then win it with 0:12 left.
+    const goals = [goal(1, THEM, at(200)), goal(0, ME, at(190)), goal(0, ME, at(12))];
+    writer.save(record("L", t(10, 10, 10), { goals }, { endedAt: t(10, 10, 10, 5), scoreTeam0: 2, scoreTeam1: 1 }));
+    writer.save(record("U", t(10, 10, 10, 10), { goals: [goal(0, ME, { clock: null })] }, { endedAt: t(10, 10, 10, 15), scoreTeam0: 1, scoreTeam1: 0 }));
+    const clutch = pages.period(MONTH, "everything", ROLLING_WINDOW)?.clutch;
+    expect(clutch?.skippedClock).toBe(1);
+    expect(clutch?.clock).toEqual({ matches: 1, lateScored: 1, lateConceded: 0, yourGoals: 2, theirGoals: 1, answeredByThem: 0, answeredByYou: 1, lateWinners: { w: 1, l: 0 } });
+    expect(logger.lines.find((l) => l.event === "clutch")?.fields).toMatchObject({ clockMatches: 1, skippedClock: 1, skippedClockGuids: ["U"], lateScored: 1, lateConceded: 0 });
   });
 
   test("a period of only private matches has none", () => {

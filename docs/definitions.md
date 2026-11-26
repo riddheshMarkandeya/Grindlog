@@ -622,6 +622,23 @@ A 1-goal game is one whose final score differs by one, overtime included; the ov
 - **Evidence**: The user's choice (2026-11-24): the tile shows the win %, like the other share tiles, with the total record and the record without overtime in its note (on 2026-11-23 the total record was the value).
 - **Decided in**: `docs/plans/2026-11-23-analytics-map.md`
 
+### `clutch_late_goals` · v1 · read
+
+Goal-clock stats count a match with a goal order whose goals all have a clock and consistent overtime flags: no overtime goal in a match without overtime, no regulation goal after an overtime one, and a completed overtime match ending on an overtime goal (else the match is left out of them only). A late goal is a regulation goal whose clock reading is LATE_SECONDS or less; overtime goals are never late. A goal is answered when the next goal by idx is the other team's and comes ANSWER_SECONDS or less of game clock later (both in regulation: the first reading minus the second; regulation then overtime: their sum; both in overtime: the second minus the first). Your goals answered are out of all your team's goals, theirs likewise, overtime goals included.
+
+- **Constants**: `LATE_SECONDS` = 30, `ANSWER_SECONDS` = 15
+- **Checks**: `goals_clocked`, `clock_overtime_flagged`, `goals_per_team_equal_score`
+- **Evidence**: Real data (2026-11-25): 2,061 goals, all clocked, 0 matches breaking the overtime-flag rules. 173 regulation goals came in the last 30 s (13 at 0:00). Of 819 goals the other team answered, 210 came within 15 s of regulation clock (139 within 10 s, 280 within 20 s). The late-goals prototype (`4325383`) settled the tiles and their wording (user's choice).
+- **Decided in**: `docs/plans/2026-11-23-analytics-map.md`, `docs/plans/2026-11-25-late-goals.md`
+
+### `clutch_late_winner` · v1 · read
+
+A match's deciding goal is the winner's (loser's final + 1)-th goal: the go-ahead goal never given back. It's a late winner when it's a late goal (clutch_late_goals): yours in a win, theirs in a loss. There is none when the final score is tied, when you left the match (its score is wherever you stopped watching), when the result contradicts the final score, when the goal order fails, or when the clock check fails. The Late winners tile is the win % over matches with a late winner.
+
+- **Checks**: `goals_clocked`, `clock_overtime_flagged`, `goals_per_team_equal_score`
+- **Evidence**: Real data (2026-11-25): 32 of 354 deciding goals came in the last 30 s (both teams' wins; 59 were in overtime). 1 forfeit win at 2–2 has no deciding goal. The recap shows it as a clock icon on the match card (user's choice from the late-goals prototype).
+- **Decided in**: `docs/plans/2026-11-23-analytics-map.md`, `docs/plans/2026-11-25-late-goals.md`
+
 ### `tilt_session_order` · v1 · read
 
 A match's session game number and the run before it count every match you played in its session under "everything" (private and offline left out), whatever the page's period or filters. Game numbers bucket 1–3, 4–6, 7–9, 10+; the run before a match buckets as after a win, 1 loss, 2 losses or 3+ losses (none for the session's first decided match). A match with no result keeps its game number but neither extends nor breaks the run. Only casual, ranked and tournament matches with a result that started in the period and pass the filters land in buckets. Sessions ended on a loss: by each session's last decided match, over the whole session, the current session left out.

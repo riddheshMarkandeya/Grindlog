@@ -3,7 +3,7 @@ import { SoccerBallIcon } from "@phosphor-icons/react/dist/csr/SoccerBall";
 import {
   ArrowLeft, Battery, BatteryMedium, Bomb, CirclePlus, Clock, Copy, Crosshair, Crown, Download, Flag, Flame, Gamepad2,
   Gauge, Handshake, Hash, LayoutGrid, List, Percent, Power, Settings, Share2, Shield, Target, Timer, TrendingDown,
-  TrendingUp, Users, Wind, Zap,
+  TrendingUp, Users, Wind, Zap, AlarmClock, Undo2, Scale, CircleArrowUp, CircleArrowDown,
 } from "lucide-react";
 import { createElement, type ComponentType, type ReactNode } from "react";
 import type { IconKey } from "../logic/icons";
@@ -33,6 +33,8 @@ const ICONS: Record<IconKey, IconComponent> = {
   winRate: Percent, shooting: Crosshair, streak: Flame, time: Clock, overtime: Timer, hardest: Gauge, fastest: Zap,
   crossbar: Crossbar, boost: BatteryMedium, supersonic: Wind, empty: Battery, aerial: Aerial,
   trendUp: TrendingUp, trendDown: TrendingDown,
+  // Clutch-only: a close game, going 1–0 up or down, a late winner, a goal given straight back.
+  oneGoal: Scale, scoredFirst: CircleArrowUp, concededFirst: CircleArrowDown, lateWinner: AlarmClock, concededBack: Undo2,
 };
 
 /** One icon, sized by the caller's class. Decorative unless `label` is given. */

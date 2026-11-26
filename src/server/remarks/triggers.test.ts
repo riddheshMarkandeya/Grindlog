@@ -211,7 +211,8 @@ describe("triggersFor", () => {
 
 describe("clutch triggers", () => {
   /** Goals for `m` in scoring order, each the team that scored it (you're team 0). */
-  const goalsOf = (m: MyMatch, teams: number[]) => teams.map((teamNum, idx) => ({ matchGuid: m.guid, idx, teamNum }));
+  // Clocked a goal every 20 s from 4:00 left, as every stored goal now has a clock.
+  const goalsOf = (m: MyMatch, teams: number[]) => teams.map((teamNum, idx) => ({ matchGuid: m.guid, idx, teamNum, clock: { seconds: 240 - 20 * idx, overtime: false } }));
 
   test("a comeback: a win from 2+ down fires, from 1 down doesn't", () => {
     const two = match({ scoreTeam0: 3, scoreTeam1: 2 });

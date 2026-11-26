@@ -33,12 +33,22 @@
 .mvp { position: absolute; right: 8px; top: 8px; width: 16px; height: 16px; }
 .flagged .story { padding-right: 12px; } /* clear of the flag dot */
 .flagged::after { content: ""; position: absolute; right: 6px; bottom: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--flag); }
+/* The late-winner clock, bottom-right, left of the flag dot when both show; the story stops short of it. */
+.late { position: absolute; right: 7px; bottom: 7px; display: flex; width: 14px; height: 14px; }
+.late svg { width: 100%; height: 100%; }
+.late.up { color: var(--up); }
+.late.down { color: var(--down); }
+.flagged .late { right: 18px; }
+/* The last line (the story, or the playlist without one) stops short of the clock. */
+.hasLate .p, .hasLate .story { padding-right: 18px; }
+.flagged.hasLate .p, .flagged.hasLate .story { padding-right: 30px; }
 
 .dense { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 4px; }
 .dense .card { padding: 4px 8px; }
 .dense .card b { font-size: 18px; }
 .dense .p { display: none; }
 .dense .mvp { width: 12px; height: 12px; top: 6px; right: 6px; }
+.dense .late { width: 12px; height: 12px; bottom: 5px; }
 
 .small { font-size: 12px; }
 /* The goal map | by playlist, Contribution and the touches: about 3/5 and 2/5, stacked when narrow.

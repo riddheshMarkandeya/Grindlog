@@ -3,4 +3,4 @@ export type IconKey =
   | "recap" | "trends" | "friends" | "settings" | "quit" | "newSession" | "share" | "copy" | "download" | "back" | "flag"
   | "overview" | "matches" | "score" | "goal" | "assist" | "save" | "shot" | "demo" | "mvp" | "winRate" | "shooting"
   | "streak" | "time" | "overtime" | "hardest" | "fastest" | "crossbar" | "boost" | "supersonic" | "empty" | "aerial"
-  | "trendUp" | "trendDown";
+  | "trendUp" | "trendDown" | "lateWinner" | "concededBack" | "oneGoal" | "scoredFirst" | "concededFirst";

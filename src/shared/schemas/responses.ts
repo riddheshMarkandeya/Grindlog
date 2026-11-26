@@ -262,6 +262,17 @@ const clutchRef = z.object({ guid: z.string(), startedAt: z.number(), score: z.s
 export const clutchSchema = z.object({
   matches: z.number(),
   skippedOrder: z.number(),
+  skippedClock: z.number(),
+  clock: z.object({
+    matches: z.number(),
+    lateScored: z.number(),
+    lateConceded: z.number(),
+    yourGoals: z.number(),
+    theirGoals: z.number(),
+    answeredByThem: z.number(),
+    answeredByYou: z.number(),
+    lateWinners: record,
+  }),
   oneGoal: record,
   oneGoalNoOt: record,
   overtime: record,

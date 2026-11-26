@@ -11,6 +11,7 @@ import {
   letter,
   matchLabel,
   clutchStory,
+  lateWinnerMark,
   perGameCards,
   playlistRows,
   recapPath,
@@ -186,10 +187,35 @@ test("matchLabel: number, time, result, score, playlist, then MVP and flags when
   expect(matchLabel({ ...m, mvpKey: "other", flags: [], result: null, scoreTeam0: null }, 1, "24h")).toBe(`Match 1, ${t}, no result, Ranked Doubles`);
   expect(matchLabel(m, 2, "12h")).toContain(clock(m.startedAt, "12h"));
   expect(matchLabel(m, 2, "24h", "came back from 1–4, overtime")).toBe(`Match 2, ${t}, win, 3–1, Ranked Doubles, came back from 1–4, overtime, MVP, flagged: MVP inferred`);
+  expect(matchLabel(m, 2, "24h", "came back from 0–2", "late winner with 17 seconds left")).toBe(
+    `Match 2, ${t}, win, 3–1, Ranked Doubles, came back from 0–2, late winner with 17 seconds left, MVP, flagged: MVP inferred`,
+  );
+  expect(matchLabel(m, 2, "24h", null, "late winner with 17 seconds left")).toContain("Ranked Doubles, late winner with 17 seconds left, MVP");
+});
+
+const c = (over: Partial<MatchClutch> = {}): MatchClutch => ({ oneGoal: false, ot: false, ff: false, swings: true, final: null, comebackFrom: null, blownFrom: null, order: null, lateWinner: null, ...over });
+
+describe("lateWinnerMark", () => {
+  test("your late winner: up, with the time left shown and read aloud", () => {
+    expect(lateWinnerMark(c({ lateWinner: { mine: true, seconds: 17 } }))).toEqual({ title: "Late winner with 0:17 left", label: "late winner with 17 seconds left", tone: "up" });
+  });
+
+  test("theirs: a late loss, down; one second reads singular", () => {
+    expect(lateWinnerMark(c({ lateWinner: { mine: false, seconds: 1 } }))).toEqual({ title: "Late loss with 0:01 left", label: "late loss with 1 second left", tone: "down" });
+  });
+
+  test("none: null", () => {
+    expect(lateWinnerMark(c())).toBeNull();
+    expect(lateWinnerMark(null)).toBeNull();
+  });
+
+  test("the story's text and tone don't change for a late winner", () => {
+    expect(clutchStory(c({ blownFrom: "2–0", lateWinner: { mine: false, seconds: 5 } }))).toEqual({ text: "led 2–0", label: "led 2–0", tone: "down" });
+    expect(clutchStory(c({ ot: false, lateWinner: { mine: true, seconds: 5 } }))).toBeNull();
+  });
 });
 
 describe("clutchStory", () => {
-  const c = (over: Partial<MatchClutch> = {}): MatchClutch => ({ oneGoal: false, ot: false, ff: false, swings: true, final: null, comebackFrom: null, blownFrom: null, order: null, ...over });
 
   test("shown and read aloud: the swing, then OT and FF", () => {
     expect(clutchStory(c({ comebackFrom: "1–4", ot: true }))).toEqual({ text: "from 1–4, OT", label: "came back from 1–4, overtime", tone: "up" });

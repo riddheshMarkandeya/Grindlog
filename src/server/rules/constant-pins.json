@@ -121,6 +121,13 @@
       "SWING_MIN_GOALS": 2
     }
   },
+  "clutch_late_goals": {
+    "version": 1,
+    "constants": {
+      "LATE_SECONDS": 30,
+      "ANSWER_SECONDS": 15
+    }
+  },
   "tilt_verdict": {
     "version": 1,
     "constants": {
