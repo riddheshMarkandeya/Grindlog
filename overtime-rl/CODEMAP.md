@@ -1,0 +1,46 @@
+# OvertimeRL Codemap & Architecture Memory
+
+> Standalone, local-first Rocket League analytics companion running on `http://127.0.0.1:49200`. Ingests telemetry directly from Grindlog SQLite databases (`tracker.db`, `raw.db`) and SSE stream (`:49100/api/events`).
+
+## Architecture & Core Modules
+- **Design Spec:** [2026-11-25-overtimerl-design.md](docs/superpowers/specs/2026-11-25-overtimerl-design.md)
+- **Shared Schemas:** [types.ts](src/shared/types.ts) — Zod runtime contracts for `MatchAnalysisResult`, `MatchPlayerAnalysis`, `PlayerCoachReport`, `DetailedStats`, `SessionRecap`.
+- **Ingestion:**
+  - [grindlog-reader.ts](src/server/ingestion/grindlog-reader.ts) — Read-only SQLite reader for `%LOCALAPPDATA%\Grindlog\tracker.db` and `raw.db`.
+  - [sse-client.ts](src/server/ingestion/sse-client.ts) — Connects to `:49100/api/events` to trigger auto-reanalysis on `match_ended`.
+- **Analytical Models:**
+  - [xg.ts](src/server/models/xg.ts) — Radian-locked logit $xG$ engine with shot distance, angle, speed, and Big Chance thresholds.
+  - [possession.ts](src/server/models/possession.ts) — Anti-exploit touch debouncer (<0.35s) and 3-state possession classifier (`Controlled`, `Contested`, `Loose`).
+  - [causal-evaluator.ts](src/server/models/causal-evaluator.ts) — 5s rolling buffer evaluator, Favorable Pass Proximity check ($\Delta D > 0$), 5s Counter-Press win-back waiver, goalkeeping rebound clear waiver, single-primary-cause defensive rewind, and competitive community tactical rules (Back-Post Rotation, Near-Post Trap, Shadow Defense, Reckless Dive 3.5s Recovery Waiver, Kickoff Cheat-Up Support, Backboard Wall Clears, Infield Crosses vs Corner-Roll Giveaways).
+  - [rating.ts](src/server/models/rating.ts) — FotMob 0.0–10.0 player ratings with smooth quarter-sine diminishing returns above 7.5 (reserving 10.0 for historic domination), transparent categorized impact breakdowns (`attack`, `defense`, `goalkeeping`, `possession`, `turnover_recovery`, `discipline`, `clutch`).
+  - [momentum.ts](src/server/models/momentum.ts) — 10-second rolling territorial pressure wave with event pins.
+  - [radar.ts](src/server/models/radar.ts) — 6-axis tactical radars (Finishing, Creation, Defense, Motor, Physicality, Boost IQ) and archetype classification. Calibrated Motor model with base participation weighting and opponent work-rate fallback preventing 10.0 clamping.
+  - [coach.ts](src/server/models/coach.ts) — AI Match Diagnostics generating actionable "What You Did Great" vs "Tactical Improvements Needed".
+  - [profile.ts](src/server/models/profile.ts) — Cumulative career profile engine synthesizing all historical matches into all-time ratings, 6-axis radars, and telemetry.
+  - [squad.ts](src/server/models/squad.ts) — Friend circle & squad chemistry engine computing duo win rates, mutual double-commits, goals/assists, playstyle synergy, deep Duo Friend Dossiers, and the 3s Trio Roster Dossier (`buildTrioSquadDossier`).
+  - [analyzer.ts](src/server/models/analyzer.ts) — Master coordinator correlating hits, statfeed events, awards, and spatial double-commit detection.
+- **Server API & Persistence:**
+  - [cache.ts](src/server/db/cache.ts) — Local caching in `data/overtime.db` and custom friends persistence (`custom_friends`).
+  - [main.ts](src/server/main.ts) — HTTP server on `:49200` serving `/api/*` (`/api/friends`, `/api/friends/toggle`, `/api/squad/friend/:id`, `/api/squad/trio`, `/api/matches?friends_only=true`) and compiled React frontend.
+- **Web Frontend (Vite + React 19):**
+  - [App.tsx](src/web/App.tsx) — Top-level shell with global `[⭐ Friends Only]` filter toggle, real-time SSE listener, and view router.
+  - [MatchCenter.tsx](src/web/pages/MatchCenter.tsx) — FotMob-style header, match result banner (Victory/Defeat), dynamic playlist & arena resolution, neutral gray glass opponent lineup cards, momentum wave, and tabbed analytics.
+  - [SquadHub.tsx](src/web/pages/SquadHub.tsx) — Dedicated Played with Friends hub with three views: 3s Core Roster (Trio Dossier), Squad Matches Explorer, and Partner Duo Cards with 2s vs 3s breakdown chips and match history mode badges.
+  - [SquadMatchesExplorerView.tsx](src/web/components/SquadMatchesExplorerView.tsx) — Flexible squad match explorer allowing filtering by any or all teammates, dedicated 2v2 Duos vs 3v3 Standard mode filtering (`mode=2s/3s/all`), KPI summary banner, custom friend addition, and per-match performance ratings.
+  - [TrioSquadDossierView.tsx](src/web/components/TrioSquadDossierView.tsx) — Full 3s Trio Roster Dossier comparing core squadmates with overall podiums, passing network, collision hotspots, and clickable per-game comparison logs.
+  - [DetailedStatsTable.tsx](src/web/components/DetailedStatsTable.tsx) — Comprehensive stats breakdown with category filters and explicit `YOUR TEAM` / `OPPONENT` badges.
+  - [CoachReportCard.tsx](src/web/components/CoachReportCard.tsx) — AI match diagnostics.
+  - [SessionRecap.tsx](src/web/pages/SessionRecap.tsx) — Grind session leaderboard and match history with normalized user-first scoreline logic (`WIN 4-2` / `LOSS 2-3`).
+  - [PlayerProfile.tsx](src/web/pages/PlayerProfile.tsx) — Career player profile featuring all-time FotMob rating, 8-axis tactical radar, AI diagnostics, and playlist breakdown.
+  - [DiscordExport.tsx](src/web/components/DiscordExport.tsx) — 1200x630 HTML5 Canvas social card generator.
+  - [RatingBadge.tsx](src/web/components/RatingBadge.tsx) — 2026 Liquid Glass high-contrast WCAG-compliant status badges.
+  - [tray.ps1](tray.ps1) & [OvertimeRL.vbs](OvertimeRL.vbs) — Windows System Tray application and silent background runner.
+  - [formatters.ts](src/shared/formatters.ts) — Canonical Rocket League playlist mapper (`getMatchPlaylistLabel`) and human-readable arena resolver (`formatArenaName`).
+  - [PitchVisualizer.tsx](src/web/components/PitchVisualizer.tsx) — Interactive 2D Pitch Mini-Map ($8192 \times 10240\text{ uu}$ chamfered arena) with play scrubber, carrier vs intruder tactical lines, xG shot vectors, 6 full boost pills, and deep event inspector.
+  - Boost Telemetry & Squad Chemistry Pipeline — Real-time extraction of `BoostPickup` events (`BoostType_Pad`, `BoostType_Pill`, pad ratio %, opponent boost theft) from `raw.db`, mutual tailing encroachment tracking, 3x3 passing connection matrix with conversion rates, and third-man defensive coverage %.
+  - [awards.ts](src/shared/awards.ts) & [RatingModal.tsx](src/web/components/RatingModal.tsx) — Consolidated front-page awards into a 1-line Match Spotlight Bar (`MatchCenter.tsx`) and upgraded `RatingModal` into a full Player Match Dossier displaying each clicked player's earned titles, 8-axis tactical attributes, telemetry summary, and rating breakdown.
+  - [radar-aggregator.ts](src/server/models/radar-aggregator.ts) — Shared rule-aware 8-axis radar aggregator unifying `MatchAnalyzer` (`ENGINE_VERSION = 5` with chronological spatial timeline, 3s 3rd-man net coverage & empty-net rusher double-commit attribution, goal/shot deduplication, and full tactical/disciplinary rules) across Player Career Profiles, Duo Dossiers, Trio Roster Dossiers, and Squad Match Explorer, alongside scrollbar-free UI (`theme.css`) and clickable friend profile navigation.
+  - [TimelineScrubber.tsx](src/web/components/TimelineScrubber.tsx) & [theme.css](src/web/styles/theme.css) — `ENGINE_VERSION = 6` adds 1.5s scrum bounce deduplication, zone-aware `attack_box` overlap weights (`-0.18`), positive `3rd-Man Safety Cover` credits (`rating.ts` + `radar.ts`), and 3.5s replay buildup `trail` vectors (`PlayTrailPoint`). Frontend adds 4 persisted themes (`obsidian`, `carbon`, `rlcs`, `turf`), unified `.surface-card` glass palette, draggable dual-lane `TimelineScrubber` synced bidirectionally with `MomentumGraph` and `PitchVisualizer`, consolidated 5-tab `MatchCenter` with `DualRadarChart` head-to-head overlay, clickable SVG Rating Trend Sparkline, bottom-placed Stored Profiles Archive dropdown & friend baseline diffs on `PlayerProfile`, and global `/` + `[`/`]` + `Space`/`←`/`→`/`Esc` shortcuts.
+  - [ovr.ts](src/shared/ovr.ts) & [OvrBadge.tsx](src/web/components/OvrBadge.tsx) — Shared Role-Weighted `OVR` (`0–99`, calibrated across FIFA-style `BRONZE` / `SILVER` / `GOLD` / `ELITE` / `ICON` tiers) + raw `/800` Total Power index rendered across `RadarChart`, `DualRadarChart`, `PlayerProfile` hero tile, `RatingModal` dossier, `TrioSquadDossierView`, and `MatchCenter` lineups.
+  - [session.ts](src/server/models/session.ts) — Filters Session Recap **Player of the Night Podium** strictly to `is_user` and pinned friends (`primary_id` + case-insensitive custom friend name match), aggregates per-friend/team Goals, Assists, Saves, and Double Commits, and powers `?friends_only=true` session filtering (`App.tsx`), pinned-only quick friend search, and `SquadHub` Duo Chemistry defaulting to `⭐ Friends Only`.
+  - [SessionDiscordExport.tsx](src/web/components/SessionDiscordExport.tsx) & [canvas-export.ts](src/web/utils/canvas-export.ts) — Generates an uncramped 1200x675 **Session Leaderboard Discord Card** featuring Session W/L, Squad Goals, Team Double Commits, and clean 2×2 friend podium cards (`Goals`, `Assists`, `Saves`, `Double Commits`) sharing clipboard/PNG export logic with `DiscordExport`.
