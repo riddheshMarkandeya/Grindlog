@@ -505,48 +505,47 @@ test('3rd-Man Safety Cover rewards rating and Discipline without affecting non-c
     );
 });
 
-test('calculateTacticalOvr - computes honest role-weighted 0-99 OVR matching card stats', () => {
+test('calculateTacticalOvr - computes role-weighted 0-99 RL rank OVR and exact /800 totals cleanly', () => {
     const swapo = calculateTacticalOvr({
-        finishing: 86, creation: 76, dribbling: 79, pace: 81,
-        tackling: 78, goalkeeping: 64, aerial: 73, positioning: 72,
+        finishing: 63, creation: 39, dribbling: 61, pace: 57,
+        tackling: 67, goalkeeping: 39, aerial: 47, positioning: 42,
         archetype: 'The Striker',
     });
     const mechless = calculateTacticalOvr({
-        finishing: 84, creation: 75, dribbling: 77, pace: 85,
-        tackling: 82, goalkeeping: 68, aerial: 89, positioning: 74,
+        finishing: 58, creation: 35, dribbling: 50, pace: 60,
+        tackling: 73, goalkeeping: 39, aerial: 68, positioning: 38,
         archetype: 'The Air Marshal',
     });
     const rocinante = calculateTacticalOvr({
-        finishing: 64, creation: 82, dribbling: 74, pace: 68,
-        tackling: 73, goalkeeping: 71, aerial: 62, positioning: 78,
+        finishing: 24, creation: 52, dribbling: 54, pace: 35,
+        tackling: 50, goalkeeping: 44, aerial: 23, positioning: 55,
         archetype: 'The Playmaker',
     });
     const passenger = calculateTacticalOvr({
-        finishing: 42, creation: 44, dribbling: 43, pace: 45,
-        tackling: 44, goalkeeping: 42, aerial: 43, positioning: 38,
+        finishing: 14, creation: 14, dribbling: 14, pace: 14,
+        tackling: 14, goalkeeping: 14, aerial: 14, positioning: 14,
         archetype: 'The Passenger',
     });
     const icon = calculateTacticalOvr({
-        finishing: 91, creation: 87, dribbling: 90, pace: 92,
-        tackling: 85, goalkeeping: 84, aerial: 89, positioning: 90,
+        finishing: 85, creation: 78, dribbling: 82, pace: 84,
+        tackling: 76, goalkeeping: 80, aerial: 80, positioning: 88,
         archetype: 'The All-Rounder',
     });
 
-    assert.equal(swapo.total800, 609);
-    assert.equal(mechless.total800, 634);
-    assert.equal(rocinante.total800, 572);
-    assert.ok(mechless.ovr >= 82 && mechless.ovr <= 87, `Expected Mechless OVR ~84, got ${mechless.ovr}`);
-    assert.ok(swapo.ovr >= 78 && swapo.ovr <= 83, `Expected Swapo OVR ~80, got ${swapo.ovr}`);
-    assert.ok(rocinante.ovr >= 72 && rocinante.ovr <= 77, `Expected Rocinante OVR ~74, got ${rocinante.ovr}`);
-    assert.ok(Math.abs(swapo.ovr - swapo.weightedRaw) <= 3, `OVR must honestly justify card stats (${swapo.ovr} vs ${swapo.weightedRaw})`);
+    assert.equal(swapo.total800, 415);
+    assert.equal(mechless.total800, 421);
+    assert.equal(rocinante.total800, 337);
+    assert.ok(mechless.ovr >= 78 && mechless.ovr <= 85, `Expected Mechless OVR ~81, got ${mechless.ovr}`);
+    assert.ok(swapo.ovr >= 76 && swapo.ovr <= 83, `Expected Swapo OVR ~79, got ${swapo.ovr}`);
+    assert.ok(rocinante.ovr >= 70 && rocinante.ovr <= 77, `Expected Rocinante OVR ~73, got ${rocinante.ovr}`);
     assert.ok(passenger.ovr < rocinante.ovr && rocinante.ovr < icon.ovr, 'OVR should increase monotonically across tiers');
     assert.equal(passenger.tier, 'BRONZE');
     assert.equal(icon.tier, 'ICON');
 
     // Role sensitivity: playmaker axes score higher OVR as Playmaker than as Striker
     const sameAxesAsStriker = calculateTacticalOvr({
-        finishing: 64, creation: 82, dribbling: 74, pace: 68,
-        tackling: 73, goalkeeping: 71, aerial: 62, positioning: 78,
+        finishing: 24, creation: 52, dribbling: 54, pace: 35,
+        tackling: 50, goalkeeping: 44, aerial: 23, positioning: 55,
         archetype: 'The Striker',
     });
     assert.ok(rocinante.ovr > sameAxesAsStriker.ovr, `Role weights should reward true role fit (${rocinante.ovr} vs ${sameAxesAsStriker.ovr})`);

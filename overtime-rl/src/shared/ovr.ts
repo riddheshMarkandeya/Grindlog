@@ -132,20 +132,32 @@ const AXIS_LABELS: Record<AxisWeightSpec['key'], string> = {
 };
 
 /**
- * Honest Role-Weighted FIFA OVR: directly reflects the weighted attribute values shown on the card
- * (plus at most +2 specialty poise for elite >=70 role masters), ensuring OVR justifies card stats.
+ * RL Rank-Calibrated FIFA OVR curve: maps raw 8-axis role-weighted average (10..99)
+ * onto realistic Bronze/Silver/Gold/Elite/Icon tiers (e.g. Diamond/Champ outfielders land ~72-83 Gold/Silver
+ * instead of being penalized into Bronze for low off-role stats like Goalkeeping).
  */
 function mapWeightedToOvr(w: number): number {
-  const clampedW = Math.max(35, Math.min(99, w));
-  const poise = clampedW >= 72 ? Math.min(2.5, (clampedW - 72) * 0.1) : 0;
-  return Math.max(35, Math.min(99, Math.round(clampedW + poise)));
+  const clampedW = Math.max(10, Math.min(99, w));
+  let raw: number;
+  if (clampedW <= 20) {
+    raw = 35 + ((clampedW - 10) / 10) * 15;
+  } else if (clampedW <= 40) {
+    raw = 50 + ((clampedW - 20) / 20) * 19;
+  } else if (clampedW <= 65) {
+    raw = 69 + ((clampedW - 40) / 25) * 19;
+  } else if (clampedW <= 85) {
+    raw = 88 + ((clampedW - 65) / 20) * 8;
+  } else {
+    raw = 96 + ((clampedW - 85) / 14) * 3;
+  }
+  return Math.max(10, Math.min(99, Math.round(raw)));
 }
 
 function getTierMeta(ovr: number): { tier: OvrTier; accentColor: string } {
-  if (ovr >= 89) return { tier: 'ICON', accentColor: '#c084fc' };
+  if (ovr >= 90) return { tier: 'ICON', accentColor: '#c084fc' };
   if (ovr >= 83) return { tier: 'ELITE', accentColor: '#38bdf8' };
   if (ovr >= 75) return { tier: 'GOLD', accentColor: '#fbbf24' };
-  if (ovr >= 64) return { tier: 'SILVER', accentColor: '#cbd5e1' };
+  if (ovr >= 62) return { tier: 'SILVER', accentColor: '#cbd5e1' };
   return { tier: 'BRONZE', accentColor: '#fb923c' };
 }
 
