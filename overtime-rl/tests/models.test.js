@@ -835,9 +835,9 @@ test('evaluatePairChemistry - distinguishes complementary Playmaker+Striker syne
     const { evaluatePairChemistry, scoreToDiamondsAndTier } = await import('../src/server/models/chemistry.ts');
     const { buildPlayerFifaCard } = await import('../src/server/models/fifa-card.ts');
 
-    const strikerRadar = { finishing: 86, creation: 74, dribbling: 79, pace: 83, tackling: 76, goalkeeping: 62, aerial: 88, positioning: 64, archetype: 'The Air Marshal' };
-    const playmakerRadar = { finishing: 63, creation: 85, dribbling: 76, pace: 72, tackling: 75, goalkeeping: 78, aerial: 64, positioning: 82, archetype: 'The Playmaker' };
-    const secondChaserRadar = { finishing: 84, creation: 64, dribbling: 80, pace: 81, tackling: 68, goalkeeping: 58, aerial: 79, positioning: 59, archetype: 'The Striker' };
+    const strikerRadar = { finishing: 65, creation: 39, dribbling: 56, pace: 42, tackling: 91, goalkeeping: 18, aerial: 69, positioning: 47, archetype: 'The Air Marshal' };
+    const playmakerRadar = { finishing: 25, creation: 50, dribbling: 30, pace: 32, tackling: 79, goalkeeping: 23, aerial: 22, positioning: 62, archetype: 'The Playmaker' };
+    const secondChaserRadar = { finishing: 81, creation: 51, dribbling: 59, pace: 43, tackling: 89, goalkeeping: 20, aerial: 34, positioning: 50, archetype: 'The Striker' };
 
     const telepathic = evaluatePairChemistry({
         playerA: { primary_id: 'p1', display_name: 'Mechless', archetype: 'The Air Marshal', role_badge: 'AF', ovr: 82, car_body: 'fennec' },

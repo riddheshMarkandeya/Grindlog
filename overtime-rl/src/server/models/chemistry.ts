@@ -141,24 +141,24 @@ export function scoreToDiamondsAndTier(score: number): { diamonds: number; tierL
 }
 
 function computeRoleFit(radarA: RadarProfile, radarB: RadarProfile): { score: number; label: string } {
-  const offA = radarA.finishing * 0.45 + (radarA.aerial ?? 65) * 0.3 + radarA.dribbling * 0.25;
-  const defA = radarA.goalkeeping * 0.35 + (radarA.positioning ?? 68) * 0.3 + radarA.creation * 0.2 + radarA.tackling * 0.15;
-  const offB = radarB.finishing * 0.45 + (radarB.aerial ?? 65) * 0.3 + radarB.dribbling * 0.25;
-  const defB = radarB.goalkeeping * 0.35 + (radarB.positioning ?? 68) * 0.3 + radarB.creation * 0.2 + radarB.tackling * 0.15;
+  const offA = radarA.finishing * 0.45 + (radarA.aerial ?? 35) * 0.3 + radarA.dribbling * 0.25;
+  const defA = radarA.goalkeeping * 0.35 + (radarA.positioning ?? 50) * 0.3 + radarA.creation * 0.2 + radarA.tackling * 0.15;
+  const offB = radarB.finishing * 0.45 + (radarB.aerial ?? 35) * 0.3 + radarB.dribbling * 0.25;
+  const defB = radarB.goalkeeping * 0.35 + (radarB.positioning ?? 50) * 0.3 + radarB.creation * 0.2 + radarB.tackling * 0.15;
 
   const leanA = offA - defA;
   const leanB = offB - defB;
   const spread = Math.abs(leanA - leanB);
 
   const dualAggressors =
-    offA >= 74 &&
-    offB >= 74 &&
-    (radarA.positioning ?? 68) < 69 &&
-    (radarB.positioning ?? 68) < 69;
+    offA >= 56 &&
+    offB >= 56 &&
+    (radarA.positioning ?? 50) < 55 &&
+    (radarB.positioning ?? 50) < 55;
   const dualPassiveAnchors =
-    defA >= 74 && defB >= 74 && radarA.finishing < 64 && radarB.finishing < 64;
+    defA >= 55 && defB >= 55 && radarA.finishing < 42 && radarB.finishing < 42;
 
-  let score = 62 + Math.min(26, spread * 1.15);
+  let score = 62 + Math.min(26, spread * 0.72);
   if (dualAggressors) {
     score -= 14;
   } else if (dualPassiveAnchors) {
@@ -209,13 +209,13 @@ function computePillarsFromMetrics(input: {
   const minOneWay = Math.min(input.assistsAtoB, input.assistsBtoA);
   const reciprocity = minOneWay > 0 ? (minOneWay / maxOneWay) * 9 : 0;
   const avgCreation = (input.radarA.creation + input.radarB.creation) / 2;
-  const passingSynergy = clampScore(26 + linksPerGame * 62 + avgCreation * 0.25 + reciprocity);
+  const passingSynergy = clampScore(32 + linksPerGame * 62 + avgCreation * 0.34 + reciprocity);
 
   const dcPerGame = input.mutualDoubleCommits / m;
   const coverPerGame = input.thirdManCovers / m;
-  const avgDis = ((input.radarA.positioning ?? 68) + (input.radarB.positioning ?? 68)) / 2;
+  const avgDis = ((input.radarA.positioning ?? 50) + (input.radarB.positioning ?? 50)) / 2;
   const spacingDiscipline = clampScore(
-    (95 - dcPerGame * 72) * 0.68 + avgDis * 0.24 + Math.min(12, coverPerGame * 24)
+    (95 - dcPerGame * 72) * 0.68 + avgDis * 0.3 + Math.min(12, coverPerGame * 24)
   );
 
   const roleFit = computeRoleFit(input.radarA, input.radarB);

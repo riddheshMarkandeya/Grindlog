@@ -33,7 +33,7 @@ import { GrindlogReader } from '../ingestion/grindlog-reader.ts';
 import type { TrackerMatch, TrackerMatchPlayer, TrackerMatchGoal, RawEventRecord } from '../ingestion/grindlog-reader.ts';
 import { OvertimeDBCache } from '../db/cache.ts';
 
-export const ENGINE_VERSION = 8;
+export const ENGINE_VERSION = 9;
 
 export class MatchAnalyzer {
   private reader: GrindlogReader;
