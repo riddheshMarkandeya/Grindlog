@@ -132,6 +132,7 @@ describe("runChecks", () => {
     ["extras_computed", (s) => ((s.extras = null), (s.extrasError = "TypeError: boom"))],
     ["goals_placed", (s) => (x(s).facts.droppedGoals = 1)],
     ["goals_clocked", (s) => (x(s).facts.goalsWithoutClock = 1)],
+    ["goal_team_from_scoreboard", (s) => (x(s).facts.goalsTeamFromScorer = 1)],
     ["moments_clocked", (s) => (x(s).facts.momentsWithoutClock = 1)],
     ["moments_match_statfeed", (s) => x(s).moments.pop()],
     ["moments_match_statfeed", (s) => x(s).moments.push(moment("save", "c"))],

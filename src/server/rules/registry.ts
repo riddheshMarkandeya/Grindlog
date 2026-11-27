@@ -650,6 +650,17 @@ export const RULES: readonly Rule[] = [
   },
   // goals
   {
+    id: "goal_team",
+    area: "goals",
+    rule: "A goal's team is the one team whose scoreboard score rose by exactly 1 from the kickoff before it (or the first scoreboard, joined in progress) to the next kickoff, the next goal or MatchEnded; otherwise its scorer's TeamNum, counted and flagged. The Stats API's Scorer is whoever put the ball in, so on an own goal it's on the other team.",
+    checks: ["goal_team_from_scoreboard", "goals_per_team_equal_score"],
+    evidence: "In raw.db, 2,151 of 2,152 live goals paired with a scoreboard step on the scorer's team; the one other was an own goal (scorer on team 1, team 0's score rose). Every step lands within 2 s of its goal, 1,848 after the GoalScored and 304 before it, so the team is read when the stretch ends. Over the stretches, 2,138 goals agree with the scorer's team, 1 differs, and none fall back in matches with kickoffs.",
+    version: 1,
+    applied: "recorded",
+    outputs: [g("team_num"), ...GOAL_POINT, p("hardest_shot_kmh")],
+    refs: [ADR_EXTRAS, PLAN_WP4B],
+  },
+  {
     id: "goal_origin",
     area: "goals",
     rule: "A goal's point is the scoring team's last hit since the kickoff, preferring the scorer among a 50/50's hitters; the ball's location there is its position.",
@@ -686,12 +697,12 @@ export const RULES: readonly Rule[] = [
   {
     id: "own_goal",
     area: "goals",
-    rule: "A goal is an own goal when the scoring team never hit the ball since a seen kickoff; it then has no point. Joined before the first kickoff, it isn't one.",
+    rule: "A goal is an own goal when the scoring team never hit the ball since a seen kickoff, or when the goal's team isn't its scorer's (the scorer put it in their own net); it then has no point. Joined before the first kickoff, the first case isn't one.",
     checks: [],
-    evidence: "0 of 214 captured goals.",
-    version: 1,
+    evidence: "0 of 214 captured goals; in raw.db, 1 of about 2,150 live goals was credited against its scorer's team.",
+    version: 2,
     applied: "recorded",
-    outputs: GOAL_POINT,
+    outputs: [...GOAL_POINT, p("hardest_shot_kmh")],
     refs: [ADR_EXTRAS, PLAN_WP4B],
   },
   {
@@ -861,7 +872,7 @@ export const RULES: readonly Rule[] = [
     rule: "A match's goal order is its goals by idx, each credited to its team, used only when the goals per team equal the final score (else the match is left out of goal-order stats and kept in the final-score ones). A comeback is a win after being SWING_MIN_GOALS or more goals down at some point; a blown lead is a loss after being that many up. The ladder buckets each match by its biggest deficit and lead (1, 2, 3+). A match whose result contradicts its final score (a win while behind, as when the other side quits while ahead; a loss while ahead) is left out of comebacks, blown leads and the ladder.",
     constants: { SWING_MIN_GOALS },
     checks: ["goals_per_team_equal_score", "player_goals_equal_score"],
-    evidence: "The user's choice (2026-11-23): at any deficit about 3 in 4 comebacks were from one goal down, which happens in almost every match. A joined match (no checks, flagged joined) and a mis-credited own goal fail the per-team comparison. In the 2026-11-23 data, 2 forfeit wins finished behind (one at 0–7) and would have read as comebacks (user's choice to leave them out).",
+    evidence: "The user's choice (2026-11-23): at any deficit about 3 in 4 comebacks were from one goal down, which happens in almost every match. A joined match (no checks, flagged joined) fails the per-team comparison; own goals are credited by the scoreboard (goal_team), so they pass it. In the 2026-11-23 data, 2 forfeit wins finished behind (one at 0–7) and would have read as comebacks (user's choice to leave them out).",
     version: 1,
     applied: "read",
     refs: [ANALYTICS_MAP],

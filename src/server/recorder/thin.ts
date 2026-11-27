@@ -1,7 +1,8 @@
 // Which of an old match's UpdateStates retention can delete. A state goes only when it changes
 // nothing the scoreboard rules read: the summary's roster, presence, score, clock, playlist and
-// arena, and the Shortcut lookups that resolve statfeed targets and the play view's references,
-// all read the projected fields below and nothing else of an UpdateState. What else reads a state
+// arena, the play view's score (which credits each goal's team), and the Shortcut lookups that
+// resolve statfeed targets and the play view's references, all read the projected fields below
+// and nothing else of an UpdateState. What else reads a state
 // (car samples, the camera target, bReplay for both) is dense: retention snapshots those outputs
 // before thinning, so a thinned match recomputes the rest and keeps the snapshot for them. The
 // replay_playback check also reads bReplay, so it skips a thinned match.

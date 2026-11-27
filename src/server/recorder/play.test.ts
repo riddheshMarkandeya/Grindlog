@@ -244,6 +244,20 @@ describe("buildPlay: goals", () => {
     expect(g).toMatchObject({ teamNum: 0, toucherKey: null, pos: null, distance: null, deflected: false, ownGoal: true });
   });
 
+  test("a goal the scoreboard credits against its scorer's team is an own goal with no point", () => {
+    const events = [
+      at(0, "RoundStarted"),
+      state(5, {}, {}, [0, 0]),
+      hit(100, ["A"], 90, { X: 0, Y: 1000, Z: 93 }),
+      hit(200, ["B"], 70),
+      goal(300, "B", "B"), // B put it in their own net
+      state(400, {}, {}, [1, 0]),
+    ];
+    const play = buildPlay(events, summary());
+    expect(play.goals).toMatchObject([{ teamNum: 0, scorerKey: key("B"), toucherKey: null, pos: null, distance: null, deflected: false, ownGoal: true }]);
+    expect(play.hardestShot).toEqual({});
+  });
+
   test("a goal whose scorer doesn't resolve gets no point, whatever the scoreboard says, and is counted", () => {
     const stranger = { Name: "Z", Shortcut: 9, TeamNum: 0 };
     const events = [
@@ -345,6 +359,77 @@ describe("buildPlay: goals", () => {
   test("a last touch the hits don't show is counted", () => {
     const play = buildPlay([at(0, "RoundStarted"), hit(100, ["A"]), goal(200, "A", "C")], summary());
     expect(play.facts.lastTouchDisagrees).toBe(1);
+  });
+});
+
+describe("buildPlay: a goal's team, from the scoreboard", () => {
+  const score = (ts: number, s: [number, number]) => state(ts, {}, {}, s);
+  const clock = (ts: number, seconds: number) => at(ts, "ClockUpdatedSeconds", { TimeSeconds: seconds, bOvertime: false });
+  const teamOf = (events: StoredEvent[], joinedInProgress = false) => {
+    const play = buildPlay(events, summary({ joinedInProgress }));
+    return { teams: play.goals.map((g) => g.teamNum), fromScorer: play.facts.goalsTeamFromScorer };
+  };
+
+  test("the team whose score rose by 1 gets the goal, even when the step comes after it and isn't the scorer's", () => {
+    const events = [score(0, [2, 0]), at(10, "RoundStarted"), hit(20, ["B"]), goal(30, "B", "B"), score(40, [3, 0]), at(100, "RoundStarted")];
+    expect(teamOf(events)).toEqual({ teams: [0], fromScorer: 0 });
+  });
+
+  test("a step before the GoalScored, within the stretch, counts too", () => {
+    const events = [at(0, "RoundStarted"), score(5, [0, 0]), hit(20, ["B"]), score(25, [1, 0]), goal(30, "B", "B"), at(100, "RoundStarted")];
+    expect(teamOf(events)).toEqual({ teams: [0], fromScorer: 0 });
+  });
+
+  test("no scoreboard, no rise, or both teams rising falls back to the scorer's team, counted", () => {
+    expect(teamOf([at(0, "RoundStarted"), hit(20, ["B"]), goal(30, "B", "B")])).toEqual({ teams: [1], fromScorer: 1 });
+    expect(teamOf([at(0, "RoundStarted"), score(5, [1, 1]), goal(30, "B", "B"), score(40, [1, 1])])).toEqual({ teams: [1], fromScorer: 1 });
+    expect(teamOf([at(0, "RoundStarted"), score(5, [1, 1]), goal(30, "B", "B"), score(40, [2, 2])])).toEqual({ teams: [1], fromScorer: 1 });
+  });
+
+  test("a rise of 2 falls back", () => {
+    expect(teamOf([at(0, "RoundStarted"), score(5, [0, 0]), goal(30, "B", "B"), score(40, [2, 0])])).toEqual({ teams: [1], fromScorer: 1 });
+  });
+
+  test("two goals with no kickoff between them: the second falls back", () => {
+    const events = [at(0, "RoundStarted"), score(5, [0, 0]), goal(10, "A", "A"), score(15, [1, 0]), goal(20, "B", "B"), score(25, [1, 1])];
+    expect(teamOf(events)).toEqual({ teams: [0, 1], fromScorer: 1 });
+  });
+
+  test("joined in progress, the first scoreboard is the baseline before the first kickoff", () => {
+    const events = [score(0, [1, 1]), hit(10, ["B"]), goal(20, "B", "B"), score(30, [2, 1]), at(100, "RoundStarted")];
+    expect(teamOf(events, true)).toEqual({ teams: [0], fromScorer: 0 });
+  });
+
+  test("joined in progress, a first goal with no scoring-team hit settled at the next kickoff isn't an own goal", () => {
+    const events = [score(0, [1, 1]), hit(10, ["B"]), goal(20, "A", "B"), score(30, [2, 1]), at(100, "RoundStarted")];
+    expect(buildPlay(events, summary({ joinedInProgress: true })).goals).toMatchObject([{ teamNum: 0, ownGoal: false }]);
+  });
+
+  test("the goal's clock is the reading at the GoalScored, not a later one before it settles", () => {
+    const events = [at(0, "RoundStarted"), score(5, [0, 0]), clock(10, 200), goal(20, "A", "A"), clock(30, 199), score(40, [1, 0]), at(100, "RoundStarted")];
+    expect(buildPlay(events, summary()).goals.map((g) => g.clock)).toEqual([{ seconds: 200, overtime: false }]);
+  });
+
+  test("the last goal settles at MatchEnded and at the end of events; a rise after MatchEnded isn't read", () => {
+    const ended = [at(0, "RoundStarted"), score(5, [0, 0]), goal(10, "B", "B"), score(15, [1, 0]), at(20, "MatchEnded")];
+    expect(teamOf(ended)).toEqual({ teams: [0], fromScorer: 0 });
+    const left = [at(0, "RoundStarted"), score(5, [0, 0]), goal(10, "B", "B"), score(15, [1, 0])];
+    expect(teamOf(left)).toEqual({ teams: [0], fromScorer: 0 });
+    const late = [at(0, "RoundStarted"), score(5, [0, 0]), goal(10, "B", "B"), at(20, "MatchEnded"), score(25, [1, 0])];
+    expect(teamOf(late)).toEqual({ teams: [1], fromScorer: 1 });
+  });
+
+  test("a shot pairs with its goal when the goal before it settles at this GoalScored", () => {
+    const events = [
+      at(0, "RoundStarted"),
+      hit(5, ["A"]),
+      statfeed(6, "Shot", "A"),
+      goal(10, "A", "A"),
+      hit(12, ["B"]), // no kickoff seen between the goals
+      statfeed(13, "Shot", "B"),
+      goal(20, "B", "B"),
+    ];
+    expect(buildPlay(events, summary()).moments.filter((m) => m.kind === "shot").map((m) => m.goalIdx)).toEqual([0, 1]);
   });
 });
 

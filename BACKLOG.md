@@ -7,17 +7,16 @@ priority Low/Med/High; effort Trivial/Standard/Substantial/TBD.
 
 Order agreed with the user on 2026-11-26; each step is an item below. Take them in order.
 
-1. The own goal credited to the wrong team (bug).
-2. Release v0.1.7 (`docs/releasing.md`): Clutch, Tilt, the goal clock and timeline, the account picker and the
+1. Release v0.1.7 (`docs/releasing.md`): Clutch, Tilt, the goal clock and timeline, the account picker and the
    dropdowns are unreleased since v0.1.6. The flaky `tray.test.ts` can fail the tag's `bun run check`; re-run it.
-3. Playlist scope (`/wayfinder`).
-4. Demo stats.
-5. Boost pickup stats.
-6. The stats honesty audit.
-7. Season recap (`/wayfinder`). S25 starts 2026-12-09, so S24's recap is the first; landing near then is nice,
+2. Playlist scope (`/wayfinder`).
+3. Demo stats.
+4. Boost pickup stats.
+5. The stats honesty audit.
+6. Season recap (`/wayfinder`). S25 starts 2026-12-09, so S24's recap is the first; landing near then is nice,
    not required.
-8. Release v0.1.8.
-9. Replay analysis feasibility test (separate repo, time-boxed). Nothing in 3–8 waits on it, so it can move up.
+7. Release v0.1.8.
+8. Replay analysis feasibility test (separate repo, time-boxed). Nothing in 2–7 waits on it, so it can move up.
 
 ## Items
 
@@ -120,18 +119,6 @@ Order agreed with the user on 2026-11-26; each step is an item below. Take them 
   period on Trends, as a density view, since ~1,900 goals as dots would just be clutter. Lowest priority: the
   recap's "Where the goals came from" already shows scored and conceded per session and match. Record:
   `docs/plans/2026-11-23-analytics-map.md`.
-- [ ] **[bug, Med, Standard]** (found in analytics step A, 2026-11-23) An own goal is credited to the wrong team.
-  Match `6437938E11F1E4A6451A93B20A8916A6` (Ranked Doubles, final 3–7) stores 2 goals for team 0 and 8 for team 1.
-  In raw.db, team 0's scoreboard goes 2→3 at seq 1500 while no team-0 player's goal count moves, then the GoalScored
-  at seq 1501 names a team-1 player as `Scorer` (`TeamNum: 1`, also the last toucher). The Stats API names whoever
-  put the ball in, and the recorder credits a goal to `Scorer.TeamNum`. The `own_goal` rule ("the scoring team never
-  hit the ball since kickoff") can't catch it, because the credited team is the one that touched it. Ruled out:
-  replay goals (every replay GoalScored has an empty scorer and is dropped) and a lost goal (10 live GoalScoreds,
-  10 scoreboard steps). The fix changes the goal-team rule: credit a goal to the team whose scoreboard score rose
-  at that GoalScored (falling back to `Scorer.TeamNum` with no scoreboard step), and make `own_goal` also mean "the
-  credited team isn't the scorer's", with no scorer credit or point. One rule at a time with version bumps,
-  `rules-diff`, then `release-recompute` moves it. Clutch already leaves this match out of goal-order stats (goals
-  per team ≠ score), so it doesn't wait on the fix. Seen 1 time in ~1,931 goals.
 - [ ] **[design, Med, Substantial]** Stats honesty audit (user, 2026-11-25, widened 2026-11-26): every stat on
   the dashboard checked for noise and for misleading results, then kept, reworded, given a noise check (as Tilt
   has its standard-error bar) or dropped. Plan it with `research` (methods) and a prototype on real data, as Tilt
@@ -205,6 +192,10 @@ Order agreed with the user on 2026-11-26; each step is an item below. Take them 
 - [ ] **[design, Low, Trivial]** Trigger: the Scored / Conceded right back note passing 44 characters (two tile
   lines), around 1,000 answered goals; "within 15 s, after 104 of their 1,009 goals" is 43 today. Shorten the
   note then. Record: `docs/plans/2026-11-25-late-goals.md` (review round 1).
+- [ ] **[bug, Low, Standard]** (found by the own-goal fix, 2026-11-26) The goal timeline hides a match with an own
+  goal against its scorer's team (`goal-timeline.ts`): match `6437938E11F1E4A6451A93B20A8916A6` is the first, now
+  credited by the scoreboard (`goal_team`) and marked `own_goal`. Show own goals on it instead. Record:
+  `docs/plans/2026-11-24-goal-timeline.md`, `git log --grep=goal_team`.
 
 ## Watch list
 - [ ] **[bug (latent), Low, Standard]** Trigger: a `seasons_changed` or `match_ended` log with `subscribers: 0` while a
@@ -214,9 +205,9 @@ Order agreed with the user on 2026-11-26; each step is an item below. Take them 
 - [ ] **[bug, Low, Standard]** Trigger: the first match in the `clutch` log's `skippedClockGuids` whose clock runs
   backwards (a later goal with more regulation time left, or less overtime played; none in 2,061 stored goals).
   `clockChecked` leaves it out of the goal-clock stats; fit the rule to it. Record: `docs/plans/2026-11-25-late-goals.md`.
-- [ ] **[bug, Low, Standard]** Trigger: a match where a goal's scorer isn't on the team the goal counted for (an own
-  goal credited by the game to the scorer's opponents, say; none in 1,988 stored goals). The goal timeline hides
-  such a match; fit it once a real one shows how the game credits it. Record: `docs/plans/2026-11-24-goal-timeline.md`.
+- [ ] **[bug, Low, Standard]** Trigger: the first match flagged `goal_team_from_scoreboard` (a goal whose stretch had
+  no single +1 scoreboard step; never seen in matches with kickoffs). Its team falls back to the scorer's; fit the
+  rule once one appears. Record: `git log --grep=goal_team`.
 - [ ] **[bug, Low, Standard]** Trigger: the first match flagged `goals_clocked` (a goal with no
   `ClockUpdatedSeconds` reading before it) or `clock_overtime_flagged` (a reading whose `bOvertime` isn't a boolean; none in 1,988 stored
   goals). Fit the `goal_clock` rule (and, for a bad `bOvertime`, `regulation_length`) to that match. Record: `docs/plans/2026-11-24-goal-clock.md`.

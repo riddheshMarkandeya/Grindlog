@@ -453,6 +453,15 @@ Across matches, average boost is weighted by car_ms, and the supersonic and empt
 - **Decided in**: `docs/plans/2026-10-20-wp4b-match-extras.md`, `docs/plans/2026-10-21-wp5a-a-query-logic.md`
 ## Goals
 
+### `goal_team` · v1 · recorded
+
+A goal's team is the one team whose scoreboard score rose by exactly 1 from the kickoff before it (or the first scoreboard, joined in progress) to the next kickoff, the next goal or MatchEnded; otherwise its scorer's TeamNum, counted and flagged. The Stats API's Scorer is whoever put the ball in, so on an own goal it's on the other team.
+
+- **Checks**: `goal_team_from_scoreboard`, `goals_per_team_equal_score`
+- **Writes**: `match_goals.team_num`, `match_goals.toucher_key`, `match_goals.x`, `match_goals.y`, `match_goals.z`, `match_goals.distance`, `match_goals.deflected`, `match_goals.own_goal`, `match_players.hardest_shot_kmh`
+- **Evidence**: In raw.db, 2,151 of 2,152 live goals paired with a scoreboard step on the scorer's team; the one other was an own goal (scorer on team 1, team 0's score rose). Every step lands within 2 s of its goal, 1,848 after the GoalScored and 304 before it, so the team is read when the stretch ends. Over the stretches, 2,138 goals agree with the scorer's team, 1 differs, and none fall back in matches with kickoffs.
+- **Decided in**: `docs/decisions/2026-10-20-match-extras-play-view.md`, `docs/plans/2026-10-20-wp4b-match-extras.md`
+
 ### `goal_origin` · v1 · recorded
 
 A goal's point is the scoring team's last hit since the kickoff, preferring the scorer among a 50/50's hitters; the ball's location there is its position.
@@ -479,12 +488,12 @@ A goal is deflected when the other team hit the ball after its origin hit; the o
 - **Evidence**: 38 of 214 captured goals.
 - **Decided in**: `docs/decisions/2026-10-20-match-extras-play-view.md`, `docs/plans/2026-10-20-wp4b-match-extras.md`
 
-### `own_goal` · v1 · recorded
+### `own_goal` · v2 · recorded
 
-A goal is an own goal when the scoring team never hit the ball since a seen kickoff; it then has no point. Joined before the first kickoff, it isn't one.
+A goal is an own goal when the scoring team never hit the ball since a seen kickoff, or when the goal's team isn't its scorer's (the scorer put it in their own net); it then has no point. Joined before the first kickoff, the first case isn't one.
 
-- **Writes**: `match_goals.toucher_key`, `match_goals.x`, `match_goals.y`, `match_goals.z`, `match_goals.distance`, `match_goals.deflected`, `match_goals.own_goal`
-- **Evidence**: 0 of 214 captured goals.
+- **Writes**: `match_goals.toucher_key`, `match_goals.x`, `match_goals.y`, `match_goals.z`, `match_goals.distance`, `match_goals.deflected`, `match_goals.own_goal`, `match_players.hardest_shot_kmh`
+- **Evidence**: 0 of 214 captured goals; in raw.db, 1 of about 2,150 live goals was credited against its scorer's team.
 - **Decided in**: `docs/decisions/2026-10-20-match-extras-play-view.md`, `docs/plans/2026-10-20-wp4b-match-extras.md`
 
 ### `aerial_goal` · v1 · recorded
@@ -612,7 +621,7 @@ A match's goal order is its goals by idx, each credited to its team, used only w
 
 - **Constants**: `SWING_MIN_GOALS` = 2
 - **Checks**: `goals_per_team_equal_score`, `player_goals_equal_score`
-- **Evidence**: The user's choice (2026-11-23): at any deficit about 3 in 4 comebacks were from one goal down, which happens in almost every match. A joined match (no checks, flagged joined) and a mis-credited own goal fail the per-team comparison. In the 2026-11-23 data, 2 forfeit wins finished behind (one at 0–7) and would have read as comebacks (user's choice to leave them out).
+- **Evidence**: The user's choice (2026-11-23): at any deficit about 3 in 4 comebacks were from one goal down, which happens in almost every match. A joined match (no checks, flagged joined) fails the per-team comparison; own goals are credited by the scoreboard (goal_team), so they pass it. In the 2026-11-23 data, 2 forfeit wins finished behind (one at 0–7) and would have read as comebacks (user's choice to leave them out).
 - **Decided in**: `docs/plans/2026-11-23-analytics-map.md`
 
 ### `clutch_one_goal` · v1 · read

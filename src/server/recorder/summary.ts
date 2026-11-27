@@ -121,7 +121,7 @@ export const objects = (v: unknown): Data[] => (Array.isArray(v) ? v.filter(isOb
 export const players = (data: Data): Data[] => objects(data.Players);
 
 /** Both teams' goals from a state's `Game`, or null unless both are whole and non-negative. */
-function readScore(game: Data): [number, number] | null {
+export function readScore(game: Data): [number, number] | null {
   const goals: (number | undefined)[] = [];
   for (const t of objects(game.Teams)) {
     const team = teamOf(t.TeamNum);

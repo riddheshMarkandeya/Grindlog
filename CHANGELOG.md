@@ -19,6 +19,10 @@ All notable changes to Grindlog are listed here. The format is based on
 - The dropdowns (playlist, With, account and the Settings playlist pickers) match the dashboard's theme instead of
   looking like the browser's own.
 
+### Fixed
+- An own goal is now credited to the team it counted for, taken from the scoreboard, and marked as an own goal
+  with no shot position, instead of going to the team of the player who put it in.
+
 ## [0.1.6] - 2026-11-19
 
 ### Added

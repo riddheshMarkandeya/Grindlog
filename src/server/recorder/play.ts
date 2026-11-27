@@ -6,7 +6,7 @@ import type { MomentKind } from "../../shared/schemas/responses";
 import { isObject, type Data } from "./envelope";
 import { playerKey, resolveTarget } from "./players";
 import type { StoredEvent } from "./store";
-import { num, players, str, teamOf, type MatchSummary, type TeamNum } from "./summary";
+import { num, players, readScore, str, teamOf, type MatchSummary, type TeamNum } from "./summary";
 
 export interface Pos {
   x: number;
@@ -43,6 +43,7 @@ export interface CarSample {
 
 /** One goal, for the goal map. */
 export interface GoalPoint {
+  /** The team the scoreboard credited, which on an own goal isn't the scorer's. */
   teamNum: TeamNum;
   scorerKey: string;
   assisterKey: string | null;
@@ -56,7 +57,10 @@ export interface GoalPoint {
   /** The other team touched the ball after the origin touch. */
   deflected: boolean;
   aerial: boolean;
-  /** The scoring team never touched the ball since the kickoff; false when the kickoff came before the recording. */
+  /**
+   * The goal's team isn't its scorer's (they put it in their own net), or that team never touched
+   * the ball since the kickoff; the latter is false when the kickoff came before the recording.
+   */
   ownGoal: boolean;
   /**
    * The last ClockUpdatedSeconds reading before the goal, as read: time left in regulation, time
@@ -123,6 +127,8 @@ export interface Play {
     droppedGoals: number;
     /** Live goals with no ClockUpdatedSeconds reading before them, so their clock is null. */
     goalsWithoutClock: number;
+    /** Goals whose stretch showed no single +1 scoreboard step, so their team is the scorer's. */
+    goalsTeamFromScorer: number;
     /** ClockUpdatedSeconds readings whose bOvertime isn't a boolean; they're taken as regulation readings. */
     clockReadingsWithoutOvertimeFlag: number;
     /** Moments left with a null clock: no reading before them, and joined in progress, no regulation length or a late first reading. */
@@ -180,15 +186,28 @@ interface Acc {
   firstClock: Clock | null;
   /** `play.moments.length` at the last RoundStarted, where a goal's own shot is looked for. */
   kickoffMoment: number;
+  /** The latest full scoreboard. */
+  score: [number, number] | null;
+  /** The scoreboard at the last kickoff, or the first one when joined in progress before any kickoff. */
+  stretchStart: [number, number] | null;
+  /**
+   * The goal waiting for its team: the scoreboard steps up to 2 s either side of the GoalScored, so
+   * the team is read when the stretch ends. It keeps what it read at the GoalScored.
+   */
+  pendingGoal: PendingGoal | null;
   play: Play;
 }
 
-interface GoalInput {
-  team: TeamNum;
+interface PendingGoal {
+  scorerTeam: TeamNum;
   scorerKey: string;
   assisterKey: string | null;
   speedKmh: number | null;
   aerial: boolean;
+  /** The kickoff's hits array; only RoundStarted replaces it, and no hit is added after the goal. */
+  hits: readonly Hit[];
+  clock: Clock | null;
+  sawKickoff: boolean;
 }
 
 export const REF_KINDS = ["hit", "shot", "woodwork", "lastTouch"] as const;
@@ -269,27 +288,51 @@ function addShot(acc: Acc, k: string, speed: number | null): void {
 /** Team 0 attacks +Y, team 1 attacks −Y. */
 const goalY = (team: TeamNum) => (team === 0 ? GOAL_LINE_Y : -GOAL_LINE_Y);
 
-function addGoal(acc: Acc, g: GoalInput): void {
-  const hits = acc.sinceKickoff;
-  const origin = lastHitBy(hits, (p) => p.team === g.team);
+function addGoal(acc: Acc, g: PendingGoal, team: TeamNum): void {
+  const { hits } = g;
+  // Credited against the scorer's team, the scorer put it in their own net: the crediting team's
+  // last hit isn't what scored it, so it has no point.
+  const intoOwnNet = team !== g.scorerTeam;
+  const origin = intoOwnNet ? null : lastHitBy(hits, (p) => p.team === team);
   // In a 50/50 origin the scorer is preferred among the scoring team's hitters.
   const toucher = origin ? (origin.hit.hitters.find((p) => p.key !== null && p.key === g.scorerKey) ?? origin.hitter) : null;
   const pos = origin?.hit.pos ?? null;
   if (origin && toucher?.key) addShot(acc, toucher.key, origin.hit.speedKmh);
-  if (acc.clock === null) acc.play.facts.goalsWithoutClock++;
   acc.play.goals.push({
-    teamNum: g.team,
+    teamNum: team,
     scorerKey: g.scorerKey,
     assisterKey: g.assisterKey,
     toucherKey: toucher?.key ?? null,
     pos,
-    distance: pos ? Math.hypot(pos.x, goalY(g.team) - pos.y) : null,
+    distance: pos ? Math.hypot(pos.x, goalY(team) - pos.y) : null,
     speedKmh: g.speedKmh,
-    deflected: origin ? hits.slice(origin.index + 1).some((h) => h.hitters.some((p) => p.team !== g.team)) : false,
+    deflected: origin ? hits.slice(origin.index + 1).some((h) => h.hitters.some((p) => p.team !== team)) : false,
     aerial: g.aerial,
-    ownGoal: origin === null && acc.sawKickoff,
-    clock: acc.clock,
+    ownGoal: intoOwnNet || (origin === null && g.sawKickoff),
+    clock: g.clock,
   });
+}
+
+/** The one team whose score rose by exactly 1 over the stretch while the other's held; else null. */
+function scoreboardTeam(from: [number, number] | null, to: [number, number] | null): TeamNum | null {
+  if (!from || !to) return null;
+  const [d0, d1] = [to[0] - from[0], to[1] - from[1]];
+  if (d0 === 1 && d1 === 0) return 0;
+  if (d0 === 0 && d1 === 1) return 1;
+  return null;
+}
+
+/** Credits the pending goal to the scoreboard's team, falling back to its scorer's (counted). */
+function settleGoal(acc: Acc): void {
+  const g = acc.pendingGoal;
+  if (!g) return;
+  acc.pendingGoal = null;
+  let team = scoreboardTeam(acc.stretchStart, acc.score);
+  if (team === null) {
+    acc.play.facts.goalsTeamFromScorer++;
+    team = g.scorerTeam;
+  }
+  addGoal(acc, g, team);
 }
 
 /**
@@ -348,6 +391,9 @@ const HANDLERS: Readonly<Record<string, Handler>> = {
     setPhase(acc, "countdown", ev.ts);
   },
   RoundStarted: (acc, ev) => {
+    // Settle before resetting the baseline, so the goal is read against its own stretch.
+    settleGoal(acc);
+    acc.stretchStart = acc.score;
     setPhase(acc, "play", ev.ts);
     acc.sinceKickoff = [];
     acc.kickoffMoment = acc.play.moments.length;
@@ -357,6 +403,9 @@ const HANDLERS: Readonly<Record<string, Handler>> = {
   // Dedup has already dropped the replay's copy, so this is the live goal.
   GoalScored: (acc, ev) => {
     if (acc.phase === "ended") return;
+    // With no kickoff since the last goal, the baseline stays put: this one's stretch shows two
+    // rises and falls back, flagged, and so does the last one if this goal's step came first.
+    settleGoal(acc);
     setPhase(acc, "replay", ev.ts);
     const scorer = (ev.data.Scorer ?? {}) as Data;
     const lastTouchKey = resolveRef(acc, ((ev.data.BallLastTouch ?? {}) as Data).Player, "lastTouch");
@@ -371,14 +420,19 @@ const HANDLERS: Readonly<Record<string, Handler>> = {
     }
     const aerials = acc.aerialPending.get(scorerKey) ?? 0;
     if (aerials > 0) acc.aerialPending.set(scorerKey, aerials - 1);
-    addGoal(acc, {
-      team,
+    if (acc.clock === null) acc.play.facts.goalsWithoutClock++;
+    acc.pendingGoal = {
+      scorerTeam: team,
       scorerKey,
       assisterKey: resolve(acc, ev.data.Assister),
       speedKmh: num(ev.data.GoalSpeed),
       aerial: aerials > 0,
-    });
-    pairShot(acc, scorerKey, acc.play.goals.length - 1);
+      hits: acc.sinceKickoff,
+      clock: acc.clock,
+      sawKickoff: acc.sawKickoff,
+    };
+    // Any goal before it is settled, so this one's index is the next.
+    pairShot(acc, scorerKey, acc.play.goals.length);
   },
   MatchPaused: (acc, ev) => {
     if (acc.phase === "paused" || acc.phase === "ended") return;
@@ -389,6 +443,8 @@ const HANDLERS: Readonly<Record<string, Handler>> = {
     if (acc.phase === "paused") setPhase(acc, acc.beforePause, ev.ts);
   },
   MatchEnded: (acc, ev) => {
+    // The states after it may be retagged from the next match, so their scoreboards aren't read.
+    settleGoal(acc);
     setPhase(acc, "ended", ev.ts);
   },
   ClockUpdatedSeconds: (acc, ev) => {
@@ -406,7 +462,14 @@ const HANDLERS: Readonly<Record<string, Handler>> = {
     // The podium and teardown states may be retagged with the next match's guid.
     if (acc.phase === "ended") return;
     acc.latestPlayers = players(ev.data);
-    sampleCars(acc, ev.ts, ((ev.data.Game ?? {}) as Data).bReplay === true);
+    const game = (ev.data.Game ?? {}) as Data;
+    const score = readScore(game);
+    if (score) {
+      acc.score = score;
+      // Joined in progress, before the first kickoff the first scoreboard is the baseline.
+      acc.stretchStart ??= score;
+    }
+    sampleCars(acc, ev.ts, game.bReplay === true);
   },
   BallHit: (acc, ev) => {
     if (acc.phase !== "play") return;
@@ -455,7 +518,7 @@ export function emptyPlay(): Play {
 }
 
 export function emptyFacts(): Play["facts"] {
-  return { playMs: 0, shotsWithoutTouch: 0, lastTouchDisagrees: 0, droppedGoals: 0, goalsWithoutClock: 0, clockReadingsWithoutOvertimeFlag: 0, momentsWithoutClock: 0, sawWin: false, unresolved: { hit: 0, shot: 0, woodwork: 0, lastTouch: 0 } };
+  return { playMs: 0, shotsWithoutTouch: 0, lastTouchDisagrees: 0, droppedGoals: 0, goalsWithoutClock: 0, goalsTeamFromScorer: 0, clockReadingsWithoutOvertimeFlag: 0, momentsWithoutClock: 0, sawWin: false, unresolved: { hit: 0, shot: 0, woodwork: 0, lastTouch: 0 } };
 }
 
 /** `events` are one match's events, deduped, in seq order. */
@@ -476,9 +539,14 @@ export function buildPlay(events: readonly StoredEvent[], summary: Pick<MatchSum
     clock: null,
     firstClock: null,
     kickoffMoment: 0,
+    score: null,
+    stretchStart: null,
+    pendingGoal: null,
     play: emptyPlay(),
   };
   for (const ev of events) HANDLERS[ev.name]?.(acc, ev);
+  // Left or orphaned: the last goal's stretch runs to the end of the events.
+  settleGoal(acc);
   // A match closed mid-play (left, orphaned) still counts its last stretch.
   setPhase(acc, "ended", events.at(-1)?.ts ?? 0);
   if (!acc.play.facts.sawWin) acc.play.endClock = acc.clock;

@@ -169,6 +169,7 @@ const CHECKS: readonly Check[] = [
   { id: "extras_computed", run: (s) => s.extrasError },
   { id: "goals_placed", run: withExtras((_, x) => fails(x.facts.droppedGoals, "goal(s) whose scorer isn't a roster player with a team, so no point")) },
   { id: "goals_clocked", run: withExtras((_, x) => fails(x.facts.goalsWithoutClock, "goal(s) with no clock reading before them")) },
+  { id: "goal_team_from_scoreboard", run: withExtras((_, x) => fails(x.facts.goalsTeamFromScorer, "goal(s) whose team the scoreboard didn't settle, so it's the scorer's")) },
   { id: "moments_clocked", run: withExtras((_, x) => fails(x.facts.momentsWithoutClock, "moment(s) with no clock: no reading before them (joined in progress, no regulation length, or a first reading more than 2 s short)")) },
   { id: "moments_match_statfeed", run: withExtras(momentMismatches) },
   {
