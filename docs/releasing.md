@@ -25,9 +25,10 @@ because the signing key never leaves it.
 1. Bump `version` in `package.json`: `X.Y.Z` for a release, `X.Y.Z-rc.N` for a prerelease (the draft is
    marked prerelease automatically). In `CHANGELOG.md`, move the Unreleased entries under a new
    `## [X.Y.Z] - YYYY-MM-DD` heading and update the compare links at the bottom.
-2. Optional local check: `bun run build-release`. It builds `release/Grindlog-Setup-<version>.exe` and
-   smoke-runs the exe (version, prod channel, dashboard served, `InternalName`, `LegalCopyright` on both exes, and
-   the exe's icon).
+2. Before tagging, run what CI runs: `bun run check`, `bun run e2e` and `bun run build-release`. The last builds
+   `release/Grindlog-Setup-<version>.exe` and smoke-runs the exe (version, prod channel, dashboard served,
+   `InternalName`, `LegalCopyright` on both exes, and the exe's icon). A failure here costs a fix; on CI it also
+   costs deleting and re-pushing the tag. The flaky `tray.test.ts` can fail `check`: re-run it.
 3. Commit, then `git tag vX.Y.Z` (it must be `v` + the package.json version, or CI fails) and push the
    commit and the tag.
 4. Wait for the `release` workflow (Actions tab). It runs `check`, `e2e` and `build-release --tag`, then
