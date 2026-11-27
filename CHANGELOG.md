@@ -6,12 +6,25 @@ All notable changes to Grindlog are listed here. The format is based on
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-11-26
+
 ### Added
-- Trends › Clutch gains four tiles: Late winners (your win % in matches decided in the last 30 seconds), Late
-  goals (scored and conceded in the last 30 seconds of regular time), and Scored / Conceded right back (a goal
-  answered by the other team within 15 seconds, each way). The section now says every number is your team's.
-- Recap match cards show a small clock on a match decided in the last 30 seconds: green for your late winner,
-  red for theirs, with the time left in its tooltip.
+- A Clutch section on Trends, following the period, playlist and With filters: 1-goal games (with the record
+  without OT), overtime, scored and conceded first, comebacks (a win from 2+ down), blown leads (a loss after 2+
+  up), forfeits, and your win % by the biggest deficit and lead, with links to your best comeback and worst
+  collapse. Four more tiles cover the end of a match: Late winners (your win % in matches decided in the last 30
+  seconds), Late goals (scored and conceded in the last 30 seconds of regular time), and Scored / Conceded right
+  back (a goal answered by the other team within 15 seconds, each way). The section says every number is your
+  team's.
+- A Tilt section below Clutch: your win % by game number in the session and by the run before a match (after a
+  win, or after 1, 2 or 3+ losses), with a verdict on whether you drop off.
+- Recap match cards tell the match's story ("from 0-3", "led 5-1"), and show a small clock on a match decided in
+  the last 30 seconds: green for your late winner, red for theirs, with the time left in its tooltip. New remarks
+  for comebacks, blown leads and a run of close losses.
+- The match page shows how the match went: a row per player along the match clock with the running score, goals,
+  saves, assists and shots, overtime, and where a forfeit or a match you left stopped.
+- With two or more accounts, a picker next to the Grindlog name shows one account's matches, sessions and stats,
+  or all of them.
 - "With" takes up to two friends: tick a second friend to see the matches where both were on your team. The list
   stays open after the first tick, and friends who can't join the one you ticked are greyed out with the reason.
 
@@ -22,6 +35,8 @@ All notable changes to Grindlog are listed here. The format is based on
 ### Fixed
 - An own goal is now credited to the team it counted for, taken from the scoreboard, and marked as an own goal
   with no shot position, instead of going to the team of the player who put it in.
+- A page could keep showing old data after a change arrived while it was still loading (for example, a new season
+  list or an account switch) until you reloaded it.
 
 ## [0.1.6] - 2026-11-19
 
@@ -96,7 +111,8 @@ The first release.
 - Update checks against GitHub releases, with signed downloads, installs only while the game is closed, and an
   automatic rollback if a new version doesn't start.
 
-[Unreleased]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.6...HEAD
+[Unreleased]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.7...HEAD
+[0.1.7]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/riddheshMarkandeya/Grindlog/compare/v0.1.3...v0.1.4
