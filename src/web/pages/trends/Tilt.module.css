@@ -19,7 +19,7 @@
 .above { background: var(--win); }
 .below { background: var(--loss); }
 /* Under FIRM_N matches: stripes over whatever colour the bar has. */
-.thin { background-image: repeating-linear-gradient(135deg, rgb(0 0 0 / .45) 0 3px, transparent 3px 7px); }
+.thin { background-image: repeating-linear-gradient(135deg, var(--shadow) 0 3px, transparent 3px 7px); }
 /* The bar a "You drop" verdict names. */
 .focus { outline: 2px solid var(--ink); outline-offset: 2px; }
 .whisk { position: absolute; left: 50%; width: 10px; translate: -50% 0; border: 1.5px solid var(--ink); border-left: 0; border-right: 0; box-sizing: border-box; z-index: 1; }
